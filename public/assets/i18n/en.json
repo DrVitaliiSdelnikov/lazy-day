@@ -1,0 +1,88 @@
+{
+  "nav": {
+    "discover": "Discover",
+    "saved": "Saved",
+    "settings": "Settings"
+  },
+  "discover": {
+    "title": "Lazy Day",
+    "find": "Find",
+    "empty": "Nothing found. Try different interests or a wider radius.",
+    "results": "results",
+    "presets": {
+      "hour_nearby": "Hour nearby",
+      "evening": "This evening",
+      "free": "Free"
+    }
+  },
+  "onboarding": {
+    "interests_title": "What are you into?",
+    "interests_subtitle": "Pick 1 to 8 categories",
+    "company_title": "Who are you with today?",
+    "location_title": "Where to search?",
+    "location_subtitle": "Allow location access or pick a district",
+    "next": "Next",
+    "skip": "Skip",
+    "use_location": "Use my location",
+    "locating": "Locating...",
+    "or": "or pick a district"
+  },
+  "detail": {
+    "why_recommended": "Why this fits you",
+    "address": "Address",
+    "time": "Time",
+    "price": "Price",
+    "verified": "Verified",
+    "source": "Source",
+    "tickets": "Tickets",
+    "website": "Website",
+    "open_maps": "Open in Google Maps",
+    "save": "Save",
+    "saved": "Saved"
+  },
+  "saved": {
+    "title": "Saved",
+    "empty": "Nothing saved yet. Tap ♡ on a card."
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "theme": "Theme",
+    "city": "City",
+    "interests": "Interests",
+    "company": "Company",
+    "budget": "Budget",
+    "any_budget": "any",
+    "no_interests": "Not selected",
+    "edit": "Edit",
+    "done": "Done",
+    "reset": "Reset profile"
+  },
+  "context": {
+    "location": "Where",
+    "company": "With whom",
+    "interests": "Interests",
+    "time": "When",
+    "radius": "Radius",
+    "now": "Now",
+    "evening": "Evening",
+    "tomorrow": "Tomorrow",
+    "weekend": "Weekend"
+  },
+  "filters": {
+    "title": "Filters",
+    "open_now": "Open now",
+    "free": "Free only",
+    "walk_20": "Under 20 min",
+    "outdoor": "Outdoor",
+    "for_two": "For two",
+    "budget": "Budget",
+    "apply": "Apply",
+    "reset": "Reset"
+  },
+  "hide": {
+    "far": "Too far",
+    "expensive": "Too pricey",
+    "not_mine": "Not for me"
+  }
+}

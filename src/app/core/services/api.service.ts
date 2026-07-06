@@ -1,0 +1,15 @@
+import { Injectable } from '@angular/core';
+import { Observable } from 'rxjs';
+import {
+  CategoryNode,
+  DiscoverRequest,
+  DiscoverResponse,
+  RecommendationCard,
+} from '../models';
+
+@Injectable()
+export abstract class ApiService {
+  abstract discover(request: DiscoverRequest): Observable<DiscoverResponse>;
+  abstract getCard(type: string, id: string): Observable<RecommendationCard>;
+  abstract getCategories(): Observable<CategoryNode[]>;
+}

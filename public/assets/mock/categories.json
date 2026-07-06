@@ -1,0 +1,22 @@
+[
+  { "slug": "restaurant", "label": "Рестораны" },
+  { "slug": "cafe", "label": "Кафе" },
+  { "slug": "bar", "label": "Бары" },
+  { "slug": "museum", "label": "Музеи" },
+  { "slug": "theater", "label": "Театр" },
+  { "slug": "concert", "label": "Концерты" },
+  { "slug": "park", "label": "Парки" },
+  { "slug": "gallery", "label": "Галереи" },
+  { "slug": "cinema", "label": "Кино" },
+  { "slug": "sport", "label": "Спорт" },
+  { "slug": "nightlife", "label": "Ночная жизнь" },
+  { "slug": "coworking", "label": "Коворкинг" },
+  { "slug": "kids", "label": "Для детей" },
+  { "slug": "nature", "label": "Природа" },
+  { "slug": "wine", "label": "Вино" },
+  { "slug": "history", "label": "История" },
+  { "slug": "shopping", "label": "Шоппинг" },
+  { "slug": "spa", "label": "Спа" },
+  { "slug": "photo", "label": "Фото-споты" },
+  { "slug": "food_tour", "label": "Гастротур" }
+]

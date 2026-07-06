@@ -1,0 +1,447 @@
+[
+  {
+    "id": "p1",
+    "type": "place",
+    "title": "Fabrika",
+    "category": "bar",
+    "categoryLabel": "Бар / Коворкинг",
+    "lat": 41.7064,
+    "lng": 44.8014,
+    "distanceM": 0,
+    "walkMinutes": 0,
+    "priceLabel": "от 10 GEL",
+    "openStatus": "Открыто до 02:00",
+    "address": "ул. Ниношвили 8, Тбилиси",
+    "description": "Бывшая швейная фабрика, превращённая в культурный хаб. Бары, кафе, магазины, коворкинг и дворик с граффити.",
+    "explanations": [
+      { "type": "matches_interest", "label": "Бары" },
+      { "type": "open_now", "label": "Открыто сейчас" }
+    ],
+    "externalUrl": "https://fabrikatbilisi.com",
+    "source": "OpenStreetMap"
+  },
+  {
+    "id": "p2",
+    "type": "place",
+    "title": "Парк Мтацминда",
+    "category": "park",
+    "categoryLabel": "Парк",
+    "lat": 41.6935,
+    "lng": 44.7873,
+    "distanceM": 0,
+    "walkMinutes": 0,
+    "priceLabel": "Бесплатно",
+    "openStatus": "Открыто",
+    "address": "гора Мтацминда, Тбилиси",
+    "description": "Парк развлечений на вершине горы Мтацминда с панорамным видом на город. Колесо обозрения, аттракционы, кафе.",
+    "explanations": [
+      { "type": "matches_interest", "label": "Парки" },
+      { "type": "free", "label": "Бесплатный вход" }
+    ],
+    "source": "OpenStreetMap"
+  },
+  {
+    "id": "p3",
+    "type": "place",
+    "title": "Национальный музей Грузии",
+    "category": "museum",
+    "categoryLabel": "Музей",
+    "lat": 41.6975,
+    "lng": 44.8015,
+    "distanceM": 0,
+    "walkMinutes": 0,
+    "priceLabel": "15 GEL",
+    "openStatus": "Открыто до 18:00",
+    "address": "пр. Руставели 3, Тбилиси",
+    "description": "Главный музей страны с коллекцией золота Колхиды, средневековых рукописей и археологических находок.",
+    "explanations": [
+      { "type": "matches_interest", "label": "Музеи" },
+      { "type": "walk_time", "label": "8 мин пешком" }
+    ],
+    "source": "OpenStreetMap"
+  },
+  {
+    "id": "p4",
+    "type": "place",
+    "title": "Cafe Leila",
+    "category": "cafe",
+    "categoryLabel": "Кафе",
+    "lat": 41.6944,
+    "lng": 44.8065,
+    "distanceM": 0,
+    "walkMinutes": 0,
+    "priceLabel": "от 8 GEL",
+    "openStatus": "Открыто до 23:00",
+    "address": "ул. Шавтели 20, Тбилиси",
+    "description": "Уютное кафе в старом городе с видом на Нарикалу. Грузинская и европейская кухня.",
+    "explanations": [
+      { "type": "matches_interest", "label": "Кафе" },
+      { "type": "budget_fit", "label": "В бюджете" }
+    ],
+    "source": "OpenStreetMap"
+  },
+  {
+    "id": "p5",
+    "type": "place",
+    "title": "Ботанический сад",
+    "category": "nature",
+    "categoryLabel": "Природа",
+    "lat": 41.6878,
+    "lng": 44.8078,
+    "distanceM": 0,
+    "walkMinutes": 0,
+    "priceLabel": "4 GEL",
+    "openStatus": "Открыто до 19:00",
+    "address": "Ботанический сад, Тбилиси",
+    "description": "Один из старейших ботанических садов Кавказа. Водопад, мостик, тропы среди экзотических растений.",
+    "explanations": [
+      { "type": "matches_interest", "label": "Природа" },
+      { "type": "budget_fit", "label": "В бюджете" },
+      { "type": "walk_time", "label": "15 мин пешком" }
+    ],
+    "source": "OpenStreetMap"
+  },
+  {
+    "id": "e1",
+    "type": "event",
+    "title": "Мгзавреби — концерт в Open Air",
+    "category": "concert",
+    "categoryLabel": "Концерт",
+    "lat": 41.7064,
+    "lng": 44.8014,
+    "distanceM": 0,
+    "walkMinutes": 0,
+    "priceLabel": "от 40 GEL",
+    "timeLabel": "Сегодня в 20:00",
+    "startsAt": "2026-07-06T20:00:00+04:00",
+    "address": "Fabrika, ул. Ниношвили 8",
+    "venueName": "Fabrika",
+    "description": "Живой концерт группы Мгзавреби во дворе Fabrika. Фолк-рок на грузинском языке.",
+    "explanations": [
+      { "type": "matches_interest", "label": "Концерты" },
+      { "type": "starts_in", "label": "Начало через 3 часа" }
+    ],
+    "ticketUrl": "https://tkt.ge/event/example",
+    "source": "tkt.ge"
+  },
+  {
+    "id": "e2",
+    "type": "event",
+    "title": "Выставка «Новое грузинское искусство»",
+    "category": "gallery",
+    "categoryLabel": "Выставка",
+    "lat": 41.6988,
+    "lng": 44.7993,
+    "distanceM": 0,
+    "walkMinutes": 0,
+    "priceLabel": "Бесплатно",
+    "timeLabel": "До 15 июля",
+    "startsAt": "2026-06-15T10:00:00+04:00",
+    "endsAt": "2026-07-15T18:00:00+04:00",
+    "address": "Галерея TBC, пр. Руставели",
+    "description": "Коллективная выставка молодых грузинских художников. Живопись, инсталляции, видео-арт.",
+    "explanations": [
+      { "type": "free", "label": "Бесплатно" },
+      { "type": "matches_interest", "label": "Галереи" }
+    ],
+    "externalUrl": "https://example.com/exhibition",
+    "source": "Ручной ввод"
+  },
+  {
+    "id": "p6",
+    "type": "place",
+    "title": "Wine Underground",
+    "category": "wine",
+    "categoryLabel": "Винный бар",
+    "lat": 41.6957,
+    "lng": 44.8041,
+    "distanceM": 0,
+    "walkMinutes": 0,
+    "priceLabel": "от 15 GEL",
+    "openStatus": "Открыто до 00:00",
+    "address": "ул. Бамбис Риги 15, Тбилиси",
+    "description": "Подвальный винный бар с дегустациями натуральных грузинских вин из квеври.",
+    "explanations": [
+      { "type": "matches_interest", "label": "Вино" },
+      { "type": "walk_time", "label": "6 мин пешком" }
+    ],
+    "source": "OpenStreetMap"
+  },
+  {
+    "id": "e3",
+    "type": "event",
+    "title": "Стендап на русском — Comedy Tbilisi",
+    "category": "nightlife",
+    "categoryLabel": "Стендап",
+    "lat": 41.7089,
+    "lng": 44.7925,
+    "distanceM": 0,
+    "walkMinutes": 0,
+    "priceLabel": "25 GEL",
+    "timeLabel": "Завтра в 21:00",
+    "startsAt": "2026-07-07T21:00:00+04:00",
+    "address": "Место уточняется",
+    "description": "Вечер русскоязычного стендапа. 6 комиков, 90 минут.",
+    "explanations": [
+      { "type": "matches_interest", "label": "Ночная жизнь" },
+      { "type": "budget_fit", "label": "В бюджете" }
+    ],
+    "ticketUrl": "https://biletebi.ge/example",
+    "source": "biletebi.ge"
+  },
+  {
+    "id": "p7",
+    "type": "place",
+    "title": "Серные бани (Абанотубани)",
+    "category": "spa",
+    "categoryLabel": "Спа / Бани",
+    "lat": 41.6893,
+    "lng": 44.8088,
+    "distanceM": 0,
+    "walkMinutes": 0,
+    "priceLabel": "от 30 GEL",
+    "openStatus": "Открыто до 22:00",
+    "address": "Абанотубани, Тбилиси",
+    "description": "Исторические серные бани в самом сердце старого Тбилиси. Частные и общие залы.",
+    "explanations": [
+      { "type": "matches_interest", "label": "Спа" },
+      { "type": "highly_rated", "label": "Высокий рейтинг" }
+    ],
+    "source": "OpenStreetMap"
+  },
+  {
+    "id": "p8",
+    "type": "place",
+    "title": "Dry Bridge Market",
+    "category": "shopping",
+    "categoryLabel": "Рынок / Шоппинг",
+    "lat": 41.6962,
+    "lng": 44.7988,
+    "distanceM": 0,
+    "walkMinutes": 0,
+    "priceLabel": "Бесплатно",
+    "openStatus": "Открыто до 17:00",
+    "address": "Сухой мост, Тбилиси",
+    "description": "Блошиный рынок с советскими артефактами, картинами, украшениями и антиквариатом.",
+    "explanations": [
+      { "type": "free", "label": "Бесплатный вход" },
+      { "type": "matches_interest", "label": "Шоппинг" }
+    ],
+    "source": "OpenStreetMap"
+  },
+  {
+    "id": "p9",
+    "type": "place",
+    "title": "Театр Руставели",
+    "category": "theater",
+    "categoryLabel": "Театр",
+    "lat": 41.6972,
+    "lng": 44.8002,
+    "distanceM": 0,
+    "walkMinutes": 0,
+    "priceLabel": "от 20 GEL",
+    "address": "пр. Руставели 17, Тбилиси",
+    "description": "Главный драматический театр Грузии. Классический и современный репертуар.",
+    "explanations": [
+      { "type": "matches_interest", "label": "Театр" }
+    ],
+    "externalUrl": "https://rustavelitheatre.ge",
+    "source": "OpenStreetMap"
+  },
+  {
+    "id": "p10",
+    "type": "place",
+    "title": "Stamba Hotel Rooftop",
+    "category": "bar",
+    "categoryLabel": "Бар / Ресторан",
+    "lat": 41.7051,
+    "lng": 44.7933,
+    "distanceM": 0,
+    "walkMinutes": 0,
+    "priceLabel": "от 20 GEL",
+    "openStatus": "Открыто до 01:00",
+    "address": "ул. Костава 14, Тбилиси",
+    "description": "Руфтоп-бар отеля Stamba с видом на город. Коктейли и лёгкая кухня.",
+    "explanations": [
+      { "type": "matches_interest", "label": "Бары" },
+      { "type": "open_now", "label": "Открыто сейчас" },
+      { "type": "walk_time", "label": "10 мин пешком" }
+    ],
+    "source": "OpenStreetMap"
+  },
+  {
+    "id": "p11", "type": "place", "title": "Rooms Hotel Tbilisi",
+    "category": "cafe", "categoryLabel": "Кафе / Лобби-бар",
+    "lat": 41.7048, "lng": 44.7940, "distanceM": 0, "walkMinutes": 0,
+    "priceLabel": "от 12 GEL", "openStatus": "Открыто до 00:00",
+    "address": "ул. Костава 14, Тбилиси",
+    "description": "Стильный лобби-бар при дизайнерском отеле. Кофе, коктейли, завтраки.",
+    "explanations": [{"type": "matches_interest", "label": "Кафе"}, {"type": "open_now", "label": "Открыто"}],
+    "source": "OpenStreetMap"
+  },
+  {
+    "id": "p12", "type": "place", "title": "Мост Мира",
+    "category": "photo", "categoryLabel": "Фото-спот",
+    "lat": 41.6932, "lng": 44.8074, "distanceM": 0, "walkMinutes": 0,
+    "priceLabel": "Бесплатно",
+    "address": "Мост Мира, Тбилиси",
+    "description": "Пешеходный стеклянный мост через Куру. Особенно красив вечером с подсветкой.",
+    "explanations": [{"type": "free", "label": "Бесплатно"}, {"type": "matches_interest", "label": "Фото-споты"}],
+    "source": "OpenStreetMap"
+  },
+  {
+    "id": "p13", "type": "place", "title": "Vino Underground",
+    "category": "wine", "categoryLabel": "Винный бар",
+    "lat": 41.6948, "lng": 44.8050, "distanceM": 0, "walkMinutes": 0,
+    "priceLabel": "от 20 GEL", "openStatus": "Открыто до 23:00",
+    "address": "ул. Табидзе 15, Тбилиси",
+    "description": "Бар натуральных грузинских вин из квеври. Дегустации и вечера.",
+    "explanations": [{"type": "matches_interest", "label": "Вино"}, {"type": "walk_time", "label": "7 мин пешком"}],
+    "source": "OpenStreetMap"
+  },
+  {
+    "id": "e4", "type": "event", "title": "Кино под открытым небом — Amirani",
+    "category": "cinema", "categoryLabel": "Кино",
+    "lat": 41.6978, "lng": 44.7965, "distanceM": 0, "walkMinutes": 0,
+    "priceLabel": "10 GEL", "timeLabel": "Сегодня в 21:30",
+    "startsAt": "2026-07-06T21:30:00+04:00",
+    "address": "Кинотеатр Amirani, пр. Костава",
+    "description": "Летний кинопоказ на крыше. Грузинское независимое кино с субтитрами.",
+    "explanations": [{"type": "matches_interest", "label": "Кино"}, {"type": "starts_in", "label": "Начало через 4 часа"}],
+    "ticketUrl": "https://tkt.ge/example2", "source": "tkt.ge"
+  },
+  {
+    "id": "p14", "type": "place", "title": "Парк Ваке",
+    "category": "park", "categoryLabel": "Парк",
+    "lat": 41.7099, "lng": 44.7533, "distanceM": 0, "walkMinutes": 0,
+    "priceLabel": "Бесплатно", "openStatus": "Открыто",
+    "address": "Ваке, Тбилиси",
+    "description": "Большой зелёный парк с фонтанами, аллеями и зоной для пикников.",
+    "explanations": [{"type": "free", "label": "Бесплатно"}, {"type": "matches_interest", "label": "Парки"}],
+    "source": "OpenStreetMap"
+  },
+  {
+    "id": "p15", "type": "place", "title": "MOMA Tbilisi",
+    "category": "gallery", "categoryLabel": "Галерея",
+    "lat": 41.6965, "lng": 44.7990, "distanceM": 0, "walkMinutes": 0,
+    "priceLabel": "10 GEL", "openStatus": "Открыто до 19:00",
+    "address": "пр. Руставели 27, Тбилиси",
+    "description": "Музей современного искусства. Постоянная коллекция и временные выставки.",
+    "explanations": [{"type": "matches_interest", "label": "Галереи"}, {"type": "budget_fit", "label": "В бюджете"}],
+    "source": "OpenStreetMap"
+  },
+  {
+    "id": "e5", "type": "event", "title": "Фестиваль уличной еды — Dedaena Park",
+    "category": "food_tour", "categoryLabel": "Гастро",
+    "lat": 41.6930, "lng": 44.8070, "distanceM": 0, "walkMinutes": 0,
+    "priceLabel": "Бесплатный вход", "timeLabel": "Суббота 12:00–22:00",
+    "startsAt": "2026-07-11T12:00:00+04:00", "endsAt": "2026-07-11T22:00:00+04:00",
+    "address": "Парк Дедаэна, набережная",
+    "description": "30+ стендов с грузинской и интернациональной уличной едой. Живая музыка.",
+    "explanations": [{"type": "free", "label": "Вход бесплатный"}, {"type": "matches_interest", "label": "Гастротур"}],
+    "source": "Ручной ввод"
+  },
+  {
+    "id": "p16", "type": "place", "title": "Prospero's Books",
+    "category": "cafe", "categoryLabel": "Книжное кафе",
+    "lat": 41.6970, "lng": 44.8020, "distanceM": 0, "walkMinutes": 0,
+    "priceLabel": "от 5 GEL", "openStatus": "Открыто до 22:00",
+    "address": "пр. Руставели 34, Тбилиси",
+    "description": "Книжный магазин с кафе. Английские и русские книги, кофе, домашние десерты.",
+    "explanations": [{"type": "matches_interest", "label": "Кафе"}, {"type": "budget_fit", "label": "В бюджете"}],
+    "source": "OpenStreetMap"
+  },
+  {
+    "id": "p17", "type": "place", "title": "Лиси — озеро и парк",
+    "category": "nature", "categoryLabel": "Природа",
+    "lat": 41.7280, "lng": 44.7410, "distanceM": 0, "walkMinutes": 0,
+    "priceLabel": "Бесплатно",
+    "address": "Озеро Лиси, Тбилиси",
+    "description": "Тихое озеро на окраине города. Дорожки для прогулок, пикники, закат.",
+    "explanations": [{"type": "free", "label": "Бесплатно"}, {"type": "matches_interest", "label": "Природа"}],
+    "source": "OpenStreetMap"
+  },
+  {
+    "id": "e6", "type": "event", "title": "Дегустация квеври-вин — Vino Underground",
+    "category": "wine", "categoryLabel": "Дегустация",
+    "lat": 41.6948, "lng": 44.8050, "distanceM": 0, "walkMinutes": 0,
+    "priceLabel": "45 GEL", "timeLabel": "Пятница в 19:00",
+    "startsAt": "2026-07-10T19:00:00+04:00",
+    "address": "ул. Табидзе 15, Тбилиси", "venueName": "Vino Underground",
+    "description": "Дегустация 5 натуральных вин из квеври с рассказом сомелье.",
+    "explanations": [{"type": "matches_interest", "label": "Вино"}, {"type": "starts_in", "label": "Через 4 дня"}],
+    "ticketUrl": "https://example.com/wine-tasting", "source": "Ручной ввод"
+  },
+  {
+    "id": "p18", "type": "place", "title": "Кинотеатр Amirani",
+    "category": "cinema", "categoryLabel": "Кинотеатр",
+    "lat": 41.6978, "lng": 44.7965, "distanceM": 0, "walkMinutes": 0,
+    "priceLabel": "от 10 GEL",
+    "address": "пр. Костава, Тбилиси",
+    "description": "Исторический кинотеатр. Голливуд, арт-хаус и грузинское кино.",
+    "explanations": [{"type": "matches_interest", "label": "Кино"}],
+    "source": "OpenStreetMap"
+  },
+  {
+    "id": "p19", "type": "place", "title": "Samefo — фуд-холл",
+    "category": "restaurant", "categoryLabel": "Фуд-холл",
+    "lat": 41.7040, "lng": 44.7955, "distanceM": 0, "walkMinutes": 0,
+    "priceLabel": "от 8 GEL", "openStatus": "Открыто до 23:00",
+    "address": "ул. Костава, Тбилиси",
+    "description": "Современный фуд-холл с 10+ кухнями: грузинская, японская, мексиканская.",
+    "explanations": [{"type": "matches_interest", "label": "Рестораны"}, {"type": "open_now", "label": "Открыто"}],
+    "source": "OpenStreetMap"
+  },
+  {
+    "id": "e7", "type": "event", "title": "Экскурсия по старому Тбилиси",
+    "category": "history", "categoryLabel": "Экскурсия",
+    "lat": 41.6920, "lng": 44.8060, "distanceM": 0, "walkMinutes": 0,
+    "priceLabel": "Бесплатно (tips)", "timeLabel": "Ежедневно в 11:00",
+    "startsAt": "2026-07-06T11:00:00+04:00",
+    "address": "Площадь Свободы, Тбилиси",
+    "description": "Пешеходная экскурсия на русском: Абанотубани, Нарикала, Старый город. 2.5 часа.",
+    "explanations": [{"type": "free", "label": "Бесплатно"}, {"type": "matches_interest", "label": "История"}, {"type": "walk_time", "label": "Пешком"}],
+    "source": "Ручной ввод"
+  },
+  {
+    "id": "p20", "type": "place", "title": "Tbilisi Mall — каток",
+    "category": "sport", "categoryLabel": "Спорт / Развлечения",
+    "lat": 41.7580, "lng": 44.7670, "distanceM": 0, "walkMinutes": 0,
+    "priceLabel": "15 GEL", "openStatus": "Открыто до 22:00",
+    "address": "Tbilisi Mall, Дигоми",
+    "description": "Крытый ледовый каток. Прокат коньков включён.",
+    "explanations": [{"type": "matches_interest", "label": "Спорт"}, {"type": "budget_fit", "label": "В бюджете"}],
+    "source": "OpenStreetMap"
+  },
+  {
+    "id": "p21", "type": "place", "title": "Chronicles of Georgia",
+    "category": "photo", "categoryLabel": "Фото-спот / Памятник",
+    "lat": 41.7480, "lng": 44.7180, "distanceM": 0, "walkMinutes": 0,
+    "priceLabel": "Бесплатно",
+    "address": "Тбилисское море, Тбилиси",
+    "description": "Монументальный памятник Церетели. Панорамный вид на Тбилисское море.",
+    "explanations": [{"type": "free", "label": "Бесплатно"}, {"type": "matches_interest", "label": "Фото-споты"}],
+    "source": "OpenStreetMap"
+  },
+  {
+    "id": "p22", "type": "place", "title": "Bassiani",
+    "category": "nightlife", "categoryLabel": "Клуб",
+    "lat": 41.6927, "lng": 44.8020, "distanceM": 0, "walkMinutes": 0,
+    "priceLabel": "от 30 GEL",
+    "address": "Стадион Динамо, Тбилиси",
+    "description": "Легендарный техно-клуб под трибунами стадиона. Один из лучших клубов мира.",
+    "explanations": [{"type": "matches_interest", "label": "Ночная жизнь"}, {"type": "highly_rated", "label": "Высокий рейтинг"}],
+    "source": "OpenStreetMap"
+  },
+  {
+    "id": "e8", "type": "event", "title": "Йога в парке Ваке",
+    "category": "sport", "categoryLabel": "Спорт",
+    "lat": 41.7099, "lng": 44.7533, "distanceM": 0, "walkMinutes": 0,
+    "priceLabel": "Бесплатно", "timeLabel": "Воскресенье 08:00",
+    "startsAt": "2026-07-12T08:00:00+04:00",
+    "address": "Парк Ваке, центральная поляна",
+    "description": "Утренняя йога на свежем воздухе. Все уровни. Принесите коврик.",
+    "explanations": [{"type": "free", "label": "Бесплатно"}, {"type": "matches_interest", "label": "Спорт"}],
+    "source": "Ручной ввод"
+  }
+]
