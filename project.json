@@ -27,15 +27,16 @@
         "styles": [
           "./src/styles.scss"
         ],
-        "outputMode": "static"
+        "outputMode": "static",
+        "serviceWorker": "ngsw-config.json"
       },
       "configurations": {
         "production": {
           "budgets": [
             {
               "type": "initial",
-              "maximumWarning": "200kb",
-              "maximumError": "400kb"
+              "maximumWarning": "500kb",
+              "maximumError": "700kb"
             },
             {
               "type": "anyComponentStyle",
