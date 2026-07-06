@@ -1,0 +1,36 @@
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { ApiService } from './api.service';
+import type {
+  DiscoverRequest,
+  DiscoverResponse,
+  RecommendationCard,
+  CategoryNode,
+} from '@lazy-day/shared-models';
+
+@Injectable()
+export class HttpApiService extends ApiService {
+  private readonly baseUrl = '/v1';
+
+  constructor(private readonly http: HttpClient) {
+    super();
+  }
+
+  discover(request: DiscoverRequest): Observable<DiscoverResponse> {
+    return this.http.post<DiscoverResponse>(
+      `${this.baseUrl}/recommendations`,
+      request,
+    );
+  }
+
+  getCard(type: string, id: string): Observable<RecommendationCard> {
+    return this.http.get<RecommendationCard>(
+      `${this.baseUrl}/cards/${type}/${id}`,
+    );
+  }
+
+  getCategories(): Observable<CategoryNode[]> {
+    return this.http.get<CategoryNode[]>(`${this.baseUrl}/meta/categories`);
+  }
+}

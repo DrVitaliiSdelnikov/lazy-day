@@ -9,13 +9,12 @@
     "importHelpers": true,
     "target": "es2022",
     "module": "preserve",
-    "lib": [
-      "es2020",
-      "dom"
-    ],
+    "lib": ["es2020", "dom"],
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
-    "paths": {},
+    "paths": {
+      "@lazy-day/shared-models": ["./libs/shared-models/src/index.ts"]
+    },
     "strict": true,
     "noImplicitOverride": true,
     "noPropertyAccessFromIndexSignature": true,
@@ -40,8 +39,5 @@
     }
   ],
   "compileOnSave": false,
-  "exclude": [
-    "node_modules",
-    "tmp"
-  ]
+  "exclude": ["node_modules", "tmp"]
 }
