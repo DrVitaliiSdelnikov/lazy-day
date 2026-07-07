@@ -1,93 +1,109 @@
 # LazyDay
 
-Контекстный подбор досуга в Тбилиси. Angular PWA + NestJS API в Nx монорепо.
+Contextual leisure discovery. Not a map — a **decision engine**.
+Google Maps tells you WHAT exists. LazyDay tells you WHERE TO GO.
+
+Angular 21 PWA + NestJS 11 API + PostgreSQL/PostGIS. Nx monorepo.
 
 ## Quick Start
 
 ```bash
 npm install
 cd docker && docker compose up -d && cd ..   # postgres + redis
-npx tsx tools/run-migrations.ts               # DB schema
+npx tsx tools/run-migrations.ts               # DB schema (001-012)
 npx nx run-many -t serve -p lazy-day api      # frontend :4200 + api :3000
 curl -X POST http://localhost:3000/v1/admin/ingestion/osm  # OSM import
+GOOGLE_PLACES_API_KEY=... npx nx serve api    # with Google enrichment
 ```
 
 ## Projects
 
-| Project | Path | Stack | Serve |
-|---|---|---|---|
-| lazy-day | `src/` (root) | Angular 21, PrimeNG, signals | `npx nx serve lazy-day` → :4200 |
-| api | `apps/api/` | NestJS 11, TypeORM, PostgreSQL+PostGIS | `npx nx serve api` → :3000/v1 |
-| shared-models | `libs/shared-models/` | Pure TypeScript types | (build only) |
+| Project | Path | Stack |
+|---|---|---|
+| lazy-day | `src/` | Angular 21, PrimeNG, signals |
+| api | `apps/api/` | NestJS 11, TypeORM, PostgreSQL+PostGIS |
+| shared-models | `libs/shared-models/` | Pure TypeScript types |
 
-## API
+## Product Identity
 
-Prefix: `/v1`. Endpoints: health, recommendations (PostGIS + scoring), cards/:type/:id, interactions, meta/categories, admin/ingestion/osm.
-Full docs: `docs/api-endpoints.md`. Proxy: `proxy.conf.json` routes `/v1` → `:3000` in dev.
+Our value is NOT data (Google has more). Our value is:
 
-## Database
+1. **Compound context** — 5+ dimensions simultaneously (interest + company + pet + time + distance). Google filters one at a time
+2. **Explainability** — "Тебе нравится: природа • Открыто • Для пары • 11 мин" — Google doesn't explain WHY
+3. **Decision reduction** — 8 scored results, not 200. Less choice = better UX
+4. **Events + places unified** — Google Events and Google Maps are separate. We merge them
+5. **Social context** — "I'm with family + dog" changes everything. Google has no concept of this
 
-PostgreSQL 16 + PostGIS. Tables: venues, places (with `status` column), events, source_items, source_refs, interactions, recommendation_logs, dedup_candidates.
-Migrations: `apps/api/src/app/database/migrations/` (SQL, 001-010). Runner: `npx tsx tools/run-migrations.ts`
+See `docs/research/product-differentiation.md` for full analysis and competitive moat strategy.
 
-## Key Patterns
+## Core Engine
 
-- **Shared models**: `@lazy-day/shared-models` — types/enums/DTO shared between frontend and backend
-- **DI override**: `ApiService` (abstract) → `MockApiService` | `HttpApiService` via `USE_REAL_API` flag in `providers.ts`
-- **OSM import**: Overpass API → venues + places. Category mapping in `osm-category-map.ts`. Detects closed venues via `disused:*` tags.
-- **Google enrichment**: `POST /v1/admin/ingestion/google-enrich?limit=N`. Delta-aware — only processes venues without `google_place_id`. Matches by Text Search + 200m radius. Requires `GOOGLE_PLACES_API_KEY` env var.
-- **Scoring**: `0.45×interest + 0.25×distance + 0.15×time + 0.10×quality + 0.05×source`. Dynamic primary/secondary tag classification. No serendipity pool. Adaptive radius expansion.
-- **Dynamic categories**: venue tags split into primary (matching user interests) and secondary (other traits) at query time. Same venue classified differently per request.
-- **Interest synonyms**: `INTEREST_SYNONYMS` map expands user-facing interest names to DB tag vocabulary.
-- **Signal stores**: ProfileStore, SavedStore — Angular signals + localStorage persistence
-- **Design tokens**: CSS custom properties `--ld-*`, dark mode via class + prefers-color-scheme
+- **Scoring**: `0.45×interest + 0.25×distance + 0.15×time + 0.10×quality + 0.05×source`
+- **Dynamic categories**: venue tags split into primary/secondary per request (same venue = different classification per user)
+- **Interest synonyms**: user says "nature" → engine matches `[outdoor, park, garden, viewpoint]`
+- **Weight semantics**: ≥0.7 = hard filter ("I want this"), 0.3-0.6 = soft boost, <0.3 = ignored
+- **Company modifiers**: family penalizes nightlife, couple boosts viewpoints, friends boosts bars
+- **Pet modifier**: fact-based (`allowsDogs` from Google) → proxy fallback (tag-based) + `outdoorSeating` softening
+- **Opening hours**: dual-format parser (OSM raw + Google structured periods), auto-detect
+- **Adaptive radius**: expands ×1.5 if <5 relevant results (up to 2x)
+- **No serendipity pool**: hard filter, not random noise
+
+## Data Coverage
+
+| Data | Coverage | Source |
+|---|---|---|
+| Venues | 2,976 | OSM |
+| Google matched | 1,753 (59%) | Google Places |
+| Opening hours | 1,761 (59%) | 1,497 Google + 264 OSM |
+| Ratings | 1,722 (58%) | Google |
+| allowsDogs | 523 (294 true) | Google Atmosphere |
+| goodForChildren | 1,208 (1,110 true) | Google Atmosphere |
+| Events | 10 (opera.ge) | Custom parser |
+| Localization | en: 74%, ka: 54% | OSM name_en/name_ka |
 
 ## Docs
 
-- `docs/commands.md` — all dev commands
-- `docs/project-structure.md` — full file tree
+### Technical
+- `docs/scoring.md` — scoring formula, all modifiers, explanations table
+- `docs/data-quality.md` — OSM pipeline, tag vocabulary, venue status
 - `docs/api-endpoints.md` — API reference
-- `docs/database.md` — tables, migrations, useful queries
-- `docs/scoring.md` — scoring formula, dynamic tags, interest matching, adaptive fill
-- `docs/data-quality.md` — OSM import pipeline, tag vocabulary, venue status
-- `docs/research/categorization-and-ranking-strategy.md` — deep research on categorization, serendipity, cold start
+- `docs/database.md` — tables, migrations (001-012)
+- `docs/project-status.md` — full project state, decisions, roadmap
 
-## Resolved Issues
+### Research
+- `docs/research/product-differentiation.md` — why LazyDay ≠ Maps, 5 pillars, moat timeline
+- `docs/research/events-unified-strategy.md` — layered events (aggregator + local + monitoring)
+- `docs/research/events-scalable-strategy.md` — SerpApi, City-as-Config model
+- `docs/research/events-ingestion-plan.md` — adapter pattern, opera.ge, source analysis
+- `docs/research/ux-improvements-analysis.md` — UX review, agreements, disagreements
+- `docs/research/categorization-and-ranking-strategy.md` — serendipity, interest weights, cold start
+- `docs/research/company-context-strategy.md` — company matrix, venue attributes
+- `docs/research/google-places-api-integration.md` — pricing, fields, enrichment results
 
-- **Interest vocabulary mismatch** (2026-07-06): `INTEREST_SYNONYMS` map bridges user interests to DB tags.
-- **Serendipity noise** (2026-07-06 → 07): removed hardcoded serendipity pool, replaced with hard filter + adaptive radius. Research: random irrelevant venues ≠ discovery.
-- **Closed venues** (2026-07-06): migration `010_add_place_status.sql`, `detectStatus()` in OSM import, `WHERE p.status = 'active'` filter.
-- **Gym false matches** (2026-07-06): removed `wellness` from spa/bath synonyms — too broad, matched gyms.
-- **Dynamic categories** (2026-07-07): primary/secondary tag classification per request. Interest weight raised 0.35→0.45.
-- **Company context** (2026-07-07): tag boost/penalty matrix per company type. Family penalizes nightlife, couple boosts viewpoints, friends boosts bars.
-- **Pet-friendly** (2026-07-07): `hasPet` flag boosts outdoor, penalizes indoor venues. Toggle in context bar.
-- **Opening hours** (2026-07-07): OSM `opening_hours` parser. Closed venues get `timeFit=0.0` → demoted/filtered. Open venues get "Сейчас открыто" + `openStatus` in response.
-- **Interest weight semantics** (2026-07-07): weight >= 0.7 = strict (hard filter), 0.3-0.6 = soft (scoring boost only), < 0.3 = ignored.
-- **Google Places Pro enrichment** (2026-07-07): 1,753/2,976 venues matched. google_types (multi-category), businessStatus, accessibilityOptions stored. 1,223 unmatched = small OSM-only points without Google presence. Delta-aware: re-run only processes new venues.
-- **Google Places Enterprise enrichment** (2026-07-07): 1,753 venues enriched. Opening hours: 1,497 Google structured + 264 OSM raw = 1,761 total (59%). Ratings: 1,722 venues (avg 4.42). `checkOpenStatus()` auto-detects format.
-- **Google Places Atmosphere enrichment** (2026-07-07): 1,058 venues enriched. allowsDogs (523, 294 true), goodForChildren (1,208, 1,110 true), outdoorSeating (548), liveMusic (226). Pet/family scoring now uses real facts with tag proxy fallback.
-- **Localization** (2026-07-07): venue titles by locale (en: 74%, ka: 54%), all 8 explanation types localized ru/en/ka.
-- **Frontend polish** (2026-07-07): rating stars, colored openStatus, responsive grid (3/2/1 cols), tag severity colors. Detail/saved/onboarding updated.
-- **Events ingestion** (2026-07-07): adapter pattern + opera.ge parser. 10 events (Sleeping Beauty, Laurencia, DAISI, Masurca Fogo). Mixed feed works — events alongside places in recommendations.
+## Roadmap (what builds the moat)
 
-## TODO / Roadmap
+### MVP — Intelligence + Events + Deploy
+1. **Events: SerpApi Google Events** — one adapter, any city, test Tbilisi coverage
+2. **Events: YOLO.ge parser** — local depth (Cheerio, Allow: /)
+3. **Visited + behavioral start** — "been here", save/hide tracking → proprietary data begins
+4. **Mood presets** — shortcuts + availability sort
+5. **Deploy** — Cloudflare Pages + Hetzner VPS
 
-Full roadmap: `docs/project-status.md`. UX analysis: `docs/research/ux-improvements-analysis.md`.
+### v1 — Community Layer (the moat)
+6. Events: TKT.ge (Puppeteer, only if Google gap >30%). 7. Micro-tips + collections + "been here" badges. 8. Search/autocomplete. 9. Conversational discovery (one smart question per session). 10. Compact API + offline cache.
 
-### MVP (next)
-1. **Events ingestion wave 1** — opera.ge done. Next: RA, Fabrika, KHIDI. Then wave 2: TKT.ge, biletebi.ge (need headless browser).
-2. **Mood presets + availability sort** — preset shortcuts in toolbar + sort open-first. *Reconsider: presets vs interest chips.*
-3. **Compact API** — `?compact=1` for weak devices, @defer for map.
-4. **Visited status** — extend interactions, start accumulating behavioral signals.
-5. **Deploy** — Cloudflare Pages + Hetzner VPS.
+### v2 — Personalization + Scale
+11. Behavioral re-ranking (from accumulated user data). 12. Gamification (light: exploration badges, streaks). 13. Journey planner. 14. Weather-aware. 15. City expansion via CityConfig. 16. Local curator network.
 
-### v1
-6. Search/autocomplete. 7. Availability sections (*reconsider: may fragment short lists*). 8. Event sources wave 2. 9. Smart empty states. 10. Basic offline cache. 11. Collections + share.
-
-### v2
-12. Behavioral re-ranking. 13. Route-aware bundles. 14. District offline packs (*reconsider*). 15. Event sources wave 3. 16. Push notifications. 17. Community reports.
+### Competitive Moat Timeline
+```
+Month 1-3:  Intelligence advantage (done: scoring, explanations, context)
+Month 3-6:  Behavioral data (save/hide/click from real users)
+Month 6-12: Community data (tips, collections, badges — network effect)
+Month 12+:  Curator network + multi-city = sustainable moat
+```
 
 ## Deploy
 
-- Frontend: push to `main` → Cloudflare Pages auto-deploy → `lazy-day-app.pages.dev`
+- Frontend: push to `main` → Cloudflare Pages → `lazy-day-app.pages.dev`
 - Backend: TBD (Hetzner VPS + Docker Compose)
