@@ -64,13 +64,13 @@ Migrations: `apps/api/src/app/database/migrations/` (SQL, 001-010). Runner: `npx
 - **Opening hours** (2026-07-07): OSM `opening_hours` parser. Closed venues get `timeFit=0.0` → demoted/filtered. Open venues get "Сейчас открыто" + `openStatus` in response.
 - **Interest weight semantics** (2026-07-07): weight >= 0.7 = strict (hard filter), 0.3-0.6 = soft (scoring boost only), < 0.3 = ignored.
 - **Google Places Pro enrichment** (2026-07-07): 1,753/2,976 venues matched. google_types (multi-category), businessStatus, accessibilityOptions stored. 1,223 unmatched = small OSM-only points without Google presence. Delta-aware: re-run only processes new venues.
+- **Google Places Enterprise enrichment** (2026-07-07): 1,753 venues enriched. Opening hours: 1,497 Google structured + 264 OSM raw = 1,761 total (59%). Ratings: 1,722 venues (avg 4.42). `checkOpenStatus()` auto-detects format.
 
 ## TODO / Known Issues (prioritized)
 
-### 1. Google Places API — Phase 3 Enterprise enrichment
-- Pro enrichment done: 1,753/2,976 venues matched (59%), google_types + accessibility attrs stored.
-- Next: Enterprise tier (~$40) for `regularOpeningHours` + `rating` on matched venues.
-- Then: Atmosphere tier (~$80, optional) for `allowsDogs`, `goodForChildren`, `outdoorSeating`.
+### 1. Google Places API — Phase 4 Atmosphere enrichment (optional)
+- Pro + Enterprise done. Next: Atmosphere tier (~$70) for `allowsDogs`, `goodForChildren`, `outdoorSeating`.
+- Would replace proxy tag logic with venue-level facts for pet/family scoring.
 - See `docs/research/google-places-api-integration.md`.
 
 ### 2. Behavioral learning (post-MVP)

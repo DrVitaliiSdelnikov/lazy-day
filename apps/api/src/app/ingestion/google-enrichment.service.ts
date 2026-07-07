@@ -176,7 +176,93 @@ export class GoogleEnrichmentService {
     await this.placeRepo.save(place);
   }
 
-  // TODO: Phase 3 — enrichEnterprise() for opening hours + rating
+  /**
+   * Enterprise enrichment for venues that already have google_place_id.
+   * Fetches: regularOpeningHours, rating, userRatingCount.
+   * ~$20/1,000 calls (1,000 free/month).
+   */
+  async enrichEnterprise(limit = 100): Promise<EnrichmentResult> {
+    const apiKey = process.env['GOOGLE_PLACES_API_KEY'];
+    if (!apiKey) {
+      this.logger.warn('GOOGLE_PLACES_API_KEY not set — skipping enrichment');
+      return { matched: 0, enriched: 0, skipped: 0, errors: 0 };
+    }
+
+    // Find venues with google_place_id but without google_rating (not yet enterprise-enriched)
+    const venues = await this.venueRepo
+      .createQueryBuilder('v')
+      .innerJoin('v.places', 'p')
+      .where('v.googlePlaceId IS NOT NULL')
+      .andWhere('p.googleRating IS NULL')
+      .orderBy('v.createdAt', 'ASC')
+      .take(limit)
+      .getMany();
+
+    this.logger.log(`Enterprise enrichment: ${venues.length} venues to process`);
+
+    let matched = 0, enriched = 0, skipped = 0, errors = 0;
+
+    for (const venue of venues) {
+      try {
+        const details = await this.fetchEnterpriseDetails(venue.googlePlaceId!, apiKey);
+        if (!details) { skipped++; continue; }
+
+        matched++;
+        await this.applyEnterpriseDetails(venue.id, details);
+        enriched++;
+
+        await this.sleep(100);
+      } catch (err: any) {
+        errors++;
+        if (errors <= 5) {
+          this.logger.warn(`Enterprise error venue ${venue.id} "${venue.name}": ${err?.message}`);
+        }
+        if (err?.message?.includes('429') || err?.message?.includes('RESOURCE_EXHAUSTED')) {
+          this.logger.warn('Rate limited — backing off 5s');
+          await this.sleep(5000);
+        }
+      }
+    }
+
+    this.logger.log(`Enterprise enrichment done: ${matched} matched, ${enriched} enriched, ${skipped} skipped, ${errors} errors`);
+    return { matched, enriched, skipped, errors };
+  }
+
+  private async fetchEnterpriseDetails(placeId: string, apiKey: string): Promise<any | null> {
+    const response = await fetch(`${GOOGLE_PLACES_BASE}/places/${placeId}`, {
+      headers: {
+        'X-Goog-Api-Key': apiKey,
+        'X-Goog-FieldMask': 'regularOpeningHours,rating,userRatingCount',
+      },
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Place Details ${response.status}: ${text.slice(0, 200)}`);
+    }
+    return response.json();
+  }
+
+  private async applyEnterpriseDetails(venueId: string, details: any): Promise<void> {
+    const place = await this.placeRepo.findOne({ where: { venueId } });
+    if (!place) return;
+
+    if (details.regularOpeningHours) {
+      // Store Google structured format — checkOpenStatus() auto-detects it
+      place.openingHours = details.regularOpeningHours;
+    }
+
+    if (details.rating != null) {
+      place.googleRating = details.rating;
+    }
+
+    if (details.userRatingCount != null) {
+      place.googleRatingCount = details.userRatingCount;
+    }
+
+    await this.placeRepo.save(place);
+  }
+
   // TODO: Phase 4 — enrichAtmosphere() for allowsDogs, goodForChildren, outdoorSeating
 
   private haversineM(lat1: number, lng1: number, lat2: number, lng2: number): number {

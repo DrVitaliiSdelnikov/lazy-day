@@ -225,10 +225,12 @@ if (openingHours.periods) {
 - **Results**: 1,753/2,976 matched (59%), 672 with accessibility attrs, 0 errors
 - Unmatched 1,223 = small OSM-only points (tones, unnamed cafes) without Google presence
 
-### Phase 3: Enterprise enrichment (~$40)
-- Place Details for missing opening_hours
-- Fetch: regularOpeningHours, rating
-- Store structured hours, google_rating
+### Phase 3: Enterprise enrichment (~$35) — DONE (2026-07-07)
+- Place Details for all matched venues
+- Fetch: regularOpeningHours, rating, userRatingCount
+- Store structured hours in opening_hours jsonb, google_rating, google_rating_count
+- **Results**: 1,753 enriched, 0 errors. 1,497 with Google hours, 1,722 with ratings (avg 4.42)
+- Opening hours coverage: 29% → 59% (1,761 total = 1,497 Google + 264 OSM)
 
 ### Phase 4: Atmosphere enrichment (~$80, optional)
 - Place Details with atmosphere fields

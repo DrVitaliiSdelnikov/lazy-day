@@ -18,4 +18,9 @@ export class IngestionController {
   async triggerGoogleEnrichment(@Query('limit') limit?: string) {
     return this.googleEnrich.enrichPro(limit ? parseInt(limit, 10) : 100);
   }
+
+  @Post('google-enrich-enterprise')
+  async triggerGoogleEnterpriseEnrichment(@Query('limit') limit?: string) {
+    return this.googleEnrich.enrichEnterprise(limit ? parseInt(limit, 10) : 100);
+  }
 }
