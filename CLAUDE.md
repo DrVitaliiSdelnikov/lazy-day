@@ -79,15 +79,21 @@ See `docs/research/product-differentiation.md` for full analysis and competitive
 - `docs/research/categorization-and-ranking-strategy.md` — serendipity, interest weights, cold start
 - `docs/research/company-context-strategy.md` — company matrix, venue attributes
 - `docs/research/google-places-api-integration.md` — pricing, fields, enrichment results
+- `docs/research/search-sorting-pagination.md` — adaptive scoring, sort modes, pagination
+- `docs/research/location-selection-strategy.md` — GPS + coords vs districts, scaling
+- `docs/research/competitive-analysis-notes.md` — actionable insights, monetization, crowd data
+- `docs/research/events-local-sources-verified.md` — verified sources, dedup, legal
+- `docs/product-brief.md` — 3-page product overview
 
 ## Roadmap (what builds the moat)
 
 ### MVP — Intelligence + Events + Deploy
-1. **Events: SerpApi Google Events** — one adapter, any city, test Tbilisi coverage
-2. **Events: YOLO.ge parser** — local depth (Cheerio, Allow: /)
-3. **Visited + behavioral start** — "been here", save/hide tracking → proprietary data begins
-4. **Mood presets** — shortcuts + availability sort
-5. **Deploy** — Cloudflare Pages + Hetzner VPS
+1. ~~Events: SerpApi Google Events~~ — DONE (21 events, one adapter any city)
+2. ~~Mood presets~~ — DONE (6 presets: chill, active, family, culture, food, nightlife)
+3. **Events: YOLO.ge parser** — local depth (Cheerio, Allow: /)
+4. **Visited + behavioral start** — "been here", save/hide tracking → proprietary data begins
+5. **Sort modes** — Smart / Closest / Top rated / Open now (research done)
+6. **Deploy** — Cloudflare Pages + Hetzner VPS
 
 ### v1 — Community Layer (the moat)
 6. Events: TKT.ge (Puppeteer, only if Google gap >30%). 7. Micro-tips + collections + "been here" badges. 8. Search/autocomplete. 9. Conversational discovery (one smart question per session). 10. Compact API + offline cache.
