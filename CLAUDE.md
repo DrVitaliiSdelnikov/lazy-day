@@ -65,19 +65,28 @@ Migrations: `apps/api/src/app/database/migrations/` (SQL, 001-010). Runner: `npx
 
 ## TODO / Known Issues (prioritized)
 
-### 1. Google Places API integration
+### 1. Google Places API integration (next)
 - Solves 3 problems at once:
   - **opening_hours coverage**: 849/2976 places have hours from OSM → Google has ~95%
   - **venue-level attributes**: `allowsDogs`, `goodForChildren`, `wheelchairAccessible` → replace proxy tag logic with facts
   - **multi-category enrichment**: venues with multiple functions get proper tags
-- Impact: high. Effort: medium (API key, enrichment pipeline, migration).
+- Scope: enrichment pipeline (batch job), `attributes jsonb` column, scoring integration.
+- Impact: high. Effort: medium (API key, enrichment service, migration).
 - See `docs/research/company-context-strategy.md` Phase 2.
 
-### 3. Behavioral learning (post-MVP)
+### 2. Behavioral learning (post-MVP)
 - Track click/save/hide patterns → re-rank within interest-filtered set.
 - Three-phase plan: cold start → learning → mature.
 - Impact: high long-term. Effort: high (interactions pipeline, user profiles, A/B).
 - See `docs/research/categorization-and-ranking-strategy.md` §5.
+
+### 3. Localization
+- Venue names: OSM has `name:ka`, `name:en` — currently only `name` (usually Georgian) is shown.
+- Explanations, UI labels hardcoded in Russian. Need i18n pipeline for en/ka.
+
+### 4. Events data source
+- Zero events in DB (Overpass doesn't have events). Need external source: Facebook Events, Eventbrite, local aggregators.
+- Event scoring already works (timeFit, starts_in explanation) — just needs data.
 
 ## Deploy
 
