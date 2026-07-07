@@ -54,6 +54,18 @@ export class Place {
   @Column({ type: 'varchar', length: 20, default: 'active' })
   status!: string;
 
+  @Column({ type: 'jsonb', default: '{}' })
+  attributes!: Record<string, unknown>;
+
+  @Column({ type: 'text', array: true, default: '{}' })
+  googleTypes!: string[];
+
+  @Column({ type: 'numeric', precision: 2, scale: 1, nullable: true })
+  googleRating?: number;
+
+  @Column({ type: 'int', nullable: true })
+  googleRatingCount?: number;
+
   @Column({ type: 'boolean', default: false })
   isChain!: boolean;
 

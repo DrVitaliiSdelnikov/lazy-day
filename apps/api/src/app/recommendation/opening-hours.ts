@@ -1,10 +1,14 @@
 /**
- * Lightweight OSM opening_hours parser.
- * Covers ~95% of real data in our DB: 24/7, simple ranges, day prefixes,
- * semicolon-separated rules, comma-separated time ranges, overnight spans.
+ * Opening hours checker — supports two formats:
  *
- * Full OSM opening_hours spec is very complex (PH, week numbers, etc.)
- * — this parser handles common patterns and returns 'unknown' for the rest.
+ * 1. OSM raw strings: "Mo-Su 10:00-22:00", "24/7", etc.
+ *    Covers ~95% of real OSM data. Returns 'unknown' for exotic patterns.
+ *
+ * 2. Google Places API structured periods:
+ *    { periods: [{ open: { day, hour, minute }, close: { day, hour, minute } }] }
+ *    Already structured — no parsing needed.
+ *
+ * The checker auto-detects format by checking for `periods` array vs `raw` string.
  */
 
 const DAY_MAP: Record<string, number> = {
@@ -23,15 +27,36 @@ interface DayRule {
   ranges: TimeRange[];
 }
 
+/** Google Places API period format. */
+interface GooglePeriod {
+  open: { day: number; hour: number; minute: number };
+  close?: { day: number; hour: number; minute: number };
+}
+
+/** Accepted opening_hours shapes from DB (OSM raw or Google structured). */
+type OpeningHoursData = {
+  raw?: string;
+  periods?: GooglePeriod[];
+} | null | undefined;
+
 /**
  * Check if a venue is open at the given date/time.
+ * Auto-detects format: Google periods (structured) or OSM raw (string).
  * Returns: 'open' | 'closed' | 'unknown'
  */
 export function checkOpenStatus(
-  openingHours: { raw?: string } | null | undefined,
+  openingHours: OpeningHoursData,
   at: Date,
 ): 'open' | 'closed' | 'unknown' {
-  if (!openingHours?.raw) return 'unknown';
+  if (!openingHours) return 'unknown';
+
+  // Google format: structured periods array
+  if (openingHours.periods && Array.isArray(openingHours.periods)) {
+    return checkGooglePeriods(openingHours.periods, at);
+  }
+
+  // OSM format: raw string
+  if (!openingHours.raw) return 'unknown';
 
   const raw = openingHours.raw.trim();
   if (raw === '24/7') return 'open';
@@ -90,7 +115,51 @@ export function getOpenLabel(
 }
 
 // ---------------------------------------------------------------------------
-// Parser internals
+// Google Places API format
+// ---------------------------------------------------------------------------
+
+function checkGooglePeriods(periods: GooglePeriod[], at: Date): 'open' | 'closed' | 'unknown' {
+  if (periods.length === 0) return 'unknown';
+
+  // 24/7: single period with open day=0, hour=0, minute=0 and no close
+  if (periods.length === 1 && !periods[0].close &&
+      periods[0].open.day === 0 && periods[0].open.hour === 0 && periods[0].open.minute === 0) {
+    return 'open';
+  }
+
+  const dayOfWeek = at.getDay(); // 0=Su
+  const minuteOfDay = at.getHours() * 60 + at.getMinutes();
+
+  for (const period of periods) {
+    const openDay = period.open.day;
+    const openMin = period.open.hour * 60 + period.open.minute;
+
+    if (!period.close) {
+      // No close = open all day on this day
+      if (openDay === dayOfWeek && minuteOfDay >= openMin) return 'open';
+      continue;
+    }
+
+    const closeDay = period.close.day;
+    const closeMin = period.close.hour * 60 + period.close.minute;
+
+    if (openDay === closeDay) {
+      // Same day: simple range
+      if (dayOfWeek === openDay && minuteOfDay >= openMin && minuteOfDay < closeMin) {
+        return 'open';
+      }
+    } else {
+      // Overnight span (e.g., open Fri 18:00, close Sat 02:00)
+      if (dayOfWeek === openDay && minuteOfDay >= openMin) return 'open';
+      if (dayOfWeek === closeDay && minuteOfDay < closeMin) return 'open';
+    }
+  }
+
+  return 'closed';
+}
+
+// ---------------------------------------------------------------------------
+// OSM format parser internals
 // ---------------------------------------------------------------------------
 
 function parseRules(raw: string): DayRule[] {

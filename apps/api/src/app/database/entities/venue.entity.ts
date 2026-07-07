@@ -41,6 +41,9 @@ export class Venue {
   @Column({ type: 'text', nullable: true })
   phone?: string;
 
+  @Column({ type: 'text', nullable: true })
+  googlePlaceId?: string;
+
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt!: Date;
 

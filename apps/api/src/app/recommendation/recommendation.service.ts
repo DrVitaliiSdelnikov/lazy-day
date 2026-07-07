@@ -83,6 +83,10 @@ interface CandidateRow {
   price_level?: number;
   quality_score: number;
   status?: string;
+  attributes?: Record<string, unknown>;
+  google_types?: string[];
+  google_rating?: number;
+  google_rating_count?: number;
   opening_hours?: Record<string, unknown>;
   photos?: string[];
   website?: string;
@@ -199,8 +203,8 @@ export class RecommendationService {
         explanations: this.generateExplanations(c, dto, expandedWeights),
         source: 'canonical',
         address: c.address,
-        rating: c.rating ? Number(c.rating) : undefined,
-        ratingCount: c.rating_count,
+        rating: c.google_rating ? Number(c.google_rating) : c.rating ? Number(c.rating) : undefined,
+        ratingCount: c.google_rating_count ?? c.rating_count,
         primaryTags: c.primaryTags.length > 0 ? c.primaryTags : undefined,
         secondaryTags: c.secondaryTags.length > 0 ? c.secondaryTags : undefined,
         openStatus: getOpenLabel(openStatus ?? 'unknown', dto.locale),
@@ -301,36 +305,61 @@ export class RecommendationService {
         : matchScores[0];
     }
 
-    // Company context modifier — boost/penalty based on who user is with
+    // Company context modifier — use Google attributes when available, fallback to tag proxy
     let companyFit: 'boosted' | 'penalized' | null = null;
     const company = dto.profile.company;
+    const attrs = c.attributes as Record<string, unknown> | undefined;
+
     if (company && COMPANY_MODIFIERS[company]) {
       const mod = COMPANY_MODIFIERS[company];
-      const hasBoostedTag = tags.some((t) => mod.boost.includes(t));
-      const hasPenaltyTag = tags.some((t) => mod.penalty.includes(t));
 
-      if (hasPenaltyTag) {
-        interestScore = interestScore * 0.3;
-        companyFit = 'penalized';
-      }
-      if (hasBoostedTag) {
-        interestScore = Math.min(1.0, interestScore * 1.3);
-        companyFit = companyFit === 'penalized' ? 'penalized' : 'boosted';
+      // Fact-based: family + goodForChildren attribute
+      if (company === 'family' && attrs?.['goodForChildren'] !== undefined) {
+        if (attrs['goodForChildren'] === true) {
+          interestScore = Math.min(1.0, interestScore * 1.3);
+          companyFit = 'boosted';
+        } else {
+          interestScore = interestScore * 0.3;
+          companyFit = 'penalized';
+        }
+      } else {
+        // Tag-based fallback
+        const hasBoostedTag = tags.some((t) => mod.boost.includes(t));
+        const hasPenaltyTag = tags.some((t) => mod.penalty.includes(t));
+
+        if (hasPenaltyTag) {
+          interestScore = interestScore * 0.3;
+          companyFit = 'penalized';
+        }
+        if (hasBoostedTag) {
+          interestScore = Math.min(1.0, interestScore * 1.3);
+          companyFit = companyFit === 'penalized' ? 'penalized' : 'boosted';
+        }
       }
     }
 
-    // Pet modifier — boost outdoor, penalize indoor
+    // Pet modifier — use Google attributes when available, fallback to tag proxy
     if (dto.profile.hasPet) {
-      const hasPetBoost = tags.some((t) => PET_MODIFIER.boost.includes(t));
-      const hasPetPenalty = tags.some((t) => PET_MODIFIER.penalty.includes(t));
-
-      if (hasPetPenalty) {
-        interestScore = interestScore * 0.3;
-        if (!companyFit) companyFit = 'penalized';
-      }
-      if (hasPetBoost) {
-        interestScore = Math.min(1.0, interestScore * 1.3);
+      const attrs = c.attributes as Record<string, unknown> | undefined;
+      if (attrs?.['allowsDogs'] === true) {
+        interestScore = Math.min(1.0, interestScore * 1.5);
         if (companyFit !== 'penalized') companyFit = 'boosted';
+      } else if (attrs?.['allowsDogs'] === false) {
+        interestScore = interestScore * 0.1;
+        if (!companyFit) companyFit = 'penalized';
+      } else {
+        // No Google data — fallback to tag proxy
+        const hasPetBoost = tags.some((t) => PET_MODIFIER.boost.includes(t));
+        const hasPetPenalty = tags.some((t) => PET_MODIFIER.penalty.includes(t));
+
+        if (hasPetPenalty) {
+          interestScore = interestScore * 0.3;
+          if (!companyFit) companyFit = 'penalized';
+        }
+        if (hasPetBoost) {
+          interestScore = Math.min(1.0, interestScore * 1.3);
+          if (companyFit !== 'penalized') companyFit = 'boosted';
+        }
       }
     }
 
@@ -371,7 +400,8 @@ export class RecommendationService {
           ST_MakePoint($2, $1)::geography
         ) AS distance_m,
         v.address, p.rating, p.rating_count, p.indoor, p.price_level,
-        p.quality_score, p.status, p.opening_hours, p.photos, v.website
+        p.quality_score, p.status, p.attributes, p.google_types, p.google_rating,
+        p.google_rating_count, p.opening_hours, p.photos, v.website
       FROM places p
       JOIN venues v ON p.venue_id = v.id
       WHERE p.status = 'active'
