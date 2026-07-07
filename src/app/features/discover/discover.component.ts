@@ -294,10 +294,22 @@ export class DiscoverComponent implements OnInit {
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   presets = [
-    { key: 'hour_nearby', label: 'Час рядом' },
-    { key: 'evening', label: 'Вечер' },
-    { key: 'free', label: 'Бесплатно' },
+    { key: 'chill', label: '😌 Спокойный вечер' },
+    { key: 'active', label: '🏃 Активный день' },
+    { key: 'family', label: '👨‍👩‍👧 С детьми' },
+    { key: 'culture', label: '🎭 Культура' },
+    { key: 'food', label: '🍽️ Поесть' },
+    { key: 'nightlife', label: '🌙 Ночная жизнь' },
   ];
+
+  private readonly MOOD_PRESETS: Record<string, { interests: Record<string, number>; company?: string; radiusM?: number }> = {
+    chill: { interests: { nature: 0.8, food: 0.5, spa: 0.5 }, radiusM: 5000 },
+    active: { interests: { active: 1, sports: 0.5 }, radiusM: 10000 },
+    family: { interests: { family: 1, nature: 0.5, entertainment: 0.5 }, company: 'family', radiusM: 8000 },
+    culture: { interests: { culture: 1, food: 0.3 }, radiusM: 10000 },
+    food: { interests: { food: 1 }, radiusM: 5000 },
+    nightlife: { interests: { nightlife: 1, entertainment: 0.5 }, radiusM: 10000 },
+  };
 
   readonly activeFilterCount = computed(() => {
     const f = this.currentFilters();
@@ -365,7 +377,12 @@ export class DiscoverComponent implements OnInit {
     const f = this.currentFilters();
 
     let finalRadius = f?.walkMax20 ? 1600 : radiusM;
-    if (preset === 'hour_nearby') finalRadius = Math.min(finalRadius, 1500);
+
+    // Mood preset overrides interests, company, radius
+    const mood = preset ? this.MOOD_PRESETS[preset] : null;
+    const interests = mood?.interests ?? this.profileStore.interests();
+    const company = (mood?.company ?? this.profileStore.company() ?? undefined) as any;
+    if (mood?.radiusM) finalRadius = mood.radiusM;
 
     this.api
       .discover({
@@ -374,8 +391,8 @@ export class DiscoverComponent implements OnInit {
         radiusM: finalRadius,
         timeWindow,
         profile: {
-          interests: this.profileStore.interests(),
-          company: this.profileStore.company() ?? undefined,
+          interests,
+          company,
           hasPet: this.profileStore.hasPet() || undefined,
           budgetMax: f?.budgetMax ?? this.profileStore.budgetMax() ?? undefined,
         },
