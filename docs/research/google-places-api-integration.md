@@ -218,10 +218,12 @@ if (openingHours.periods) {
 - Update `checkOpenStatus()` to handle Google format
 - Update `scoreCandidate()` to use attributes when available
 
-### Phase 2: Pro enrichment (free)
+### Phase 2: Pro enrichment (free) — DONE (2026-07-07)
 - Text Search matching: venue → google_place_id
 - Fetch: types, businessStatus, primaryType, accessibilityOptions
 - Store google_types, update place status from businessStatus
+- **Results**: 1,753/2,976 matched (59%), 672 with accessibility attrs, 0 errors
+- Unmatched 1,223 = small OSM-only points (tones, unnamed cafes) without Google presence
 
 ### Phase 3: Enterprise enrichment (~$40)
 - Place Details for missing opening_hours

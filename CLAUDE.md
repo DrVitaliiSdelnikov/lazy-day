@@ -35,6 +35,7 @@ Migrations: `apps/api/src/app/database/migrations/` (SQL, 001-010). Runner: `npx
 - **Shared models**: `@lazy-day/shared-models` — types/enums/DTO shared between frontend and backend
 - **DI override**: `ApiService` (abstract) → `MockApiService` | `HttpApiService` via `USE_REAL_API` flag in `providers.ts`
 - **OSM import**: Overpass API → venues + places. Category mapping in `osm-category-map.ts`. Detects closed venues via `disused:*` tags.
+- **Google enrichment**: `POST /v1/admin/ingestion/google-enrich?limit=N`. Delta-aware — only processes venues without `google_place_id`. Matches by Text Search + 200m radius. Requires `GOOGLE_PLACES_API_KEY` env var.
 - **Scoring**: `0.45×interest + 0.25×distance + 0.15×time + 0.10×quality + 0.05×source`. Dynamic primary/secondary tag classification. No serendipity pool. Adaptive radius expansion.
 - **Dynamic categories**: venue tags split into primary (matching user interests) and secondary (other traits) at query time. Same venue classified differently per request.
 - **Interest synonyms**: `INTEREST_SYNONYMS` map expands user-facing interest names to DB tag vocabulary.
@@ -62,17 +63,15 @@ Migrations: `apps/api/src/app/database/migrations/` (SQL, 001-010). Runner: `npx
 - **Pet-friendly** (2026-07-07): `hasPet` flag boosts outdoor, penalizes indoor venues. Toggle in context bar.
 - **Opening hours** (2026-07-07): OSM `opening_hours` parser. Closed venues get `timeFit=0.0` → demoted/filtered. Open venues get "Сейчас открыто" + `openStatus` in response.
 - **Interest weight semantics** (2026-07-07): weight >= 0.7 = strict (hard filter), 0.3-0.6 = soft (scoring boost only), < 0.3 = ignored.
+- **Google Places Pro enrichment** (2026-07-07): 1,753/2,976 venues matched. google_types (multi-category), businessStatus, accessibilityOptions stored. 1,223 unmatched = small OSM-only points without Google presence. Delta-aware: re-run only processes new venues.
 
 ## TODO / Known Issues (prioritized)
 
-### 1. Google Places API integration (next)
-- Solves 3 problems at once:
-  - **opening_hours coverage**: 849/2976 places have hours from OSM → Google has ~95%
-  - **venue-level attributes**: `allowsDogs`, `goodForChildren`, `wheelchairAccessible` → replace proxy tag logic with facts
-  - **multi-category enrichment**: venues with multiple functions get proper tags
-- Scope: enrichment pipeline (batch job), `attributes jsonb` column, scoring integration.
-- Impact: high. Effort: medium (API key, enrichment service, migration).
-- See `docs/research/company-context-strategy.md` Phase 2.
+### 1. Google Places API — Phase 3 Enterprise enrichment
+- Pro enrichment done: 1,753/2,976 venues matched (59%), google_types + accessibility attrs stored.
+- Next: Enterprise tier (~$40) for `regularOpeningHours` + `rating` on matched venues.
+- Then: Atmosphere tier (~$80, optional) for `allowsDogs`, `goodForChildren`, `outdoorSeating`.
+- See `docs/research/google-places-api-integration.md`.
 
 ### 2. Behavioral learning (post-MVP)
 - Track click/save/hide patterns → re-rank within interest-filtered set.

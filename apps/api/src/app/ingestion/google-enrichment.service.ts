@@ -72,8 +72,13 @@ export class GoogleEnrichmentService {
         await this.sleep(100);
       } catch (err: any) {
         errors++;
-        if (errors <= 3) {
-          this.logger.warn(`Error enriching venue ${venue.id}: ${err?.message}`);
+        if (errors <= 5) {
+          this.logger.warn(`Error enriching venue ${venue.id} "${venue.name}": ${err?.message}`);
+        }
+        // If getting rate limited, back off
+        if (err?.message?.includes('429') || err?.message?.includes('RESOURCE_EXHAUSTED')) {
+          this.logger.warn('Rate limited — backing off 5s');
+          await this.sleep(5000);
         }
       }
     }
