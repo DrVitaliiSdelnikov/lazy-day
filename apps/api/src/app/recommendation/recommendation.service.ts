@@ -31,10 +31,11 @@ const INTEREST_SYNONYMS: Record<string, string[]> = {
   food: ['food', 'restaurant', 'cafe', 'bakery'],
   nightlife: ['nightlife', 'bar', 'club'],
   culture: ['culture', 'museum', 'gallery', 'theater'],
-  sports: ['gym', 'sports'],
+  sports: ['gym', 'sports', 'climbing', 'karting', 'paintball', 'trampoline'],
   shopping: ['shopping', 'mall'],
-  entertainment: ['entertainment', 'cinema', 'club'],
-  family: ['family', 'playground', 'park'],
+  entertainment: ['entertainment', 'cinema', 'club', 'bowling', 'escape_room', 'gaming', 'arcade'],
+  family: ['family', 'playground', 'park', 'trampoline', 'water_park'],
+  active: ['sports', 'climbing', 'karting', 'paintball', 'trampoline', 'gym'],
 };
 
 /**

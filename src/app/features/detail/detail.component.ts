@@ -122,7 +122,7 @@ import { RecommendationCard } from '../../core/models';
             pButton
             [label]="'detail.open_maps' | translate"
             severity="secondary"
-            [href]="'https://www.google.com/maps/search/?api=1&query=' + c.lat + ',' + c.lng"
+            [href]="mapsUrl(c)"
             target="_blank"
             rel="noopener"
             class="detail__action-btn"
@@ -278,6 +278,12 @@ export class DetailComponent implements OnInit {
 
   isOpen(status: string): boolean {
     return status === 'Открыто' || status === 'Open' || status === 'ღიაა';
+  }
+
+  mapsUrl(c: RecommendationCard): string {
+    // Use place name + coordinates for better Google Maps result
+    const query = encodeURIComponent(c.title);
+    return `https://www.google.com/maps/search/?api=1&query=${query}&query_place_id=&center=${c.lat},${c.lng}`;
   }
 
   onToggleSave() {

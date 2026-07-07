@@ -47,7 +47,18 @@ export const OSM_CATEGORY_MAP: OsmTagRule[] = [
   // Wellness
   { key: 'leisure', value: 'swimming_pool', category: 'spa', tags: ['wellness', 'swimming'], indoor: true },
   { key: 'leisure', value: 'sports_centre', category: 'gym', tags: ['wellness', 'gym', 'sports'], indoor: true },
+  { key: 'leisure', value: 'fitness_centre', category: 'gym', tags: ['wellness', 'gym', 'sports'], indoor: true },
   { key: 'amenity', value: 'public_bath', category: 'bath', tags: ['wellness', 'bath'], indoor: true },
+
+  // Activities & Entertainment
+  { key: 'leisure', value: 'bowling_alley', category: 'entertainment', tags: ['entertainment', 'bowling', 'sports'], indoor: true },
+  { key: 'leisure', value: 'escape_game', category: 'entertainment', tags: ['entertainment', 'escape_room'], indoor: true },
+  { key: 'leisure', value: 'amusement_arcade', category: 'entertainment', tags: ['entertainment', 'gaming', 'arcade'], indoor: true },
+  { key: 'leisure', value: 'water_park', category: 'entertainment', tags: ['entertainment', 'water_park', 'family'], indoor: false },
+  { key: 'leisure', value: 'trampoline_park', category: 'entertainment', tags: ['entertainment', 'trampoline', 'family', 'sports'], indoor: true },
+  { key: 'sport', value: 'climbing', category: 'gym', tags: ['sports', 'climbing', 'outdoor'], indoor: false },
+  { key: 'sport', value: 'karting', category: 'entertainment', tags: ['entertainment', 'karting', 'sports'], indoor: false },
+  { key: 'sport', value: 'paintball', category: 'entertainment', tags: ['entertainment', 'paintball', 'sports', 'outdoor'], indoor: false },
 ];
 
 export function mapOsmCategory(

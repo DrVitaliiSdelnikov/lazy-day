@@ -33,11 +33,18 @@ import { RecommendationCard } from '../../../core/models';
       </div>
 
       <div class="card__meta">
-        <span class="card__category">{{ card().categoryLabel || card().category }}</span>
+        @if (card().type === 'event') {
+          <span class="card__event-badge">Event</span>
+        }
+        <span class="card__category">{{ categoryLabel() }}</span>
         <span class="card__dot">&middot;</span>
         <span class="card__distance">{{ formatDistance() }}</span>
-        @if (card().walkMinutes) {
-          <span class="card__walk">&#128694; {{ card().walkMinutes }}m</span>
+        @if (card().walkMinutes && card().type !== 'event') {
+          <span class="card__walk">&#128694; {{ card().walkMinutes }} min</span>
+        }
+        @if (card().startsAt) {
+          <span class="card__dot">&middot;</span>
+          <span class="card__event-time">{{ formatEventTime() }}</span>
         }
         @if (card().openStatus) {
           <span class="card__dot">&middot;</span>
@@ -46,6 +53,18 @@ import { RecommendationCard } from '../../../core/models';
             [class.card__status--closed]="!isOpen()">{{ card().openStatus }}</span>
         }
       </div>
+
+      @if (card().address) {
+        <div class="card__address">{{ card().address }}</div>
+      }
+
+      @if (card().secondaryTags?.length) {
+        <div class="card__secondary">
+          @for (tag of card().secondaryTags!.slice(0, 3); track tag) {
+            <span class="card__stag">{{ tag }}</span>
+          }
+        </div>
+      }
 
       @if (card().explanations.length) {
         <div class="card__explanations">
@@ -192,6 +211,45 @@ import { RecommendationCard } from '../../../core/models';
       font-weight: 500;
     }
 
+    .card__event-badge {
+      background: var(--ld-primary, #6366f1);
+      color: white;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .card__event-time {
+      font-weight: 500;
+      color: var(--ld-primary, #6366f1);
+    }
+
+    .card__address {
+      font-size: 12px;
+      color: var(--ld-text-secondary);
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .card__secondary {
+      display: flex;
+      gap: 4px;
+      margin-top: 4px;
+    }
+
+    .card__stag {
+      font-size: 11px;
+      color: var(--ld-text-secondary);
+      background: rgba(0,0,0,0.05);
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+
     .card__explanations {
       display: flex;
       gap: var(--ld-space-xs);
@@ -258,6 +316,27 @@ export class ResultCardComponent {
   hideCard = output<void>();
 
   showHideMenu = signal(false);
+
+  private readonly CATEGORY_LABELS: Record<string, string> = {
+    restaurant: 'Restaurant', cafe: 'Café', bar: 'Bar', park: 'Park',
+    viewpoint: 'Viewpoint', museum: 'Museum', gallery: 'Gallery',
+    theater: 'Theater', cinema: 'Cinema', club: 'Club', mall: 'Mall',
+    bakery: 'Bakery', gym: 'Gym', spa: 'Spa', bath: 'Bath',
+  };
+
+  categoryLabel(): string {
+    return this.card().categoryLabel || this.CATEGORY_LABELS[this.card().category] || this.card().category;
+  }
+
+  formatEventTime(): string {
+    const s = this.card().startsAt;
+    if (!s) return '';
+    const d = new Date(s);
+    const day = d.getDate();
+    const month = d.toLocaleDateString('en', { month: 'short' });
+    const time = d.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit', hour12: false });
+    return `${day} ${month} ${time}`;
+  }
 
   formatDistance(): string {
     const d = this.card().distanceM;

@@ -16,7 +16,8 @@ const OVERPASS_QUERY = `
 (
   nwr["amenity"~"restaurant|cafe|bar|pub|fast_food|theatre|cinema|museum|library|arts_centre|nightclub|public_bath"](41.64,44.70,41.80,44.90);
   nwr["tourism"~"museum|gallery|viewpoint|attraction|artwork"](41.64,44.70,41.80,44.90);
-  nwr["leisure"~"park|garden|sports_centre|swimming_pool|playground"](41.64,44.70,41.80,44.90);
+  nwr["leisure"~"park|garden|sports_centre|swimming_pool|playground|fitness_centre|bowling_alley|escape_game|amusement_arcade|water_park|trampoline_park"](41.64,44.70,41.80,44.90);
+  nwr["sport"~"climbing|karting|paintball|go"](41.64,44.70,41.80,44.90);
   nwr["shop"~"mall|department_store|bakery"](41.64,44.70,41.80,44.90);
 );
 out center;
