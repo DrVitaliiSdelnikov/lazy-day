@@ -23,4 +23,9 @@ export class IngestionController {
   async triggerGoogleEnterpriseEnrichment(@Query('limit') limit?: string) {
     return this.googleEnrich.enrichEnterprise(limit ? parseInt(limit, 10) : 100);
   }
+
+  @Post('google-enrich-atmosphere')
+  async triggerGoogleAtmosphereEnrichment(@Query('limit') limit?: string) {
+    return this.googleEnrich.enrichAtmosphere(limit ? parseInt(limit, 10) : 100);
+  }
 }

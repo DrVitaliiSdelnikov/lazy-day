@@ -232,11 +232,11 @@ if (openingHours.periods) {
 - **Results**: 1,753 enriched, 0 errors. 1,497 with Google hours, 1,722 with ratings (avg 4.42)
 - Opening hours coverage: 29% → 59% (1,761 total = 1,497 Google + 264 OSM)
 
-### Phase 4: Atmosphere enrichment (~$80, optional)
+### Phase 4: Atmosphere enrichment (~$70) — DONE (2026-07-07)
 - Place Details with atmosphere fields
-- Fetch: allowsDogs, goodForChildren, outdoorSeating
-- Store in attributes jsonb
-- Update scoring to prefer facts over proxy
+- Fetch: allowsDogs, goodForChildren, outdoorSeating, liveMusic, restroom
+- Stored in attributes jsonb, scoring uses facts with tag proxy fallback
+- **Results**: 1,058 enriched, 0 errors. allowsDogs: 523 (294 true), goodForChildren: 1,208 (1,110 true), outdoorSeating: 548, liveMusic: 226
 
 ## Risks
 

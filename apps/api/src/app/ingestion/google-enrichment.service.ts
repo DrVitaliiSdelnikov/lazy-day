@@ -263,7 +263,95 @@ export class GoogleEnrichmentService {
     await this.placeRepo.save(place);
   }
 
-  // TODO: Phase 4 — enrichAtmosphere() for allowsDogs, goodForChildren, outdoorSeating
+  /**
+   * Atmosphere enrichment for venues that already have google_place_id.
+   * Fetches: allowsDogs, goodForChildren, outdoorSeating, liveMusic, restroom.
+   * ~$40/1,000 calls (1,000 free/month).
+   * Delta-aware: skips venues that already have allowsDogs in attributes.
+   */
+  async enrichAtmosphere(limit = 100): Promise<EnrichmentResult> {
+    const apiKey = process.env['GOOGLE_PLACES_API_KEY'];
+    if (!apiKey) {
+      this.logger.warn('GOOGLE_PLACES_API_KEY not set — skipping enrichment');
+      return { matched: 0, enriched: 0, skipped: 0, errors: 0 };
+    }
+
+    // Find venues with google_place_id but without atmosphere data
+    const venues = await this.venueRepo.query(
+      `SELECT v.id, v.google_place_id
+       FROM venues v
+       JOIN places p ON p.venue_id = v.id
+       WHERE v.google_place_id IS NOT NULL
+         AND (p.attributes->>'allowsDogs') IS NULL
+       ORDER BY v.created_at ASC
+       LIMIT $1`,
+      [limit],
+    );
+
+    this.logger.log(`Atmosphere enrichment: ${venues.length} venues to process`);
+
+    let matched = 0, enriched = 0, skipped = 0, errors = 0;
+
+    for (const row of venues) {
+      const placeId = row.google_place_id;
+      const venueId = row.id;
+      if (!placeId) { skipped++; continue; }
+
+      try {
+        const details = await this.fetchAtmosphereDetails(placeId, apiKey);
+        if (!details || Object.keys(details).length === 0) { skipped++; continue; }
+
+        matched++;
+        await this.applyAtmosphereDetails(venueId, details);
+        enriched++;
+
+        await this.sleep(100);
+      } catch (err: any) {
+        errors++;
+        if (errors <= 5) {
+          this.logger.warn(`Atmosphere error place ${venueId}: ${err?.message}`);
+        }
+        if (err?.message?.includes('429') || err?.message?.includes('RESOURCE_EXHAUSTED')) {
+          this.logger.warn('Rate limited — backing off 5s');
+          await this.sleep(5000);
+        }
+      }
+    }
+
+    this.logger.log(`Atmosphere enrichment done: ${matched} matched, ${enriched} enriched, ${skipped} skipped, ${errors} errors`);
+    return { matched, enriched, skipped, errors };
+  }
+
+  private async fetchAtmosphereDetails(placeId: string, apiKey: string): Promise<any | null> {
+    const response = await fetch(`${GOOGLE_PLACES_BASE}/places/${placeId}`, {
+      headers: {
+        'X-Goog-Api-Key': apiKey,
+        'X-Goog-FieldMask': 'allowsDogs,goodForChildren,outdoorSeating,liveMusic,restroom',
+      },
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Place Details ${response.status}: ${text.slice(0, 200)}`);
+    }
+    return response.json();
+  }
+
+  private async applyAtmosphereDetails(venueId: string, details: any): Promise<void> {
+    const place = await this.placeRepo.findOne({ where: { venueId } });
+    if (!place) return;
+
+    place.attributes = {
+      ...place.attributes,
+      ...(details.allowsDogs != null && { allowsDogs: details.allowsDogs }),
+      ...(details.goodForChildren != null && { goodForChildren: details.goodForChildren }),
+      ...(details.outdoorSeating != null && { outdoorSeating: details.outdoorSeating }),
+      ...(details.liveMusic != null && { liveMusic: details.liveMusic }),
+      ...(details.restroom != null && { restroom: details.restroom }),
+    };
+
+    await this.placeRepo.save(place);
+  }
 
   private haversineM(lat1: number, lng1: number, lat2: number, lng2: number): number {
     const R = 6371000;
