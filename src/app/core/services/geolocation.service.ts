@@ -6,10 +6,10 @@ export interface GeoPosition {
   source: 'gps' | 'fallback';
 }
 
-// Tbilisi center fallback
+// Default location: Tbilisi, Vake area
 const TBILISI_CENTER: GeoPosition = {
-  lat: 41.7151,
-  lng: 44.8271,
+  lat: 41.748917,
+  lng: 44.786611,
   source: 'fallback',
 };
 
