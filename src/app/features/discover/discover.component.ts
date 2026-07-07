@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnInit, signal, viewChild } from '@angular/core';
+import { Component, computed, inject, isDevMode, OnInit, signal, viewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { ButtonModule } from 'primeng/button';
@@ -33,6 +33,18 @@ import { FilterSheetComponent, FilterState } from './filter-sheet/filter-sheet.c
       <header class="discover__header">
         <h1 class="discover__title">{{ 'discover.title' | translate }}</h1>
       </header>
+
+      <!-- Dev-only: debug location override -->
+      @if (isDev) {
+        <div class="debug-panel">
+          <span class="debug-label">DEV</span>
+          <input class="debug-input"
+            [value]="debugCoords()"
+            placeholder="lat, lng"
+            (keydown.enter)="onDebugCoordsSubmit($event)" />
+          <span class="debug-pos">{{ geo.position().lat.toFixed(4) }}, {{ geo.position().lng.toFixed(4) }} ({{ geo.position().source }})</span>
+        </div>
+      }
 
       <!-- Context bar: location, company, interests, time — all tappable -->
       <app-context-bar (changed)="onContextChanged()" />
@@ -185,6 +197,42 @@ import { FilterSheetComponent, FilterState } from './filter-sheet/filter-sheet.c
       color: var(--ld-text-secondary);
     }
 
+    .debug-panel {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px var(--ld-space-lg);
+      background: #1a1a2e;
+      color: #0f0;
+      font-family: monospace;
+      font-size: 12px;
+    }
+
+    .debug-label {
+      background: #e53935;
+      color: white;
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-weight: 700;
+      font-size: 10px;
+    }
+
+    .debug-input {
+      background: #0d0d1a;
+      border: 1px solid #333;
+      color: #0f0;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+      width: 180px;
+    }
+
+    .debug-pos {
+      color: #888;
+      font-size: 11px;
+    }
+
     .discover__results {
       display: grid;
       grid-template-columns: 1fr;
@@ -244,11 +292,14 @@ export class DiscoverComponent implements OnInit {
   readonly profileStore = inject(ProfileStore);
   readonly savedStore = inject(SavedStore);
   private api = inject(ApiService);
-  private geo = inject(GeolocationService);
+  readonly geo = inject(GeolocationService);
   private router = inject(Router);
 
   private filterSheet = viewChild(FilterSheetComponent);
   private contextBar = viewChild(ContextBarComponent);
+
+  readonly isDev = isDevMode();
+  readonly debugCoords = signal('');
 
   readonly cards = signal<RecommendationCard[]>([]);
   readonly loading = signal(false);
@@ -297,6 +348,16 @@ export class DiscoverComponent implements OnInit {
   onFiltersChanged(filters: FilterState) {
     this.currentFilters.set(filters);
     this.loadFeed();
+  }
+
+  onDebugCoordsSubmit(event: Event) {
+    const input = (event.target as HTMLInputElement).value.trim();
+    const parts = input.split(/[,\s]+/).map(Number);
+    if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+      this.geo.setFallback(parts[0], parts[1]);
+      this.debugCoords.set(input);
+      this.loadFeed();
+    }
   }
 
   onContextChanged() {
