@@ -81,6 +81,10 @@ import { RecommendationCard } from '../../../core/models';
     </article>
   `,
   styles: `
+    :host {
+      display: block;
+    }
+
     .card {
       padding: var(--ld-space-md) var(--ld-space-lg);
       border-bottom: 1px solid var(--ld-divider);
@@ -90,6 +94,14 @@ import { RecommendationCard } from '../../../core/models';
 
       &:active {
         background: rgba(0, 0, 0, 0.03);
+      }
+    }
+
+    @media (min-width: 640px) {
+      .card {
+        border: 1px solid var(--ld-divider);
+        border-radius: var(--ld-radius-md, 12px);
+        border-bottom: 1px solid var(--ld-divider);
       }
     }
 

@@ -186,15 +186,44 @@ import { FilterSheetComponent, FilterState } from './filter-sheet/filter-sheet.c
     }
 
     .discover__results {
-      display: flex;
-      flex-direction: column;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0;
+    }
+
+    @media (min-width: 640px) {
+      .discover__results {
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--ld-space-sm);
+        padding: 0 var(--ld-space-md);
+      }
+    }
+
+    @media (min-width: 1024px) {
+      .discover__results {
+        grid-template-columns: repeat(3, 1fr);
+        gap: var(--ld-space-md);
+        padding: 0 var(--ld-space-lg);
+      }
     }
 
     .discover__skeletons {
-      display: flex;
-      flex-direction: column;
+      display: grid;
+      grid-template-columns: 1fr;
       gap: var(--ld-space-md);
       padding: 0 var(--ld-space-lg);
+    }
+
+    @media (min-width: 640px) {
+      .discover__skeletons {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (min-width: 1024px) {
+      .discover__skeletons {
+        grid-template-columns: repeat(3, 1fr);
+      }
     }
 
     .skeleton-card {
