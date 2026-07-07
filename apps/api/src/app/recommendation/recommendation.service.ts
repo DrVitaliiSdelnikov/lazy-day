@@ -344,9 +344,13 @@ export class RecommendationService {
       if (attrs?.['allowsDogs'] === true) {
         interestScore = Math.min(1.0, interestScore * 1.5);
         if (companyFit !== 'penalized') companyFit = 'boosted';
-      } else if (attrs?.['allowsDogs'] === false) {
+      } else if (attrs?.['allowsDogs'] === false && attrs?.['outdoorSeating'] !== true) {
+        // No dogs allowed AND no outdoor seating → strong penalty
         interestScore = interestScore * 0.1;
         if (!companyFit) companyFit = 'penalized';
+      } else if (attrs?.['allowsDogs'] === false && attrs?.['outdoorSeating'] === true) {
+        // No dogs inside but has terrace → mild, neutral-ish
+        interestScore = interestScore * 0.7;
       } else {
         // No Google data — fallback to tag proxy
         const hasPetBoost = tags.some((t) => PET_MODIFIER.boost.includes(t));
