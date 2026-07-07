@@ -69,23 +69,26 @@ Migrations: `apps/api/src/app/database/migrations/` (SQL, 001-010). Runner: `npx
 
 ## TODO / Known Issues (prioritized)
 
-### 1. Scoring: use outdoorSeating for pet modifier
-- `outdoorSeating` data available (548 venues). Currently pet modifier uses `allowsDogs` fact → tag proxy fallback.
-- Could also boost restaurants with outdoor seating for pet owners (currently neutral).
+### 1. Localization (user-facing)
+- Venue names: OSM has `name:ka`, `name:en`, Google has `displayName` — currently only `name` (usually Georgian) is shown.
+- Explanations hardcoded in Russian ("Сейчас открыто", "Тебе нравится"). Need i18n for en/ka.
+- Impact: high for non-Russian users. Effort: medium.
 
-### 2. Behavioral learning (post-MVP)
+### 2. Pet modifier: use outdoorSeating fact
+- `outdoorSeating` data available (548 venues). Restaurants currently neutral for pets.
+- Could boost restaurants with `outdoorSeating=true` for pet owners.
+- Impact: small. Effort: small (few lines in scoreCandidate).
+
+### 3. Events data source
+- Zero events in DB (Overpass doesn't have events). Need external source: Facebook Events, Eventbrite, local aggregators.
+- Event scoring already works (timeFit, starts_in explanation) — just needs data.
+- Impact: high for product value. Effort: medium-high (new ingestion pipeline).
+
+### 4. Behavioral learning (post-MVP)
 - Track click/save/hide patterns → re-rank within interest-filtered set.
 - Three-phase plan: cold start → learning → mature.
 - Impact: high long-term. Effort: high (interactions pipeline, user profiles, A/B).
 - See `docs/research/categorization-and-ranking-strategy.md` §5.
-
-### 3. Localization
-- Venue names: OSM has `name:ka`, `name:en` — currently only `name` (usually Georgian) is shown.
-- Explanations, UI labels hardcoded in Russian. Need i18n pipeline for en/ka.
-
-### 4. Events data source
-- Zero events in DB (Overpass doesn't have events). Need external source: Facebook Events, Eventbrite, local aggregators.
-- Event scoring already works (timeFit, starts_in explanation) — just needs data.
 
 ## Deploy
 
