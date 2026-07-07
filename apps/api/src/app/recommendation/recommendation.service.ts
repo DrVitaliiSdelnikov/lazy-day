@@ -251,7 +251,7 @@ export class RecommendationService {
     // Build response cards
     const timeMid = new Date((new Date(dto.timeWindow.from).getTime() + new Date(dto.timeWindow.to).getTime()) / 2);
 
-    const cards = diversified.slice(0, 30).map((c) => {
+    const cards = diversified.slice(0, 60).map((c) => {
       const openStatus = c.type === 'place'
         ? checkOpenStatus(c.opening_hours, timeMid)
         : undefined;
@@ -293,7 +293,7 @@ export class RecommendationService {
       `Discover: ${scored.length} relevant → ${cards.length} cards (radius=${radiusM}m${radiusM !== baseRadiusM ? ', expanded' : ''})`,
     );
 
-    return { sessionId, cards, hasMore: diversified.length > 30 };
+    return { sessionId, cards, hasMore: diversified.length > 60 };
   }
 
   async more(sessionId: string) {

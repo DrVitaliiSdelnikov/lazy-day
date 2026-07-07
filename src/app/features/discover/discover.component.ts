@@ -99,6 +99,15 @@ import { FilterSheetComponent, FilterState } from './filter-sheet/filter-sheet.c
         </section>
       }
 
+      <!-- Show more -->
+      @if (hasMoreCards()) {
+        <div class="discover__more">
+          <button class="discover__more-btn" (click)="showMore()">
+            {{ 'discover.show_more' | translate }} ({{ allCards().length - visibleCount() }})
+          </button>
+        </div>
+      }
+
       <!-- Empty state -->
       @if (!loading() && loaded() && cards().length === 0) {
         <div class="discover__empty">
@@ -195,6 +204,27 @@ import { FilterSheetComponent, FilterState } from './filter-sheet/filter-sheet.c
       margin-bottom: var(--ld-space-sm);
       font-size: 13px;
       color: var(--ld-text-secondary);
+    }
+
+    .discover__more {
+      display: flex;
+      justify-content: center;
+      padding: var(--ld-space-md) var(--ld-space-lg) var(--ld-space-xl);
+    }
+
+    .discover__more-btn {
+      background: none;
+      border: 1px solid var(--ld-divider);
+      border-radius: var(--ld-radius-md, 12px);
+      padding: 10px 24px;
+      font-size: 14px;
+      color: var(--ld-text-secondary);
+      cursor: pointer;
+      min-height: 44px;
+
+      &:hover {
+        background: rgba(0,0,0,0.03);
+      }
     }
 
     .debug-panel {
@@ -301,7 +331,10 @@ export class DiscoverComponent implements OnInit {
   readonly isDev = isDevMode();
   readonly debugCoords = signal('');
 
-  readonly cards = signal<RecommendationCard[]>([]);
+  readonly allCards = signal<RecommendationCard[]>([]);
+  readonly visibleCount = signal(15);
+  readonly cards = computed(() => this.allCards().slice(0, this.visibleCount()));
+  readonly hasMoreCards = computed(() => this.visibleCount() < this.allCards().length);
   readonly loading = signal(false);
   readonly loaded = signal(false);
   readonly activePreset = signal<string | null>(null);
@@ -348,6 +381,10 @@ export class DiscoverComponent implements OnInit {
   onFiltersChanged(filters: FilterState) {
     this.currentFilters.set(filters);
     this.loadFeed();
+  }
+
+  showMore() {
+    this.visibleCount.update((n) => n + 15);
   }
 
   onDebugCoordsSubmit(event: Event) {
@@ -411,7 +448,8 @@ export class DiscoverComponent implements OnInit {
             );
           }
 
-          this.cards.set(filtered);
+          this.allCards.set(filtered);
+          this.visibleCount.set(15);
           this.loading.set(false);
           this.loaded.set(true);
         },
@@ -432,7 +470,7 @@ export class DiscoverComponent implements OnInit {
 
   onHideCard(card: RecommendationCard) {
     this.profileStore.addHidden(card.id);
-    this.cards.update((cards) => cards.filter((c) => c.id !== card.id));
+    this.allCards.update((cards) => cards.filter((c) => c.id !== card.id));
   }
 
   private defaultTimeWindow() {
