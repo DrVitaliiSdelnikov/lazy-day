@@ -236,6 +236,15 @@ export class RecommendationService {
         scored = scored.filter((c) => c.primaryTags.length > 0);
       }
 
+      // Availability filter: exclude places confirmed closed at requested time
+      // Keep: open, unknown (no hours data), events (have their own time logic)
+      const timeMid = new Date((new Date(dto.timeWindow.from).getTime() + new Date(dto.timeWindow.to).getTime()) / 2);
+      scored = scored.filter((c) => {
+        if (c.type === 'event') return true;
+        const status = checkOpenStatus(c.opening_hours, timeMid);
+        return status !== 'closed';
+      });
+
       // Enough results? Stop expanding.
       if (scored.length >= MIN_RELEVANT_RESULTS || !hasInterests) break;
 

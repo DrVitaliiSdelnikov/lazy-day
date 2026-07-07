@@ -109,6 +109,14 @@ Month 6-12: Community data (tips, collections, badges — network effect)
 Month 12+:  Curator network + multi-city = sustainable moat
 ```
 
+## Cost Tracking
+
+| Month | Google Places | SerpApi | Total | Budget |
+|---|---|---|---|---|
+| July 2026 | $74 | $0 (free tier) | $74 | $100 |
+
+Google Places breakdown: Pro (free) + Enterprise (~$35) + Atmosphere (~$39). One-time enrichment, not recurring.
+
 ## Deploy
 
 - Frontend: push to `main` → Cloudflare Pages → `lazy-day-app.pages.dev`
