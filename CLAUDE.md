@@ -59,11 +59,13 @@ Migrations: `apps/api/src/app/database/migrations/` (SQL, 001-010). Runner: `npx
 - **Gym false matches** (2026-07-06): removed `wellness` from spa/bath synonyms — too broad, matched gyms.
 - **Dynamic categories** (2026-07-07): primary/secondary tag classification per request. Interest weight raised 0.35→0.45.
 - **Company context** (2026-07-07): tag boost/penalty matrix per company type. Family penalizes nightlife, couple boosts viewpoints, friends boosts bars.
+- **Pet-friendly** (2026-07-07): `hasPet` flag boosts outdoor, penalizes indoor venues. Toggle in context bar.
+- **Opening hours** (2026-07-07): OSM `opening_hours` parser. Closed venues get `timeFit=0.0` → demoted/filtered. Open venues get "Сейчас открыто" + `openStatus` in response.
 
 ## TODO / Known Issues
 
-### Data: opening_hours parsing
-- Places always get `timeFit = 0.8`. Need to parse OSM `opening_hours` format to check if venue is actually open during requested time window.
+### Data: opening_hours coverage
+- 849/2976 places have opening_hours from OSM. Remaining 2127 get `timeFit = 0.8` (unknown). Google Places API integration would improve coverage.
 
 ### Scoring: interest weight semantics
 - Currently all weights treated equally. Future: weight >= 0.7 = hard filter ("I want this"), < 0.7 = soft boost ("I prefer this").

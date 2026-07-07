@@ -94,7 +94,23 @@ Linear decay. 0m = 1.0, radiusM = 0.0.
 ## Time Fit
 
 - Events: based on `starts_at` position within `timeWindow` (early = 1.0, late = 0.7, outside = 0.3)
-- Places: hardcoded 0.8 (TODO: parse `opening_hours`)
+- Places with `opening_hours`: parsed via `opening-hours.ts`, checked against time window midpoint
+  - Open → `timeFit = 1.0`
+  - Closed → `timeFit = 0.0` (effectively demoted or filtered out)
+  - Unknown → `timeFit = 0.8` (neutral)
+- Places without `opening_hours`: `timeFit = 0.8` (849/2976 have hours from OSM)
+
+### opening_hours parser
+
+Lightweight parser for OSM format. Handles:
+- `24/7`
+- Simple ranges: `08:00-24:00`
+- Day prefixes: `Mo-Su 10:00-22:00`, `Tu-Su 11:00-18:00`
+- Semicolon rules: `Mo-Fr 09:00-22:00; Sa-Su 10:00-22:00`
+- Comma time ranges: `Mo-Su 09:00-14:00,16:00-21:00`
+- Overnight spans: `Mo-Su 18:00-02:00`
+
+Does NOT handle: public holidays (PH), week numbers, month ranges.
 
 ## Quality Score
 

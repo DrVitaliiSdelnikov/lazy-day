@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { DiscoverRequestDto } from './dto/discover-request.dto';
+import { checkOpenStatus, getOpenLabel } from './opening-hours';
 
 const WEIGHTS = {
   interestMatch: 0.45,
@@ -166,30 +167,38 @@ export class RecommendationService {
     const diversified = this.applyDiversity(scored);
 
     // Build response cards
-    const cards = diversified.slice(0, 30).map((c) => ({
-      id: c.id,
-      type: c.type,
-      title: c.title,
-      category: c.category,
-      lat: c.lat,
-      lng: c.lng,
-      distanceM: Math.round(c.distance_m),
-      walkMinutes: Math.round((c.distance_m / WALK_SPEED_M_PER_MIN) * STREET_CURVE_FACTOR),
-      explanations: this.generateExplanations(c, dto, expandedWeights),
-      source: 'canonical',
-      address: c.address,
-      rating: c.rating ? Number(c.rating) : undefined,
-      ratingCount: c.rating_count,
-      // Dynamic category info for the client
-      primaryTags: c.primaryTags.length > 0 ? c.primaryTags : undefined,
-      secondaryTags: c.secondaryTags.length > 0 ? c.secondaryTags : undefined,
-      startsAt: c.starts_at,
-      endsAt: c.ends_at,
-      venueName: c.venue_name,
-      ticketUrl: c.ticket_url,
-      priceLabel: this.formatPrice(c),
-      photoUrl: c.photos?.[0],
-    }));
+    const timeMid = new Date((new Date(dto.timeWindow.from).getTime() + new Date(dto.timeWindow.to).getTime()) / 2);
+
+    const cards = diversified.slice(0, 30).map((c) => {
+      const openStatus = c.type === 'place'
+        ? checkOpenStatus(c.opening_hours, timeMid)
+        : undefined;
+
+      return {
+        id: c.id,
+        type: c.type,
+        title: c.title,
+        category: c.category,
+        lat: c.lat,
+        lng: c.lng,
+        distanceM: Math.round(c.distance_m),
+        walkMinutes: Math.round((c.distance_m / WALK_SPEED_M_PER_MIN) * STREET_CURVE_FACTOR),
+        explanations: this.generateExplanations(c, dto, expandedWeights),
+        source: 'canonical',
+        address: c.address,
+        rating: c.rating ? Number(c.rating) : undefined,
+        ratingCount: c.rating_count,
+        primaryTags: c.primaryTags.length > 0 ? c.primaryTags : undefined,
+        secondaryTags: c.secondaryTags.length > 0 ? c.secondaryTags : undefined,
+        openStatus: getOpenLabel(openStatus ?? 'unknown', dto.locale),
+        startsAt: c.starts_at,
+        endsAt: c.ends_at,
+        venueName: c.venue_name,
+        ticketUrl: c.ticket_url,
+        priceLabel: this.formatPrice(c),
+        photoUrl: c.photos?.[0],
+      };
+    });
 
     const sessionId = crypto.randomUUID();
 
@@ -403,7 +412,16 @@ export class RecommendationService {
       if (start <= to) return 0.7;
       return 0.3;
     }
-    return 0.8;
+
+    // Places: check opening_hours against time window midpoint
+    if (c.opening_hours) {
+      const mid = new Date((new Date(timeWindow.from).getTime() + new Date(timeWindow.to).getTime()) / 2);
+      const status = checkOpenStatus(c.opening_hours, mid);
+      if (status === 'closed') return 0.0; // hard zero — will be filtered if interests are set
+      if (status === 'open') return 1.0;
+    }
+
+    return 0.8; // unknown hours — neutral
   }
 
   private applyDiversity(
@@ -451,6 +469,15 @@ export class RecommendationService {
           label: `Начало через ${Math.round(minutesUntil)} мин`,
           priority: 1,
         });
+      }
+    }
+
+    // Open status
+    if (c.type === 'place' && c.opening_hours) {
+      const timeMid = new Date((new Date(dto.timeWindow.from).getTime() + new Date(dto.timeWindow.to).getTime()) / 2);
+      const status = checkOpenStatus(c.opening_hours, timeMid);
+      if (status === 'open') {
+        explanations.push({ type: 'open_now', label: 'Сейчас открыто', priority: 1 });
       }
     }
 
