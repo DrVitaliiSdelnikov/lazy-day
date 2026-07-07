@@ -8,7 +8,13 @@ import { RecommendationCard } from '../../../core/models';
   standalone: true,
   imports: [TagModule, TranslatePipe],
   template: `
-    <article class="card" (click)="openDetail.emit()">
+    <article class="card" [class.card--event]="card().type === 'event'" (click)="openDetail.emit()">
+      @if (card().type === 'event') {
+        <div class="card__event-stripe">
+          <span class="card__event-icon">{{ eventIcon() }}</span>
+        </div>
+      }
+      <div class="card__body" [class.card__body--place]="card().type !== 'event'">
       <div class="card__header">
         <div class="card__header-left">
           <h3 class="card__title">{{ card().title }}</h3>
@@ -33,10 +39,7 @@ import { RecommendationCard } from '../../../core/models';
       </div>
 
       <div class="card__meta">
-        @if (card().type === 'event') {
-          <span class="card__event-badge">Event</span>
-        }
-        <span class="card__category">{{ categoryLabel() }}</span>
+        <span class="card__category">{{ card().type === 'event' ? eventLabel() : categoryLabel() }}</span>
         <span class="card__dot">&middot;</span>
         <span class="card__distance">{{ formatDistance() }}</span>
         @if (card().walkMinutes && card().type !== 'event') {
@@ -97,6 +100,7 @@ import { RecommendationCard } from '../../../core/models';
           <button class="hide-option" (click)="onHide('not_mine')">{{ 'hide.not_mine' | translate }}</button>
         </div>
       }
+      </div>
     </article>
   `,
   styles: `
@@ -211,20 +215,45 @@ import { RecommendationCard } from '../../../core/models';
       font-weight: 500;
     }
 
-    .card__event-badge {
-      background: var(--ld-primary, #6366f1);
-      color: white;
-      font-size: 10px;
-      font-weight: 600;
-      padding: 1px 6px;
-      border-radius: 4px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+    .card--event {
+      display: flex;
+      gap: 0;
+      padding: 0;
+    }
+
+    .card__body--place {
+      padding: 0;
+    }
+
+    .card--event .card__body {
+      flex: 1;
+      padding: var(--ld-space-md) var(--ld-space-lg);
+      min-width: 0;
+    }
+
+    .card__event-stripe {
+      width: 44px;
+      min-height: 100%;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    @media (min-width: 640px) {
+      .card--event .card__event-stripe {
+        border-radius: var(--ld-radius-md, 12px) 0 0 var(--ld-radius-md, 12px);
+      }
+    }
+
+    .card__event-icon {
+      font-size: 20px;
     }
 
     .card__event-time {
       font-weight: 500;
-      color: var(--ld-primary, #6366f1);
+      color: #6366f1;
     }
 
     .card__address {
@@ -326,6 +355,24 @@ export class ResultCardComponent {
 
   categoryLabel(): string {
     return this.card().categoryLabel || this.CATEGORY_LABELS[this.card().category] || this.card().category;
+  }
+
+  private readonly EVENT_ICONS: Record<string, string> = {
+    music: '🎵', theater: '🎭', exhibition: '🎨', festival: '🎉',
+    sports: '🏃', entertainment: '🎤', workshop: '🔧', market: '🛍️', family: '👨‍👩‍👧',
+  };
+
+  eventIcon(): string {
+    return this.EVENT_ICONS[this.card().category] ?? '📅';
+  }
+
+  eventLabel(): string {
+    const labels: Record<string, string> = {
+      music: 'Concert', theater: 'Theater', exhibition: 'Exhibition',
+      festival: 'Festival', sports: 'Sport', entertainment: 'Event',
+      workshop: 'Workshop', market: 'Market', family: 'Family',
+    };
+    return labels[this.card().category] ?? 'Event';
   }
 
   formatEventTime(): string {

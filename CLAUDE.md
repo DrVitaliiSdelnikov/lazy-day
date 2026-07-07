@@ -58,7 +58,7 @@ See `docs/research/product-differentiation.md` for full analysis and competitive
 | Ratings | 1,755 (55%) | Google |
 | allowsDogs | 607 | Google Atmosphere |
 | goodForChildren | 1,292 | Google Atmosphere |
-| Events | 10 (opera.ge) | Custom parser |
+| Events | 31 (10 opera.ge + 21 Google Events) | Custom parser + SerpApi |
 | Localization | en: ~74%, ka: ~54% | OSM name_en/name_ka |
 
 ## Docs

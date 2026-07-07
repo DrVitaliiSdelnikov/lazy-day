@@ -53,7 +53,7 @@ Modified by: company context (family penalizes nightlife), pet modifier (fact-ba
 | Ratings | 1,755 (55%) | Google Places |
 | Pet-friendly data | 607 venues | Google Atmosphere |
 | Kid-friendly data | 1,292 venues | Google Atmosphere |
-| Events | 10 | opera.ge parser |
+| Events | 31 | opera.ge + SerpApi Google Events |
 | Localization | en: ~74%, ka: ~54% | OSM + Google |
 
 ## What Makes It Different
