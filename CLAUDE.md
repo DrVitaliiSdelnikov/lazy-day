@@ -121,7 +121,7 @@ Current state: manual `POST /v1/admin/ingestion/events/run`. Need automated cron
 | google_events | 1x/day | 3 calls/day | 90/month ≈ free tier limit (100/mo) |
 | yolo.ge | 1x/day | 0 | Free AJAX endpoint |
 
-**SerpApi quota**: 100 searches/month (free), resets monthly. 1 city daily = 90/mo. 2 cities = need $50/mo plan (5,000/mo).
+**SerpApi quota**: 100 searches/month (free tier), resets 1st of each month. Cached (identical) queries = free, don't count. Our 1 run = 3 searches. Daily refresh = 90/month. Fits in free tier for 1 city. No cost. 2+ cities = $50/mo plan (5,000 searches).
 
 **TODO**: Add `@nestjs/schedule` cron for daily event refresh. Mark events past `startsAt` as `status='past'`. Remove stale events not seen in 3 refresh cycles.
 
