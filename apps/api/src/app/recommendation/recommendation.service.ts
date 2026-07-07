@@ -3,17 +3,38 @@ import { DataSource } from 'typeorm';
 import { DiscoverRequestDto } from './dto/discover-request.dto';
 
 const WEIGHTS = {
-  interestMatch: 0.35,
+  interestMatch: 0.45,
   distanceDecay: 0.25,
-  timeFit: 0.20,
+  timeFit: 0.15,
   cardQuality: 0.10,
   sourceConfidence: 0.05,
-  noveltyPenalty: 0.05,
 };
 
 const WALK_SPEED_M_PER_MIN = 80;
 const STREET_CURVE_FACTOR = 1.3;
-const RANKING_VERSION = 'v1.0';
+
+/** Minimum relevant results before adaptive radius expansion kicks in. */
+const MIN_RELEVANT_RESULTS = 5;
+/** Maximum radius expansion attempts (each multiplies by 1.5). */
+const MAX_RADIUS_EXPANSIONS = 2;
+
+/**
+ * Maps user-facing interest names to DB tag vocabulary.
+ * User sends "nature" -> we match against [outdoor, park, garden, viewpoint].
+ * See docs/scoring.md and docs/data-quality.md for details.
+ */
+const INTEREST_SYNONYMS: Record<string, string[]> = {
+  nature: ['outdoor', 'park', 'garden', 'viewpoint'],
+  spa: ['bath', 'swimming'],
+  bath: ['bath'],
+  food: ['food', 'restaurant', 'cafe', 'bakery'],
+  nightlife: ['nightlife', 'bar', 'club'],
+  culture: ['culture', 'museum', 'gallery', 'theater'],
+  sports: ['gym', 'sports'],
+  shopping: ['shopping', 'mall'],
+  entertainment: ['entertainment', 'cinema', 'club'],
+  family: ['family', 'playground', 'park'],
+};
 
 interface CandidateRow {
   id: string;
@@ -30,6 +51,7 @@ interface CandidateRow {
   indoor?: boolean;
   price_level?: number;
   quality_score: number;
+  status?: string;
   opening_hours?: Record<string, unknown>;
   photos?: string[];
   website?: string;
@@ -42,6 +64,16 @@ interface CandidateRow {
   price_max?: number;
 }
 
+/** Candidate enriched with dynamic category classification. */
+interface ScoredCandidate extends CandidateRow {
+  score: number;
+  interestScore: number;
+  /** Tags that matched user interests — these are why the venue is relevant. */
+  primaryTags: string[];
+  /** Tags that did NOT match — secondary traits of the venue. */
+  secondaryTags: string[];
+}
+
 @Injectable()
 export class RecommendationService {
   private readonly logger = new Logger(RecommendationService.name);
@@ -49,39 +81,59 @@ export class RecommendationService {
   constructor(private readonly dataSource: DataSource) {}
 
   async discover(dto: DiscoverRequestDto) {
-    const radiusM = dto.radiusM ?? 5000;
+    const baseRadiusM = dto.radiusM ?? 5000;
     const hiddenIds = dto.hiddenIds ?? [];
+    const interests = dto.profile.interests;
+    const hasInterests = interests && Object.keys(interests).length > 0;
 
-    // 1. Candidate retrieval via PostGIS
-    const [places, events] = await Promise.all([
-      this.fetchPlaces(dto.lat, dto.lng, radiusM),
-      this.fetchEvents(dto.lat, dto.lng, radiusM, dto.timeWindow),
-    ]);
+    // Build expanded interest->tag map once for the entire request
+    const expandedWeights = hasInterests
+      ? this.buildExpandedWeights(interests)
+      : new Map<string, number>();
 
-    // 2. Merge candidates
-    let candidates: CandidateRow[] = [...places, ...events];
+    // Adaptive radius: expand if too few relevant results
+    let radiusM = baseRadiusM;
+    let scored: ScoredCandidate[] = [];
 
-    // 3. Hard filters
-    candidates = candidates.filter((c) => {
-      if (hiddenIds.includes(c.id)) return false;
-      if (dto.profile.budgetMax != null) {
-        if (c.price_min != null && c.price_min > dto.profile.budgetMax) return false;
-        if (c.price_level != null && c.price_level > this.budgetToLevel(dto.profile.budgetMax)) return false;
+    for (let attempt = 0; attempt <= MAX_RADIUS_EXPANSIONS; attempt++) {
+      const [places, events] = await Promise.all([
+        this.fetchPlaces(dto.lat, dto.lng, radiusM),
+        this.fetchEvents(dto.lat, dto.lng, radiusM, dto.timeWindow),
+      ]);
+
+      let candidates: CandidateRow[] = [...places, ...events];
+
+      // Hard filters (hidden, budget)
+      candidates = candidates.filter((c) => {
+        if (hiddenIds.includes(c.id)) return false;
+        if (dto.profile.budgetMax != null) {
+          if (c.price_min != null && c.price_min > dto.profile.budgetMax) return false;
+          if (c.price_level != null && c.price_level > this.budgetToLevel(dto.profile.budgetMax)) return false;
+        }
+        return true;
+      });
+
+      // Score + classify primary/secondary tags
+      scored = candidates.map((c) => this.scoreCandidate(c, dto, radiusM, expandedWeights));
+
+      // Interest hard filter: keep only candidates with at least one primary tag
+      if (hasInterests) {
+        scored = scored.filter((c) => c.primaryTags.length > 0);
       }
-      return true;
-    });
 
-    // 4. Score
-    const scored = candidates.map((c) => ({
-      ...c,
-      score: this.score(c, dto, radiusM),
-    }));
+      // Enough results? Stop expanding.
+      if (scored.length >= MIN_RELEVANT_RESULTS || !hasInterests) break;
 
-    // 5. Sort + diversity
+      // Expand radius for next attempt
+      radiusM = Math.round(radiusM * 1.5);
+      this.logger.log(`Adaptive fill: only ${scored.length} relevant results, expanding radius to ${radiusM}m`);
+    }
+
+    // Sort + diversity
     scored.sort((a, b) => b.score - a.score);
     const diversified = this.applyDiversity(scored);
 
-    // 6. Explanations
+    // Build response cards
     const cards = diversified.slice(0, 30).map((c) => ({
       id: c.id,
       type: c.type,
@@ -91,24 +143,26 @@ export class RecommendationService {
       lng: c.lng,
       distanceM: Math.round(c.distance_m),
       walkMinutes: Math.round((c.distance_m / WALK_SPEED_M_PER_MIN) * STREET_CURVE_FACTOR),
-      explanations: this.generateExplanations(c, dto),
+      explanations: this.generateExplanations(c, dto, expandedWeights),
       source: 'canonical',
       address: c.address,
       rating: c.rating ? Number(c.rating) : undefined,
       ratingCount: c.rating_count,
+      // Dynamic category info for the client
+      primaryTags: c.primaryTags.length > 0 ? c.primaryTags : undefined,
+      secondaryTags: c.secondaryTags.length > 0 ? c.secondaryTags : undefined,
       startsAt: c.starts_at,
       endsAt: c.ends_at,
       venueName: c.venue_name,
       ticketUrl: c.ticket_url,
       priceLabel: this.formatPrice(c),
-      openStatus: c.opening_hours ? undefined : undefined, // TODO: parse opening_hours
       photoUrl: c.photos?.[0],
     }));
 
     const sessionId = crypto.randomUUID();
 
     this.logger.log(
-      `Discover: ${candidates.length} candidates → ${cards.length} cards (radius=${radiusM}m)`,
+      `Discover: ${scored.length} relevant → ${cards.length} cards (radius=${radiusM}m${radiusM !== baseRadiusM ? ', expanded' : ''})`,
     );
 
     return { sessionId, cards, hasMore: diversified.length > 30 };
@@ -118,6 +172,97 @@ export class RecommendationService {
     // TODO: Redis session cache pagination
     return { sessionId, cards: [], hasMore: false };
   }
+
+  // ---------------------------------------------------------------------------
+  // Scoring
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Build expanded tag->weight map from user interests + synonyms.
+   * Called once per request, reused for all candidates.
+   */
+  private buildExpandedWeights(interests: Record<string, number>): Map<string, number> {
+    const expanded = new Map<string, number>();
+    for (const [interest, weight] of Object.entries(interests)) {
+      if (weight <= 0) continue;
+      expanded.set(interest, Math.max(expanded.get(interest) ?? 0, weight));
+      const synonyms = INTEREST_SYNONYMS[interest];
+      if (synonyms) {
+        for (const syn of synonyms) {
+          expanded.set(syn, Math.max(expanded.get(syn) ?? 0, weight));
+        }
+      }
+    }
+    return expanded;
+  }
+
+  /**
+   * Score a candidate and classify its tags as primary (matching interests)
+   * or secondary (not matching).
+   *
+   * Dynamic classification: the SAME venue can have different primary/secondary
+   * tags depending on what the user asked for. A park with a café:
+   *   - User asks "nature" → primary: [outdoor, park], secondary: [food, cafe]
+   *   - User asks "food"   → primary: [food, cafe],    secondary: [outdoor, park]
+   */
+  private scoreCandidate(
+    c: CandidateRow,
+    dto: DiscoverRequestDto,
+    radiusM: number,
+    expandedWeights: Map<string, number>,
+  ): ScoredCandidate {
+    const tags = c.tags ?? [];
+    const primaryTags: string[] = [];
+    const secondaryTags: string[] = [];
+    const matchScores: number[] = [];
+
+    for (const tag of tags) {
+      const weight = expandedWeights.get(tag);
+      if (weight != null && weight > 0) {
+        primaryTags.push(tag);
+        matchScores.push(weight);
+      } else {
+        secondaryTags.push(tag);
+      }
+    }
+
+    // Interest score: average of top 2 matching weights, or 0
+    let interestScore: number;
+    if (expandedWeights.size === 0) {
+      interestScore = 0.5; // no interests specified
+    } else if (matchScores.length === 0) {
+      interestScore = 0.0;
+    } else {
+      matchScores.sort((a, b) => b - a);
+      interestScore = matchScores.length >= 2
+        ? (matchScores[0] + matchScores[1]) / 2
+        : matchScores[0];
+    }
+
+    const distance = Math.max(0, 1 - c.distance_m / radiusM);
+    const time = this.timeFit(c, dto.timeWindow);
+    const quality = Number(c.quality_score) || 0.5;
+    const source = 0.6;
+
+    const score =
+      WEIGHTS.interestMatch * interestScore +
+      WEIGHTS.distanceDecay * distance +
+      WEIGHTS.timeFit * time +
+      WEIGHTS.cardQuality * quality +
+      WEIGHTS.sourceConfidence * source;
+
+    return {
+      ...c,
+      score,
+      interestScore,
+      primaryTags,
+      secondaryTags,
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Data fetching
+  // ---------------------------------------------------------------------------
 
   private async fetchPlaces(lat: number, lng: number, radiusM: number): Promise<CandidateRow[]> {
     const rows = await this.dataSource.query(
@@ -129,14 +274,15 @@ export class RecommendationService {
           ST_MakePoint($2, $1)::geography
         ) AS distance_m,
         v.address, p.rating, p.rating_count, p.indoor, p.price_level,
-        p.quality_score, p.opening_hours, p.photos, v.website
+        p.quality_score, p.status, p.opening_hours, p.photos, v.website
       FROM places p
       JOIN venues v ON p.venue_id = v.id
-      WHERE ST_DWithin(
-        ST_MakePoint(v.lng, v.lat)::geography,
-        ST_MakePoint($2, $1)::geography,
-        $3
-      )
+      WHERE p.status = 'active'
+        AND ST_DWithin(
+          ST_MakePoint(v.lng, v.lat)::geography,
+          ST_MakePoint($2, $1)::geography,
+          $3
+        )
       ORDER BY distance_m
       LIMIT 200`,
       [lat, lng, radiusM],
@@ -177,36 +323,9 @@ export class RecommendationService {
     return rows;
   }
 
-  private score(c: CandidateRow, dto: DiscoverRequestDto, radiusM: number): number {
-    const interest = this.interestMatch(c, dto.profile.interests);
-    const distance = Math.max(0, 1 - c.distance_m / radiusM);
-    const time = this.timeFit(c, dto.timeWindow);
-    const quality = Number(c.quality_score) || 0.5;
-    const source = 0.6; // OSM default
-
-    return (
-      WEIGHTS.interestMatch * interest +
-      WEIGHTS.distanceDecay * distance +
-      WEIGHTS.timeFit * time +
-      WEIGHTS.cardQuality * quality +
-      WEIGHTS.sourceConfidence * source
-    );
-  }
-
-  private interestMatch(c: CandidateRow, interests: Record<string, number>): number {
-    if (!interests || Object.keys(interests).length === 0) return 0.5;
-
-    const tags = c.tags ?? [];
-    const matches = tags
-      .map((t) => interests[t] ?? 0)
-      .filter((w) => w > 0);
-
-    if (matches.length === 0) return 0.1; // serendipity floor
-    matches.sort((a, b) => b - a);
-    return matches.length >= 2
-      ? (matches[0] + matches[1]) / 2
-      : matches[0];
-  }
+  // ---------------------------------------------------------------------------
+  // Helpers
+  // ---------------------------------------------------------------------------
 
   private timeFit(c: CandidateRow, timeWindow: { from: string; to: string }): number {
     if (c.type === 'event' && c.starts_at) {
@@ -218,33 +337,28 @@ export class RecommendationService {
       if (start <= to) return 0.7;
       return 0.3;
     }
-    // Places: assume open for now (TODO: parse opening_hours)
     return 0.8;
   }
 
   private applyDiversity(
-    scored: (CandidateRow & { score: number })[],
-  ): (CandidateRow & { score: number })[] {
+    scored: ScoredCandidate[],
+  ): ScoredCandidate[] {
     if (scored.length <= 3) return scored;
 
-    const result: (CandidateRow & { score: number })[] = [];
-    const used = new Set<string>();
+    const result: ScoredCandidate[] = [];
     const chainCount = new Map<string, number>();
 
     for (const card of scored) {
-      // Chain cap: ≤1 per chain in top 20
       if ((card as any).chain_key && result.length < 20) {
         const count = chainCount.get((card as any).chain_key) ?? 0;
         if (count >= 1) continue;
         chainCount.set((card as any).chain_key, count + 1);
       }
 
-      // Category spread: ≤2 same category consecutive
       if (result.length >= 2) {
         const prev1 = result[result.length - 1].category;
         const prev2 = result[result.length - 2].category;
         if (prev1 === card.category && prev2 === card.category) {
-          // defer — add at end
           continue;
         }
       }
@@ -256,8 +370,9 @@ export class RecommendationService {
   }
 
   private generateExplanations(
-    c: CandidateRow & { score: number },
+    c: ScoredCandidate,
     dto: DiscoverRequestDto,
+    expandedWeights: Map<string, number>,
   ): { type: string; label: string }[] {
     const explanations: { type: string; label: string; priority: number }[] = [];
 
@@ -273,28 +388,48 @@ export class RecommendationService {
       }
     }
 
-    // Context
+    // Walk time
     if (c.distance_m <= 2000) {
       const walkMin = Math.round((c.distance_m / WALK_SPEED_M_PER_MIN) * STREET_CURVE_FACTOR);
       explanations.push({ type: 'walk_time', label: `${walkMin} мин пешком`, priority: 2 });
     }
 
-    // Relevance
+    // Price
     if (c.price_level === 0 || (c.price_min != null && c.price_min === 0)) {
       explanations.push({ type: 'free', label: 'Бесплатно', priority: 3 });
     } else if (dto.profile.budgetMax != null && c.price_min != null && c.price_min <= dto.profile.budgetMax) {
       explanations.push({ type: 'budget_fit', label: 'В бюджете', priority: 3 });
     }
 
-    const tags = c.tags ?? [];
-    const interests = dto.profile.interests ?? {};
-    const matchedTag = tags.find((t) => (interests[t] ?? 0) > 0.3);
-    if (matchedTag) {
-      explanations.push({
-        type: 'matches_interest',
-        label: `Тебе нравится: ${matchedTag}`,
-        priority: 4,
+    // Interest match — use primary tags for meaningful explanation
+    if (c.primaryTags.length > 0) {
+      // Find the user-facing interest name that caused the match
+      const interests = dto.profile.interests ?? {};
+      const matchedInterest = Object.keys(interests).find((interest) => {
+        const synonyms = INTEREST_SYNONYMS[interest] ?? [interest];
+        return c.primaryTags.some((t) => synonyms.includes(t) || t === interest);
       });
+      if (matchedInterest) {
+        explanations.push({
+          type: 'matches_interest',
+          label: `Тебе нравится: ${matchedInterest}`,
+          priority: 4,
+        });
+      }
+    }
+
+    // Secondary tags hint — "also has: café"
+    if (c.secondaryTags.length > 0 && c.primaryTags.length > 0) {
+      const humanReadable = c.secondaryTags
+        .filter((t) => ['food', 'cafe', 'restaurant', 'bar', 'bath', 'swimming', 'gym'].includes(t))
+        .slice(0, 1);
+      if (humanReadable.length > 0) {
+        explanations.push({
+          type: 'also_has',
+          label: `Также: ${humanReadable[0]}`,
+          priority: 6,
+        });
+      }
     }
 
     // Quality
@@ -302,7 +437,6 @@ export class RecommendationService {
       explanations.push({ type: 'highly_rated', label: 'Высокий рейтинг', priority: 5 });
     }
 
-    // Sort by priority, take top 3
     explanations.sort((a, b) => a.priority - b.priority);
     return explanations.slice(0, 3).map(({ type, label }) => ({ type, label }));
   }

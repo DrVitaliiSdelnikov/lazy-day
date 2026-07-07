@@ -51,6 +51,9 @@ export class Place {
   @Column({ type: 'numeric', precision: 3, scale: 2, default: 0.5 })
   qualityScore!: number;
 
+  @Column({ type: 'varchar', length: 20, default: 'active' })
+  status!: string;
+
   @Column({ type: 'boolean', default: false })
   isChain!: boolean;
 

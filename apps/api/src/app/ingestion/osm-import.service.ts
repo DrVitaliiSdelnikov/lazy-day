@@ -105,6 +105,9 @@ export class OsmImportService {
     const mapped = mapOsmCategory(tags);
     if (!mapped) return false;
 
+    // Detect closed/defunct venues from OSM tags
+    const status = this.detectStatus(tags);
+
     const osmId = `${el.type}/${el.id}`;
     const contentHash = createHash('md5')
       .update(JSON.stringify({ name, lat, lon, tags }))
@@ -194,6 +197,7 @@ export class OsmImportService {
         existingPlace.category = mapped.category;
         existingPlace.tags = mapped.tags;
         existingPlace.indoor = mapped.indoor;
+        existingPlace.status = status;
         existingPlace.openingHours = tags['opening_hours']
           ? { raw: tags['opening_hours'] }
           : undefined;
@@ -206,6 +210,7 @@ export class OsmImportService {
           category: mapped.category,
           tags: mapped.tags,
           indoor: mapped.indoor,
+          status,
           openingHours: tags['opening_hours']
             ? { raw: tags['opening_hours'] }
             : undefined,
@@ -224,5 +229,21 @@ export class OsmImportService {
     }
 
     return true;
+  }
+
+  /**
+   * Detect venue status from OSM tags.
+   * See docs/data-quality.md for tag patterns.
+   */
+  private detectStatus(tags: Record<string, string>): string {
+    // disused:amenity, disused:shop, disused:leisure etc.
+    const disusedKeys = Object.keys(tags).filter((k) => k.startsWith('disused:') || k.startsWith('demolished:'));
+    if (disusedKeys.length > 0) return 'permanently_closed';
+
+    // opening_hours explicitly set to closed/off
+    const hours = tags['opening_hours']?.toLowerCase().trim();
+    if (hours === 'closed' || hours === 'off') return 'permanently_closed';
+
+    return 'active';
   }
 }
