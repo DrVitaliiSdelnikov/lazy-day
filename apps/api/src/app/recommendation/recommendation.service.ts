@@ -71,6 +71,8 @@ interface CandidateRow {
   id: string;
   type: 'place' | 'event';
   title: string;
+  title_en?: string;
+  title_ka?: string;
   category: string;
   tags: string[];
   lat: number;
@@ -97,6 +99,65 @@ interface CandidateRow {
   ticket_url?: string;
   price_min?: number;
   price_max?: number;
+}
+
+/**
+ * Localized explanation labels.
+ */
+const EXPLANATION_LABELS: Record<string, Record<string, string>> = {
+  open_now: { ru: 'Сейчас открыто', en: 'Open now', ka: 'ახლა ღიაა' },
+  free: { ru: 'Бесплатно', en: 'Free', ka: 'უფასო' },
+  budget_fit: { ru: 'В бюджете', en: 'Within budget', ka: 'ბიუჯეტში' },
+  highly_rated: { ru: 'Высокий рейтинг', en: 'Highly rated', ka: 'მაღალი რეიტინგი' },
+  pet_friendly: { ru: 'Можно с питомцем', en: 'Pet friendly', ka: 'შინაურ ცხოველებთან ერთად' },
+  company_couple: { ru: 'Подходит для пары', en: 'Great for couples', ka: 'წყვილისთვის' },
+  company_family: { ru: 'Для всей семьи', en: 'Family friendly', ka: 'ოჯახისთვის' },
+  company_friends: { ru: 'Отлично с друзьями', en: 'Great with friends', ka: 'მეგობრებთან ერთად' },
+};
+
+function l(key: string, locale: string): string {
+  return EXPLANATION_LABELS[key]?.[locale] ?? EXPLANATION_LABELS[key]?.['en'] ?? key;
+}
+
+function lInterest(interest: string, locale: string): string {
+  const map: Record<string, Record<string, string>> = {
+    nature: { ru: 'природа', en: 'nature', ka: 'ბუნება' },
+    bath: { ru: 'бани', en: 'baths', ka: 'აბანოები' },
+    spa: { ru: 'спа', en: 'spa', ka: 'სპა' },
+    food: { ru: 'еда', en: 'food', ka: 'საჭმელი' },
+    nightlife: { ru: 'ночная жизнь', en: 'nightlife', ka: 'ღამის ცხოვრება' },
+    culture: { ru: 'культура', en: 'culture', ka: 'კულტურა' },
+    sports: { ru: 'спорт', en: 'sports', ka: 'სპორტი' },
+    shopping: { ru: 'шоппинг', en: 'shopping', ka: 'შოპინგი' },
+    entertainment: { ru: 'развлечения', en: 'entertainment', ka: 'გართობა' },
+    family: { ru: 'семья', en: 'family', ka: 'ოჯახი' },
+  };
+  return map[interest]?.[locale] ?? interest;
+}
+
+function lWalkTime(minutes: number, locale: string): string {
+  if (locale === 'ka') return `${minutes} წთ ფეხით`;
+  if (locale === 'en') return `${minutes} min walk`;
+  return `${minutes} мин пешком`;
+}
+
+function lMatchesInterest(interest: string, locale: string): string {
+  const name = lInterest(interest, locale);
+  if (locale === 'ka') return `მოგწონს: ${name}`;
+  if (locale === 'en') return `You like: ${name}`;
+  return `Тебе нравится: ${name}`;
+}
+
+function lStartsIn(minutes: number, locale: string): string {
+  if (locale === 'ka') return `იწყება ${minutes} წთ-ში`;
+  if (locale === 'en') return `Starts in ${minutes} min`;
+  return `Начало через ${minutes} мин`;
+}
+
+function lAlsoHas(tag: string, locale: string): string {
+  if (locale === 'ka') return `ასევე: ${tag}`;
+  if (locale === 'en') return `Also: ${tag}`;
+  return `Также: ${tag}`;
 }
 
 /** Weight threshold: interests >= this are "I want this" (hard filter). */
@@ -191,10 +252,15 @@ export class RecommendationService {
         ? checkOpenStatus(c.opening_hours, timeMid)
         : undefined;
 
+      // Resolve title by locale: en → name_en, ka → name_ka, ru → name (default)
+      const title = dto.locale === 'en' ? (c.title_en ?? c.title)
+        : dto.locale === 'ka' ? (c.title_ka ?? c.title)
+        : c.title;
+
       return {
         id: c.id,
         type: c.type,
-        title: c.title,
+        title,
         category: c.category,
         lat: c.lat,
         lng: c.lng,
@@ -397,7 +463,8 @@ export class RecommendationService {
   private async fetchPlaces(lat: number, lng: number, radiusM: number): Promise<CandidateRow[]> {
     const rows = await this.dataSource.query(
       `SELECT
-        p.id, 'place' AS type, v.name AS title, p.category, p.tags,
+        p.id, 'place' AS type, v.name AS title, v.name_en AS title_en, v.name_ka AS title_ka,
+        p.category, p.tags,
         v.lat, v.lng,
         ST_Distance(
           ST_MakePoint(v.lng, v.lat)::geography,
@@ -515,16 +582,13 @@ export class RecommendationService {
     expandedWeights: Map<string, number>,
   ): { type: string; label: string }[] {
     const explanations: { type: string; label: string; priority: number }[] = [];
+    const locale = dto.locale;
 
-    // Time-sensitive (highest priority)
+    // Time-sensitive
     if (c.type === 'event' && c.starts_at) {
       const minutesUntil = (new Date(c.starts_at).getTime() - Date.now()) / 60000;
       if (minutesUntil > 0 && minutesUntil <= 120) {
-        explanations.push({
-          type: 'starts_in',
-          label: `Начало через ${Math.round(minutesUntil)} мин`,
-          priority: 1,
-        });
+        explanations.push({ type: 'starts_in', label: lStartsIn(Math.round(minutesUntil), locale), priority: 1 });
       }
     }
 
@@ -533,78 +597,66 @@ export class RecommendationService {
       const timeMid = new Date((new Date(dto.timeWindow.from).getTime() + new Date(dto.timeWindow.to).getTime()) / 2);
       const status = checkOpenStatus(c.opening_hours, timeMid);
       if (status === 'open') {
-        explanations.push({ type: 'open_now', label: 'Сейчас открыто', priority: 1 });
+        explanations.push({ type: 'open_now', label: l('open_now', locale), priority: 1 });
       }
     }
 
     // Walk time
     if (c.distance_m <= 2000) {
       const walkMin = Math.round((c.distance_m / WALK_SPEED_M_PER_MIN) * STREET_CURVE_FACTOR);
-      explanations.push({ type: 'walk_time', label: `${walkMin} мин пешком`, priority: 2 });
+      explanations.push({ type: 'walk_time', label: lWalkTime(walkMin, locale), priority: 2 });
     }
 
     // Price
     if (c.price_level === 0 || (c.price_min != null && c.price_min === 0)) {
-      explanations.push({ type: 'free', label: 'Бесплатно', priority: 3 });
+      explanations.push({ type: 'free', label: l('free', locale), priority: 3 });
     } else if (dto.profile.budgetMax != null && c.price_min != null && c.price_min <= dto.profile.budgetMax) {
-      explanations.push({ type: 'budget_fit', label: 'В бюджете', priority: 3 });
+      explanations.push({ type: 'budget_fit', label: l('budget_fit', locale), priority: 3 });
     }
 
-    // Interest match — use primary tags for meaningful explanation
+    // Interest match
     if (c.primaryTags.length > 0) {
-      // Find the user-facing interest name that caused the match
       const interests = dto.profile.interests ?? {};
       const matchedInterest = Object.keys(interests).find((interest) => {
         const synonyms = INTEREST_SYNONYMS[interest] ?? [interest];
         return c.primaryTags.some((t) => synonyms.includes(t) || t === interest);
       });
       if (matchedInterest) {
-        explanations.push({
-          type: 'matches_interest',
-          label: `Тебе нравится: ${matchedInterest}`,
-          priority: 4,
-        });
+        explanations.push({ type: 'matches_interest', label: lMatchesInterest(matchedInterest, locale), priority: 4 });
       }
     }
 
     // Company fit
     if (c.companyFit === 'boosted' && dto.profile.company) {
-      const labels: Record<string, string> = {
-        couple: 'Подходит для пары',
-        family: 'Для всей семьи',
-        friends: 'Отлично с друзьями',
-      };
-      const label = labels[dto.profile.company];
-      if (label) {
-        explanations.push({ type: 'company_fit', label, priority: 4 });
+      const key = `company_${dto.profile.company}`;
+      if (EXPLANATION_LABELS[key]) {
+        explanations.push({ type: 'company_fit', label: l(key, locale), priority: 4 });
       }
     }
 
-    // Pet-friendly hint
+    // Pet-friendly
     if (dto.profile.hasPet && c.companyFit === 'boosted') {
+      const attrs = c.attributes as Record<string, unknown> | undefined;
       const hasPetBoostTag = (c.tags ?? []).some((t) => PET_MODIFIER.boost.includes(t));
-      if (hasPetBoostTag) {
-        explanations.push({ type: 'pet_friendly', label: 'Можно с питомцем', priority: 4 });
+      if (attrs?.['allowsDogs'] === true || hasPetBoostTag) {
+        explanations.push({ type: 'pet_friendly', label: l('pet_friendly', locale), priority: 4 });
       }
     }
 
-    // Secondary tags hint — "also has: café"
+    // Secondary tags hint
     if (c.secondaryTags.length > 0 && c.primaryTags.length > 0) {
       const humanReadable = c.secondaryTags
         .filter((t) => ['food', 'cafe', 'restaurant', 'bar', 'bath', 'swimming', 'gym'].includes(t))
         .slice(0, 1);
       if (humanReadable.length > 0) {
-        explanations.push({
-          type: 'also_has',
-          label: `Также: ${humanReadable[0]}`,
-          priority: 6,
-        });
+        explanations.push({ type: 'also_has', label: lAlsoHas(humanReadable[0], locale), priority: 6 });
       }
     }
 
     // Quality
-    if (c.rating && Number(c.rating) >= 4.5) {
-      explanations.push({ type: 'highly_rated', label: 'Высокий рейтинг', priority: 5 });
+    const rating = c.google_rating ? Number(c.google_rating) : c.rating ? Number(c.rating) : 0;
+    if (rating >= 4.5) {
+      explanations.push({ type: 'highly_rated', label: l('highly_rated', locale), priority: 5 });
     }
 
     explanations.sort((a, b) => a.priority - b.priority);
