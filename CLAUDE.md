@@ -61,16 +61,11 @@ Migrations: `apps/api/src/app/database/migrations/` (SQL, 001-010). Runner: `npx
 - **Company context** (2026-07-07): tag boost/penalty matrix per company type. Family penalizes nightlife, couple boosts viewpoints, friends boosts bars.
 - **Pet-friendly** (2026-07-07): `hasPet` flag boosts outdoor, penalizes indoor venues. Toggle in context bar.
 - **Opening hours** (2026-07-07): OSM `opening_hours` parser. Closed venues get `timeFit=0.0` → demoted/filtered. Open venues get "Сейчас открыто" + `openStatus` in response.
+- **Interest weight semantics** (2026-07-07): weight >= 0.7 = strict (hard filter), 0.3-0.6 = soft (scoring boost only), < 0.3 = ignored.
 
 ## TODO / Known Issues (prioritized)
 
-### 1. Interest weight semantics
-- Currently all weights treated equally (1.0 and 0.3 both = hard filter). Future: weight >= 0.7 = hard filter ("I want this"), < 0.7 = soft boost ("I prefer this").
-- Impact: medium. Enables proportional result mix (70% nature, 30% food).
-- Effort: small — logic change in `scoreCandidate()`.
-- See `docs/research/categorization-and-ranking-strategy.md` §3.
-
-### 2. Google Places API integration
+### 1. Google Places API integration
 - Solves 3 problems at once:
   - **opening_hours coverage**: 849/2976 places have hours from OSM → Google has ~95%
   - **venue-level attributes**: `allowsDogs`, `goodForChildren`, `wheelchairAccessible` → replace proxy tag logic with facts

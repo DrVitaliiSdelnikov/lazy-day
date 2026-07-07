@@ -42,13 +42,29 @@ sports   -> [gym, sports]
 ```
 Note: `wellness` tag intentionally excluded — shared between spa and gym, causes false matches.
 
+### Interest Weight Semantics
+
+Weight value determines how the interest affects filtering:
+
+| Weight | Semantics | Behavior |
+|---|---|---|
+| 0.7 – 1.0 | "I want this" (strict) | Hard filter: venue MUST match at least one strict tag |
+| 0.3 – 0.6 | "I prefer this" (soft) | Scoring boost only, no filtering |
+| 0.0 – 0.2 | Neutral / ignored | Interest excluded from matching entirely |
+
 ### Scoring
 
-Interest score = average of top 2 matching tag weights (from user's interest values 0.0-1.0). No match = 0.0.
+Interest score = average of top 2 matching tag weights. No match = 0.0.
 
-### Hard Filter (no serendipity)
+Examples:
+- `{ nature: 1.0, food: 0.3 }` → hard filter by nature (strict), food boosts score but doesn't add venues
+- `{ nature: 0.5, food: 0.5 }` → all soft, no hard filter, both contribute to scoring mix
+- `{ food: 0.2 }` → below threshold, treated as "no interests" (show everything)
 
-When user has explicit interests, candidates with **zero primary tags are excluded**. No serendipity pool — research (see `docs/research/categorization-and-ranking-strategy.md`) shows random unrelated venues are noise, not discovery. True serendipity must be *unexpected but relevant* (within the interest domain).
+### Hard Filter
+
+When strict interests exist (weight >= 0.7): venues must match at least one strict tag.
+When only soft interests: no hard filter, just scoring.
 
 ### Adaptive Radius Fill
 

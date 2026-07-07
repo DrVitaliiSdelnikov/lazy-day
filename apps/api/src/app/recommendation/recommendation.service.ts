@@ -95,6 +95,11 @@ interface CandidateRow {
   price_max?: number;
 }
 
+/** Weight threshold: interests >= this are "I want this" (hard filter). */
+const STRICT_INTEREST_THRESHOLD = 0.7;
+/** Weight threshold: interests >= this contribute to scoring. Below = ignored. */
+const MIN_INTEREST_THRESHOLD = 0.3;
+
 /** Candidate enriched with dynamic category classification. */
 interface ScoredCandidate extends CandidateRow {
   score: number;
@@ -103,6 +108,8 @@ interface ScoredCandidate extends CandidateRow {
   primaryTags: string[];
   /** Tags that did NOT match — secondary traits of the venue. */
   secondaryTags: string[];
+  /** Whether this candidate matched at least one strict interest (weight >= 0.7). */
+  hasStrictMatch: boolean;
   /** Company modifier applied: 'boosted' | 'penalized' | null. */
   companyFit: 'boosted' | 'penalized' | null;
 }
@@ -117,12 +124,14 @@ export class RecommendationService {
     const baseRadiusM = dto.radiusM ?? 5000;
     const hiddenIds = dto.hiddenIds ?? [];
     const interests = dto.profile.interests;
-    const hasInterests = interests && Object.keys(interests).length > 0;
-
-    // Build expanded interest->tag map once for the entire request
-    const expandedWeights = hasInterests
+    // Build expanded interest->tag maps once for the entire request
+    // Only interests with weight >= 0.3 are included; below = "neutral", ignored
+    const expandedWeights = interests
       ? this.buildExpandedWeights(interests)
       : new Map<string, number>();
+    const hasInterests = expandedWeights.size > 0;
+    const hasStrictInterests = hasInterests &&
+      [...expandedWeights.values()].some((w) => w >= STRICT_INTEREST_THRESHOLD);
 
     // Adaptive radius: expand if too few relevant results
     let radiusM = baseRadiusM;
@@ -149,8 +158,12 @@ export class RecommendationService {
       // Score + classify primary/secondary tags
       scored = candidates.map((c) => this.scoreCandidate(c, dto, radiusM, expandedWeights));
 
-      // Interest hard filter: keep only candidates with at least one primary tag
-      if (hasInterests) {
+      // Interest hard filter:
+      // - If strict interests exist (weight >= 0.7): venue must match at least one strict tag
+      // - If only soft interests (all < 0.7): no hard filter, just scoring
+      if (hasStrictInterests) {
+        scored = scored.filter((c) => c.hasStrictMatch);
+      } else if (hasInterests) {
         scored = scored.filter((c) => c.primaryTags.length > 0);
       }
 
@@ -222,10 +235,15 @@ export class RecommendationService {
    * Build expanded tag->weight map from user interests + synonyms.
    * Called once per request, reused for all candidates.
    */
+  /**
+   * Build expanded tag->weight map from user interests + synonyms.
+   * Only includes interests with weight >= MIN_INTEREST_THRESHOLD (0.3).
+   * Below that threshold = "neutral", effectively ignored.
+   */
   private buildExpandedWeights(interests: Record<string, number>): Map<string, number> {
     const expanded = new Map<string, number>();
     for (const [interest, weight] of Object.entries(interests)) {
-      if (weight <= 0) continue;
+      if (weight < MIN_INTEREST_THRESHOLD) continue;
       expanded.set(interest, Math.max(expanded.get(interest) ?? 0, weight));
       const synonyms = INTEREST_SYNONYMS[interest];
       if (synonyms) {
@@ -257,11 +275,14 @@ export class RecommendationService {
     const secondaryTags: string[] = [];
     const matchScores: number[] = [];
 
+    let hasStrictMatch = false;
+
     for (const tag of tags) {
       const weight = expandedWeights.get(tag);
       if (weight != null && weight > 0) {
         primaryTags.push(tag);
         matchScores.push(weight);
+        if (weight >= STRICT_INTEREST_THRESHOLD) hasStrictMatch = true;
       } else {
         secondaryTags.push(tag);
       }
@@ -330,6 +351,7 @@ export class RecommendationService {
       score,
       interestScore,
       companyFit,
+      hasStrictMatch,
       primaryTags,
       secondaryTags,
     };
