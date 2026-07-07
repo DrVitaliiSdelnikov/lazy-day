@@ -132,58 +132,79 @@ Based on UX review analysis (see `docs/research/ux-improvements-analysis.md`).
 
 | # | Task | Impact | Effort | Status |
 |---|---|---|---|---|
-| 1 | **Events ingestion** — TKT.ge, opera.ge, Fabrika, KHIDI, biletebi.ge. Parsers + venue matching + dedup + mixed feed | Highest — transforms "where can I go" into "where should I go tonight" | Heavy | Next |
-| 2 | **Mood presets + availability sort** — preset shortcuts ("Спокойный вечер" → interest+company combo) + sort open-first | High UX | Small | — |
-| 3 | **Compact API + @defer map** — `?compact=1` endpoint, map in @defer/tab | High for weak devices | Small | — |
-| 4 | **Visited status + behavioral start** — extend interactions, start accumulating signals | Medium (foundation) | Medium | — |
+| 1 | **Events: SerpApi Google Events** — one adapter for any city, test Tbilisi coverage vs local sites | Highest | Small | Next |
+| 2 | **Events: YOLO.ge parser** — Cheerio, static HTML, Allow: / | High (local depth) | Small | — |
+| 3 | **Visited + behavioral signals** — extend interactions, "been here", start data accumulation | High (foundation for moat) | Medium | — |
+| 4 | **Mood presets** — shortcuts in toolbar + availability sort (open-first) | High UX | Small | — |
 | 5 | **Deploy** — Cloudflare Pages + Hetzner VPS | High (go live) | Medium | — |
 
 ### v1 (August — September 2026)
 
 | # | Task | Notes |
 |---|---|---|
-| 6 | **Search/autocomplete** — find venues/events by name | Critical once events exist |
-| 7 | **Availability sections** — group by "open now / starts soon / later". *Reconsider*: may fragment short lists, test with >15 results only |
-| 8 | **Event sources wave 2** — Bassiani, museum.ge, teatri.ge, Red Events, Georgia Travel | Adds recall and niche quality |
-| 9 | **Smart empty states** — explain why few results, suggest fallbacks | Quick UX win |
-| 10 | **Basic offline cache** — SW cache last results + saved. Not district packs yet |
-| 11 | **Collections + share links** — lists "для вечера", "с детьми", share URL |
+| 6 | **Events: TKT.ge** (Puppeteer) — deep Tbilisi coverage | Only if Google Events gap > 30% |
+| 7 | **Community layer MVP** — micro-tips, "been here" badges, save collections | Proprietary data = competitive moat |
+| 8 | **Search/autocomplete** — find venues/events by name | Critical with events |
+| 9 | **Conversational discovery** — one smart question per session to refine context | TripAdvisor showed +10% saves |
+| 10 | **Compact API + @defer map** — `?compact=1`, map in @defer/tab | Weak-device discipline |
+| 11 | **Basic offline cache** — SW cache last results + saved | — |
 
 ### v2 (October+ 2026)
 
 | # | Task | Notes |
 |---|---|---|
-| 12 | **Behavioral re-ranking** — click/save/hide patterns → personalized scoring | Needs interaction data from MVP users |
-| 13 | **Route-aware bundles** — "кофе перед парком", "ужин после выставки" | Multi-stop planner, travel-time weighting |
-| 14 | **District offline packs** — precomputed area bundles. *Reconsider*: may be overkill, basic SW cache may suffice |
-| 15 | **Event sources wave 3** — Eventbrite, Meetup, Resident Advisor, Telegram monitoring |
-| 16 | **Push notifications** — "3 события под твой вкус рядом" |
-| 17 | **Community reports** — "место закрыто? сообщить" |
-| 18 | **City expansion readiness** — multi-city data model |
+| 12 | **Behavioral re-ranking** — personalized scoring from accumulated signals | Needs MVP user data |
+| 13 | **Gamification (light)** — discovery badges, exploration streaks, neighborhood progress | Boosts retention |
+| 14 | **Journey planner** — "coffee → park → dinner" multi-stop plan | High perceived value |
+| 15 | **Weather-aware suggestions** — "rainy today → indoor exhibition" | Proactive intelligence |
+| 16 | **Push: "Tonight near you"** — contextual proactive notifications | Re-engagement |
+| 17 | **City expansion** — add 3-5 cities via CityConfig (no new code for Tier 1 events) | Scale |
+| 18 | **Local curator network** — trusted locals create curated collections | Deep moat |
+
+### Product Pillar Mapping
+
+| Pillar | MVP | v1 | v2 |
+|---|---|---|---|
+| **Intelligence** (scoring, context, explanations) | Done ✓ | Conversational discovery | Behavioral re-ranking |
+| **Proprietary data** (not from Google) | Visited + behavioral start | Community tips, collections | Curator network |
+| **Unique sources** (beyond Google) | YOLO.ge, opera.ge | TKT.ge, Telegram monitoring | Yandex cross-check |
+| **Experience** (beyond search) | Mood presets | Search, offline | Journey planner, gamification, weather |
+| **Proactive** (push, not pull) | — | — | Push notifications, calendar |
+
+### Competitive Moat Timeline
+
+```
+Month 1-3: Intelligence advantage (scoring, explanations, compound context)
+Month 3-6: Behavioral data advantage (save/hide/click patterns from real users)
+Month 6-12: Community data advantage (tips, collections, visited badges)
+Month 12+: Local curator network + multi-city = sustainable moat
+```
 
 ### Items marked "Reconsider"
 
-These were proposed in the UX review but have open questions:
-
-- **Mood presets vs interest chips** — presets are attractive UX but mood ≠ interest. Compromise: presets as shortcuts, chips for fine-tuning. Need user testing.
-- **Availability sections** — may fragment short result lists (8-12 cards into 2-3 per section). Better as sort + badge until result counts grow. A/B test needed.
-- **District offline packs** — heavy infrastructure for MVP. Basic SW cache covers 90% of use cases.
-- **Fast-start onboarding "2 screens"** — current 3-step flow works. Reducing to 2 may lose pet/company signal. Test both.
+- **Availability sections** — may fragment short lists. Better as sort + badge. A/B test when results > 15
+- **District offline packs** — overkill for MVP. Basic SW cache covers 90%
+- **Full review system** — Google has millions of reviews. Don't compete. Micro-tips instead
+- **Map-centric UI** — Google does this better. Stay list-first
 
 ## Done (this session, 2026-07-06 → 07)
 
-Frontend polish, scoring rebuild, Google Places enrichment, localization — see "Resolved Issues" section above.
+Frontend polish, scoring rebuild, Google Places enrichment (3 phases), localization, events infrastructure + opera.ge adapter, responsive grid — see "Resolved Issues" section above.
 
 ## Research Documents
 
-- `docs/research/ux-improvements-analysis.md` — UX review analysis, agreements, disagreements, adjusted priorities
-- `docs/research/categorization-and-ranking-strategy.md` — serendipity, multi-category, interest weights, cold start
-- `docs/research/company-context-strategy.md` — company tag matrix, venue attributes, industry analysis
-- `docs/research/google-places-api-integration.md` — pricing, fields, enrichment strategy, results
+- `docs/research/product-differentiation.md` — why LazyDay ≠ Google Maps, 5 product pillars, competitive moat
+- `docs/research/events-unified-strategy.md` — layered events architecture (aggregator + local + monitoring)
+- `docs/research/events-scalable-strategy.md` — SerpApi Google Events, City-as-Config model
+- `docs/research/events-ingestion-plan.md` — opera.ge adapter, source analysis, category mapping
+- `docs/research/ux-improvements-analysis.md` — UX review analysis, agreements, disagreements
+- `docs/research/categorization-and-ranking-strategy.md` — serendipity, multi-category, interest weights
+- `docs/research/company-context-strategy.md` — company tag matrix, venue attributes
+- `docs/research/google-places-api-integration.md` — pricing, fields, enrichment results
 
 ## Technical Docs
 
 - `docs/scoring.md` — full scoring formula, all modifiers, explanations table
 - `docs/data-quality.md` — OSM pipeline, tag vocabulary, venue status
 - `docs/api-endpoints.md` — API reference
-- `docs/database.md` — tables, migrations (001-011)
+- `docs/database.md` — tables, migrations (001-012)

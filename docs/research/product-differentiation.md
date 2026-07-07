@@ -137,6 +137,87 @@ Ask: "Can the user get this from Google Maps?"
 - Behavioral learning (save/hide/click → better over time)
 - Community layer (tips, collections, local curators)
 
+## Five Product Pillars Beyond Maps
+
+### Pillar 1: Conversational Discovery
+Not "search and filter" but "ask and receive". TripAdvisor showed +10% saved recommendations after adding interactive clarifying questions ("Have you booked a hotel?"). LazyDay should:
+- Ask one smart question per session to refine context ("Planning for tonight or weekend?")
+- Offer contextual entry points ("You're near the opera — want to see what's on?")
+- Progressive disclosure: don't front-load filters, reveal them as user explores
+
+### Pillar 2: Community Trust Layer
+75% of tourists use reviews when planning. But we shouldn't compete with Google's millions of reviews. Instead:
+- **Micro-tips**: "Best table: terrace left side" / "Come before 19:00 to avoid queue" — short, actionable, contextual
+- **Friend signals**: "Your friend saved this" / "Popular with locals this week"
+- **Insider knowledge**: atmosphere of neighborhoods, hidden gems, seasonal advice — editorial quality that no map provides
+- **"Been here" badges**: user marks visited → we stop recommending it → we learn preferences
+
+### Pillar 3: Gamification for Exploration
+Gamification satisfies needs for competence and autonomy. Light touches, not heavy systems:
+- **Discovery badges**: "Explored 5 parks" / "Tried 3 cuisines" / "Found a hidden gem"
+- **Streak rewards**: "3 days exploring → unlock neighborhood insider tips"
+- **Challenges**: "Visit a museum this week" — contextual, not arbitrary
+- **Progress map**: visual "heat map" of explored vs unexplored neighborhoods
+
+Don't overdo — LazyDay is a chill discovery app, not a competitive game.
+
+### Pillar 4: Reliability Signals
+Multi-source data needs visible trust:
+- **Freshness indicator**: "Hours verified 2 days ago" vs "Hours may be outdated"
+- **Source badge**: "Google ✓ + Yandex ✓" = high confidence vs single source
+- **Real-time alerts**: "This restaurant just closed" / "Event cancelled"
+- **Data confidence score**: internal `data_confidence` field → external "Verified" badge
+
+### Pillar 5: Proactive Intelligence
+Move from reactive ("user opens app → gets results") to proactive:
+- **Weather-aware**: "Rainy today → here's the best indoor exhibition"
+- **Calendar integration**: "You saved ballet on Thursday → reminder + dinner suggestion nearby"
+- **"Tonight near you" push**: periodic contextual notification (with permission)
+- **Trip planner**: save multiple places → auto-generate optimized route
+
+## User Scenarios (validation)
+
+### Scenario 1: Family Evening
+Family + 2 kids open app. Interests: parks, food. Company: family.
+→ LazyDay shows 3 open playgrounds with "Для семьи" badge, 2 family restaurants with outdoor seating, 1 puppet show starting in 1 hour.
+→ User taps save on playground → earns "Исследователь парков" badge.
+→ Next time: similar parks ranked higher (behavioral signal).
+
+Google Maps equivalent: search "playgrounds", then search "family restaurants", then search "kids events" — three separate searches, no explanations, no badges.
+
+### Scenario 2: Couple Date Planning
+Couple opens app. Interests: culture. Company: couple.
+→ LazyDay: "Ballet tonight at 19:00 • Romantic restaurant with terrace 7 min from opera → Wine bar after"
+→ One-tap save → share plan with partner via link.
+
+Google Maps equivalent: impossible without manual multi-search and route planning.
+
+### Scenario 3: Solo Traveler with Dog
+Tourist, first time in Tbilisi, has a dog. Interests: nature, food. hasPet: true.
+→ LazyDay: parks with "Можно с собакой" (fact from Google), cafes with outdoor seating, walking routes.
+→ Explanations in English: "Pet friendly • Open now • 11 min walk • Highly rated"
+→ Offline cache of saved places for spotty connection.
+
+Google Maps equivalent: no "pet friendly" filter. No combined context. No explanations.
+
+## Competitive Moat Over Time
+
+```
+Month 1-3: Intelligence advantage (scoring, explanations, context)
+  → Defensible but replicable
+
+Month 3-6: Behavioral data advantage (save/hide/click patterns)
+  → Hard to replicate without users
+
+Month 6-12: Community data advantage (tips, collections, visited)
+  → Impossible to replicate — network effect
+
+Month 12+: Local curator network + city expansion
+  → Sustainable competitive moat
+```
+
+The moat deepens with every user interaction. Google has data. We have context + community.
+
 ## One-Sentence Positioning
 
 **Google Maps tells you WHAT exists. LazyDay tells you WHERE TO GO.**
