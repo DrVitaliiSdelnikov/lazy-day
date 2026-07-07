@@ -100,22 +100,22 @@ import { CategoryNode, CompanyType } from '../../../core/models';
           pButton
           [label]="geoLoading() ? ('onboarding.locating' | translate) : ('onboarding.use_location' | translate)"
           [loading]="geoLoading()"
-          severity="secondary"
           (click)="requestGeo()"
           class="onboarding__btn"></button>
 
         <p class="onboarding__or">{{ 'onboarding.or' | translate }}</p>
 
-        <div class="onboarding__districts">
-          @for (d of districts; track d.name) {
-            <button
-              class="district-chip"
-              (click)="selectDistrict(d)"
-            >
-              {{ d.name }}
-            </button>
-          }
+        <div class="onboarding__coords">
+          <input class="onboarding__coords-input"
+            placeholder="41°41'39.0&quot;N 45°00'33.9&quot;E  или  41.694, 45.009"
+            #onboardCoordsInput />
+          <button pButton label="OK" severity="secondary"
+            (click)="applyCoords(onboardCoordsInput.value)"
+            class="onboarding__coords-btn"></button>
         </div>
+        @if (coordsError()) {
+          <p class="onboarding__error">{{ coordsError() }}</p>
+        }
       }
 
       <!-- Skip -->
@@ -230,15 +230,31 @@ import { CategoryNode, CompanyType } from '../../../core/models';
       gap: var(--ld-space-sm);
     }
 
-    .district-chip {
-      padding: 8px 14px;
-      border-radius: 16px;
+    .onboarding__coords {
+      display: flex;
+      gap: 8px;
+      margin-top: var(--ld-space-sm);
+    }
+
+    .onboarding__coords-input {
+      flex: 1;
+      padding: 10px 12px;
       border: 1px solid var(--ld-divider);
-      background: var(--ld-card-bg);
+      border-radius: 12px;
+      font-size: 13px;
       color: var(--ld-text);
-      font-size: 14px;
-      cursor: pointer;
-      min-height: 48px;
+      background: var(--ld-card-bg);
+      min-height: 44px;
+    }
+
+    .onboarding__coords-btn {
+      min-width: 50px;
+    }
+
+    .onboarding__error {
+      color: #c62828;
+      font-size: 13px;
+      margin-top: var(--ld-space-xs);
     }
   `,
 })
@@ -262,14 +278,7 @@ export class OnboardingComponent implements OnInit {
     { value: 'friends', label: 'С друзьями', icon: '👥' },
   ];
 
-  districts = [
-    { name: 'Старый город', lat: 41.6934, lng: 44.8015 },
-    { name: 'Вера', lat: 41.7089, lng: 44.7853 },
-    { name: 'Ваке', lat: 41.7137, lng: 44.7505 },
-    { name: 'Сабуртало', lat: 41.7267, lng: 44.7505 },
-    { name: 'Мтацминда', lat: 41.6978, lng: 44.7926 },
-    { name: 'Дигоми', lat: 41.7658, lng: 44.7299 },
-  ];
+  coordsError = signal<string | null>(null);
 
   ngOnInit() {
     this.api.getCategories().subscribe((cats) => this.categories.set(cats));
@@ -292,9 +301,36 @@ export class OnboardingComponent implements OnInit {
     this.finishOnboarding();
   }
 
-  selectDistrict(d: { name: string; lat: number; lng: number }) {
-    this.geo.setFallback(d.lat, d.lng);
-    this.finishOnboarding();
+  applyCoords(input: string) {
+    const parsed = this.parseCoordinates(input);
+    if (parsed) {
+      this.geo.setFallback(parsed.lat, parsed.lng);
+      this.coordsError.set(null);
+      this.finishOnboarding();
+    } else {
+      this.coordsError.set('Неверный формат координат');
+    }
+  }
+
+  private parseCoordinates(input: string): { lat: number; lng: number } | null {
+    const trimmed = input.trim();
+    if (!trimmed) return null;
+    const decimalMatch = trimmed.match(/^(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)$/);
+    if (decimalMatch) {
+      const lat = parseFloat(decimalMatch[1]);
+      const lng = parseFloat(decimalMatch[2]);
+      if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) return { lat, lng };
+    }
+    const dmsPattern = /(\d+)[°]\s*(\d+)[′']\s*([\d.]+)[″"]\s*([NS])\s*(\d+)[°]\s*(\d+)[′']\s*([\d.]+)[″"]\s*([EW])/i;
+    const dmsMatch = trimmed.match(dmsPattern);
+    if (dmsMatch) {
+      let lat = parseInt(dmsMatch[1]) + parseInt(dmsMatch[2]) / 60 + parseFloat(dmsMatch[3]) / 3600;
+      let lng = parseInt(dmsMatch[5]) + parseInt(dmsMatch[6]) / 60 + parseFloat(dmsMatch[7]) / 3600;
+      if (dmsMatch[4].toUpperCase() === 'S') lat = -lat;
+      if (dmsMatch[8].toUpperCase() === 'W') lng = -lng;
+      return { lat, lng };
+    }
+    return null;
   }
 
   skip() {

@@ -58,9 +58,9 @@ import { RecommendationCard } from '../../../core/models';
         <div class="card__address">{{ card().address }}</div>
       }
 
-      @if (card().secondaryTags?.length) {
+      @if (allTags().length > 0) {
         <div class="card__secondary">
-          @for (tag of card().secondaryTags!.slice(0, 3); track tag) {
+          @for (tag of allTags(); track tag) {
             <span class="card__stag">{{ tag }}</span>
           }
         </div>
@@ -353,6 +353,38 @@ export class ResultCardComponent {
   isOpen(): boolean {
     const s = this.card().openStatus;
     return s === 'Открыто' || s === 'Open' || s === 'ღიაა';
+  }
+
+  private readonly TAG_LABELS: Record<string, string> = {
+    outdoor: 'Outdoor', park: 'Park', garden: 'Garden', viewpoint: 'View',
+    food: 'Food', restaurant: 'Restaurant', cafe: 'Café', bar: 'Bar', bakery: 'Bakery',
+    culture: 'Culture', museum: 'Museum', gallery: 'Gallery', theater: 'Theater',
+    nightlife: 'Nightlife', club: 'Club', cinema: 'Cinema',
+    wellness: 'Wellness', gym: 'Gym', sports: 'Sports', bath: 'Bath', swimming: 'Pool',
+    shopping: 'Shopping', mall: 'Mall',
+    entertainment: 'Fun', bowling: 'Bowling', escape_room: 'Escape', gaming: 'Gaming',
+    arcade: 'Arcade', karting: 'Karting', climbing: 'Climbing', water_park: 'Water Park',
+    family: 'Family', playground: 'Playground', attraction: 'Attraction',
+  };
+
+  allTags(): string[] {
+    const primary = this.card().primaryTags ?? [];
+    const secondary = this.card().secondaryTags ?? [];
+    const all = [...primary, ...secondary];
+    // Filter to human-readable, unique, max 4, skip category duplicate
+    const cat = this.card().category;
+    const seen = new Set<string>();
+    const result: string[] = [];
+    for (const tag of all) {
+      const label = this.TAG_LABELS[tag];
+      if (!label) continue;
+      if (label.toLowerCase() === cat) continue; // skip if same as category
+      if (seen.has(label)) continue;
+      seen.add(label);
+      result.push(label);
+      if (result.length >= 4) break;
+    }
+    return result;
   }
 
   tagSeverity(type: string): 'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contrast' {

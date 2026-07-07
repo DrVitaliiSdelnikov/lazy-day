@@ -61,16 +61,30 @@ type PanelType = 'location' | 'company' | 'interests' | 'time' | null;
         <!-- Location panel -->
         @if (activePanel() === 'location') {
           <div class="panel-section">
-            <label class="panel-label">{{ 'context.radius' | translate }}: {{ radiusKm() }} km</label>
+            <button class="panel-geo-btn" (click)="useMyLocation()" [disabled]="geoLoading()">
+              📍 {{ geoLoading() ? 'Определяю...' : 'Моя локация' }}
+            </button>
+          </div>
+          <div class="panel-section">
+            <label class="panel-label">Или вставьте координаты:</label>
+            <div class="panel-coords-row">
+              <input class="panel-coords-input"
+                placeholder="41°41'39.0&quot;N 45°00'33.9&quot;E  или  41.694, 45.009"
+                #coordsInput />
+              <button class="panel-coords-btn" (click)="applyCoords(coordsInput.value)">OK</button>
+            </div>
+            @if (coordsError()) {
+              <span class="panel-coords-error">{{ coordsError() }}</span>
+            }
+          </div>
+          <div class="panel-section">
+            <label class="panel-label">Радиус: {{ radiusKm() }} km</label>
             <p-slider [ngModel]="radiusKm()" (ngModelChange)="onRadiusChange($event)"
               [min]="1" [max]="15" [step]="1"></p-slider>
           </div>
-          <div class="panel-chips">
-            @for (d of districts; track d.name) {
-              <button class="panel-chip"
-                [class.panel-chip--active]="selectedDistrict() === d.name"
-                (click)="selectDistrict(d)">{{ d.name }}</button>
-            }
+          <div class="panel-section panel-pos-info">
+            📍 {{ geo.position().lat.toFixed(5) }}, {{ geo.position().lng.toFixed(5) }}
+            <span class="panel-pos-source">({{ geo.position().source }})</span>
           </div>
         }
 
@@ -186,6 +200,67 @@ type PanelType = 'location' | 'company' | 'interests' | 'time' | null;
       margin-bottom: var(--ld-space-sm);
     }
 
+    .panel-geo-btn {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid var(--ld-primary, #6366f1);
+      border-radius: var(--ld-radius-md, 12px);
+      background: none;
+      color: var(--ld-primary, #6366f1);
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      min-height: 48px;
+
+      &:disabled {
+        opacity: 0.5;
+      }
+    }
+
+    .panel-coords-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .panel-coords-input {
+      flex: 1;
+      padding: 10px 12px;
+      border: 1px solid var(--ld-divider);
+      border-radius: var(--ld-radius-sm, 8px);
+      font-size: 13px;
+      color: var(--ld-text);
+      background: var(--ld-card-bg);
+      min-height: 44px;
+    }
+
+    .panel-coords-btn {
+      padding: 10px 16px;
+      border: none;
+      border-radius: var(--ld-radius-sm, 8px);
+      background: var(--ld-primary, #6366f1);
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+      min-height: 44px;
+    }
+
+    .panel-coords-error {
+      display: block;
+      margin-top: 6px;
+      font-size: 12px;
+      color: #c62828;
+    }
+
+    .panel-pos-info {
+      font-size: 12px;
+      color: var(--ld-text-secondary);
+      font-family: monospace;
+    }
+
+    .panel-pos-source {
+      color: var(--ld-divider);
+    }
+
     .panel-chips {
       display: flex;
       flex-wrap: wrap;
@@ -244,7 +319,7 @@ type PanelType = 'location' | 'company' | 'interests' | 'time' | null;
 })
 export class ContextBarComponent {
   readonly profileStore = inject(ProfileStore);
-  private geo = inject(GeolocationService);
+  readonly geo = inject(GeolocationService);
   private api = inject(ApiService);
 
   changed = output<void>();
@@ -252,18 +327,10 @@ export class ContextBarComponent {
   panelVisible = false;
   activePanel = signal<PanelType>(null);
   categories = signal<CategoryNode[]>([]);
-  selectedDistrict = signal<string | null>(null);
   selectedTime = signal('now');
   radiusKm = signal(5);
-
-  districts = [
-    { name: 'Старый город', lat: 41.6934, lng: 44.8015 },
-    { name: 'Вера', lat: 41.7089, lng: 44.7853 },
-    { name: 'Ваке', lat: 41.7137, lng: 44.7505 },
-    { name: 'Сабуртало', lat: 41.7267, lng: 44.7505 },
-    { name: 'Мтацминда', lat: 41.6978, lng: 44.7926 },
-    { name: 'Дигоми', lat: 41.7658, lng: 44.7299 },
-  ];
+  geoLoading = signal(false);
+  coordsError = signal<string | null>(null);
 
   companyOptions: { value: CompanyType; label: string; icon: string }[] = [
     { value: 'solo', label: 'Один', icon: '🧑' },
@@ -277,9 +344,9 @@ export class ContextBarComponent {
   }
 
   locationLabel(): string {
-    const d = this.selectedDistrict();
     const r = this.radiusKm();
-    return d ? `${d} ${r}км` : `${r}км`;
+    const src = this.geo.position().source;
+    return src === 'gps' ? `📍 ${r}км` : `${r}км`;
   }
 
   companyLabel(): string {
@@ -360,11 +427,58 @@ export class ContextBarComponent {
     this.emitChanged();
   }
 
-  selectDistrict(d: { name: string; lat: number; lng: number }) {
-    this.selectedDistrict.set(d.name);
-    this.geo.setFallback(d.lat, d.lng);
+  async useMyLocation() {
+    this.geoLoading.set(true);
+    await this.geo.requestPosition();
+    this.geoLoading.set(false);
+    this.coordsError.set(null);
     this.panelVisible = false;
     this.emitChanged();
+  }
+
+  applyCoords(input: string) {
+    const parsed = this.parseCoordinates(input);
+    if (parsed) {
+      this.geo.setFallback(parsed.lat, parsed.lng);
+      this.coordsError.set(null);
+      this.panelVisible = false;
+      this.emitChanged();
+    } else {
+      this.coordsError.set('Неверный формат. Примеры: 41°41\'39.0"N 45°00\'33.9"E  или  41.694, 45.009');
+    }
+  }
+
+  /**
+   * Parse coordinates in two formats:
+   * - Decimal: "41.694, 45.009"
+   * - DMS: "41°41'39.0"N 45°00'33.9"E"
+   */
+  private parseCoordinates(input: string): { lat: number; lng: number } | null {
+    const trimmed = input.trim();
+    if (!trimmed) return null;
+
+    // Try decimal: "41.694, 45.009" or "41.694 45.009"
+    const decimalMatch = trimmed.match(/^(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)$/);
+    if (decimalMatch) {
+      const lat = parseFloat(decimalMatch[1]);
+      const lng = parseFloat(decimalMatch[2]);
+      if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+        return { lat, lng };
+      }
+    }
+
+    // Try DMS: 41°41'39.0"N 45°00'33.9"E
+    const dmsPattern = /(\d+)[°]\s*(\d+)[′']\s*([\d.]+)[″"]\s*([NS])\s*(\d+)[°]\s*(\d+)[′']\s*([\d.]+)[″"]\s*([EW])/i;
+    const dmsMatch = trimmed.match(dmsPattern);
+    if (dmsMatch) {
+      let lat = parseInt(dmsMatch[1]) + parseInt(dmsMatch[2]) / 60 + parseFloat(dmsMatch[3]) / 3600;
+      let lng = parseInt(dmsMatch[5]) + parseInt(dmsMatch[6]) / 60 + parseFloat(dmsMatch[7]) / 3600;
+      if (dmsMatch[4].toUpperCase() === 'S') lat = -lat;
+      if (dmsMatch[8].toUpperCase() === 'W') lng = -lng;
+      return { lat, lng };
+    }
+
+    return null;
   }
 
   onRadiusChange(km: number) {
