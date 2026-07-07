@@ -62,27 +62,26 @@ Migrations: `apps/api/src/app/database/migrations/` (SQL, 001-010). Runner: `npx
 - **Pet-friendly** (2026-07-07): `hasPet` flag boosts outdoor, penalizes indoor venues. Toggle in context bar.
 - **Opening hours** (2026-07-07): OSM `opening_hours` parser. Closed venues get `timeFit=0.0` → demoted/filtered. Open venues get "Сейчас открыто" + `openStatus` in response.
 
-## TODO / Known Issues
+## TODO / Known Issues (prioritized)
 
-### Data: opening_hours coverage
-- 849/2976 places have opening_hours from OSM. Remaining 2127 get `timeFit = 0.8` (unknown). Google Places API integration would improve coverage.
-
-### Scoring: interest weight semantics
-- Currently all weights treated equally. Future: weight >= 0.7 = hard filter ("I want this"), < 0.7 = soft boost ("I prefer this").
+### 1. Interest weight semantics
+- Currently all weights treated equally (1.0 and 0.3 both = hard filter). Future: weight >= 0.7 = hard filter ("I want this"), < 0.7 = soft boost ("I prefer this").
+- Impact: medium. Enables proportional result mix (70% nature, 30% food).
+- Effort: small — logic change in `scoreCandidate()`.
 - See `docs/research/categorization-and-ranking-strategy.md` §3.
 
-### Data: multi-category enrichment
-- Venues with multiple functions (park+café, bath+restaurant) only get tags from OSM primary category. Manual or secondary-source enrichment needed.
-- See `docs/research/categorization-and-ranking-strategy.md` §2.
+### 2. Google Places API integration
+- Solves 3 problems at once:
+  - **opening_hours coverage**: 849/2976 places have hours from OSM → Google has ~95%
+  - **venue-level attributes**: `allowsDogs`, `goodForChildren`, `wheelchairAccessible` → replace proxy tag logic with facts
+  - **multi-category enrichment**: venues with multiple functions get proper tags
+- Impact: high. Effort: medium (API key, enrichment pipeline, migration).
+- See `docs/research/company-context-strategy.md` Phase 2.
 
-### Company context: venue-level attributes (Phase 2)
-- Currently tag-level boost/penalty matrix per company type (solo/couple/family/friends).
-- Future: `attributes jsonb` column on places with venue-specific flags (`good_for_kids`, `romantic`, `outdoor_seating`).
-- Data sources: Google Places API, user feedback ("Is this kid-friendly?").
-- See `docs/research/company-context-strategy.md`.
-
-### Behavioral learning (post-MVP)
-- Track click/save/hide patterns to re-rank within interest-filtered set.
+### 3. Behavioral learning (post-MVP)
+- Track click/save/hide patterns → re-rank within interest-filtered set.
+- Three-phase plan: cold start → learning → mature.
+- Impact: high long-term. Effort: high (interactions pipeline, user profiles, A/B).
 - See `docs/research/categorization-and-ranking-strategy.md` §5.
 
 ## Deploy

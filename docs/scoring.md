@@ -123,17 +123,24 @@ From `places.quality_score` (0-1). Default 0.5 for OSM imports.
 
 ## Explanations
 
-Generated post-scoring, priority-ordered:
-1. `starts_in` — event starting within 2h
-2. `walk_time` — if distance <= 2000m
-3. `free` / `budget_fit` — price match
-4. `matches_interest` — "Тебе нравится: nature" (user-facing interest name, not raw tag)
-5. `highly_rated` — rating >= 4.5
-6. `also_has` — "Также: café" (secondary tag hint for multi-profile venues)
+Generated post-scoring, priority-ordered (max 3 per card):
+
+| Priority | Type | Label example | When |
+|---|---|---|---|
+| 1 | `open_now` | "Сейчас открыто" | Place has opening_hours and is open at requested time |
+| 1 | `starts_in` | "Начало через 45 мин" | Event starting within 2h |
+| 2 | `walk_time` | "27 мин пешком" | Distance <= 2000m |
+| 3 | `free` / `budget_fit` | "Бесплатно" / "В бюджете" | Price match |
+| 4 | `matches_interest` | "Тебе нравится: nature" | Primary tag matches user interest (user-facing name) |
+| 4 | `company_fit` | "Подходит для пары" / "Для всей семьи" / "Отлично с друзьями" | Company boost applied |
+| 4 | `pet_friendly` | "Можно с питомцем" | hasPet + outdoor venue boosted |
+| 5 | `highly_rated` | "Высокий рейтинг" | Rating >= 4.5 |
+| 6 | `also_has` | "Также: café" | Secondary tag hint for multi-profile venues |
 
 ## Response Fields
 
 Each card in the response includes:
 - `primaryTags` — tags that matched user interests (why it's shown)
 - `secondaryTags` — other venue traits (what else is there)
-- These are omitted when empty.
+- `openStatus` — "Открыто" / "Закрыто" / undefined (when hours unknown)
+- Tags and openStatus are omitted when empty/unknown.
