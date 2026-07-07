@@ -85,6 +85,12 @@ export class Event {
   @Column({ type: 'numeric', precision: 3, scale: 2, default: 0.5 })
   qualityScore!: number;
 
+  @Column({ type: 'text', nullable: true })
+  source?: string;
+
+  @Column({ type: 'text', nullable: true })
+  sourceEventId?: string;
+
   @Column({ type: 'timestamptz', default: () => 'NOW()' })
   lastVerifiedAt!: Date;
 
