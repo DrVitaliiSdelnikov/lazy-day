@@ -70,6 +70,14 @@ import { CategoryNode, CompanyType } from '../../../core/models';
               <span>{{ opt.label }}</span>
             </button>
           }
+          <button
+            class="company-option"
+            [class.company-option--selected]="selectedPet()"
+            (click)="selectedPet.set(!selectedPet())"
+          >
+            <span class="company-option__icon">🐕</span>
+            <span>С питомцем</span>
+          </button>
         </div>
 
         <button
@@ -244,6 +252,7 @@ export class OnboardingComponent implements OnInit {
   categories = signal<CategoryNode[]>([]);
   selectedInterests = signal(new Set<string>());
   selectedCompany = signal<CompanyType | null>(null);
+  selectedPet = signal(false);
   geoLoading = signal(false);
 
   companyOptions: { value: CompanyType; label: string; icon: string }[] = [
@@ -301,6 +310,7 @@ export class OnboardingComponent implements OnInit {
     if (this.selectedCompany()) {
       this.profileStore.setCompany(this.selectedCompany());
     }
+    this.profileStore.setHasPet(this.selectedPet());
     this.profileStore.completeOnboarding();
     this.router.navigate(['/discover']);
   }

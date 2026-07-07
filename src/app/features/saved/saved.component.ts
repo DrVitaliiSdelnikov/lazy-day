@@ -25,6 +25,14 @@ import { SavedStore } from '../../core/stores/saved.store';
               </div>
               <div class="saved__item-meta">
                 <span>{{ item.categoryLabel || item.category }}</span>
+                @if (item.rating) {
+                  <span> &middot; &#9733; {{ item.rating }}</span>
+                }
+                @if (item.openStatus) {
+                  <span> &middot; </span>
+                  <span [style.color]="isOpen(item.openStatus) ? '#2e7d32' : '#c62828'"
+                        [style.font-weight]="'500'">{{ item.openStatus }}</span>
+                }
                 @if (item.priceLabel) {
                   <span> &middot; {{ item.priceLabel }}</span>
                 }
@@ -112,5 +120,9 @@ export class SavedComponent {
   onRemove(event: Event, id: string) {
     event.stopPropagation();
     this.savedStore.remove(id);
+  }
+
+  isOpen(status: string): boolean {
+    return status === 'Открыто' || status === 'Open' || status === 'ღიაა';
   }
 }

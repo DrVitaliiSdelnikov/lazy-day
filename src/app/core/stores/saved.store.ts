@@ -11,6 +11,9 @@ interface SavedItem {
   categoryLabel?: string;
   priceLabel?: string;
   address?: string;
+  rating?: number;
+  ratingCount?: number;
+  openStatus?: string;
   savedAt: string;
 }
 
@@ -47,6 +50,9 @@ export class SavedStore {
         categoryLabel: card.categoryLabel,
         priceLabel: card.priceLabel,
         address: card.address,
+        rating: card.rating,
+        ratingCount: card.ratingCount,
+        openStatus: card.openStatus,
         savedAt: new Date().toISOString(),
       };
       this.items.update((items) => [snapshot, ...items]);

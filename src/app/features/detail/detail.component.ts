@@ -26,10 +26,29 @@ import { RecommendationCard } from '../../core/models';
       @if (card(); as c) {
         <h1 class="detail__title">{{ c.title }}</h1>
 
+        @if (c.rating) {
+          <div class="detail__rating">
+            <span class="detail__star">&#9733;</span>
+            <span class="detail__rating-value">{{ c.rating }}</span>
+            @if (c.ratingCount) {
+              <span class="detail__rating-count">({{ formatRatingCount(c.ratingCount) }})</span>
+            }
+          </div>
+        }
+
         <div class="detail__meta">
           <span>{{ c.categoryLabel || c.category }}</span>
           <span>&middot;</span>
           <span>{{ formatDistance(c.distanceM) }}</span>
+          @if (c.walkMinutes) {
+            <span>&middot;</span>
+            <span>&#128694; {{ c.walkMinutes }}m</span>
+          }
+          @if (c.openStatus) {
+            <span>&middot;</span>
+            <span [class.detail__open]="isOpen(c.openStatus)"
+                  [class.detail__closed]="!isOpen(c.openStatus)">{{ c.openStatus }}</span>
+          }
           @if (c.status) {
             <p-tag
               [value]="c.status"
@@ -136,6 +155,28 @@ import { RecommendationCard } from '../../core/models';
       margin-bottom: var(--ld-space-sm);
     }
 
+    .detail__rating {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 15px;
+      margin-bottom: var(--ld-space-sm);
+    }
+
+    .detail__star {
+      color: #f5a623;
+      font-size: 18px;
+    }
+
+    .detail__rating-value {
+      font-weight: 600;
+    }
+
+    .detail__rating-count {
+      color: var(--ld-text-secondary);
+      font-weight: 400;
+    }
+
     .detail__meta {
       display: flex;
       align-items: center;
@@ -143,6 +184,17 @@ import { RecommendationCard } from '../../core/models';
       font-size: 14px;
       color: var(--ld-text-secondary);
       margin-bottom: var(--ld-space-lg);
+      flex-wrap: wrap;
+    }
+
+    .detail__open {
+      color: #2e7d32;
+      font-weight: 500;
+    }
+
+    .detail__closed {
+      color: #c62828;
+      font-weight: 500;
     }
 
     .detail__why {
@@ -217,6 +269,15 @@ export class DetailComponent implements OnInit {
   formatDistance(m: number): string {
     if (m < 1000) return `${Math.round(m)} м`;
     return `${(m / 1000).toFixed(1)} км`;
+  }
+
+  formatRatingCount(count: number): string {
+    if (count >= 1000) return `${(count / 1000).toFixed(1)}k`;
+    return `${count}`;
+  }
+
+  isOpen(status: string): boolean {
+    return status === 'Открыто' || status === 'Open' || status === 'ღიაა';
   }
 
   onToggleSave() {
