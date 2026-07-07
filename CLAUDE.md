@@ -125,6 +125,10 @@ Current state: manual `POST /v1/admin/ingestion/events/run`. Need automated cron
 
 **TODO**: Add `@nestjs/schedule` cron for daily event refresh. Mark events past `startsAt` as `status='past'`. Remove stale events not seen in 3 refresh cycles.
 
+## Open UX Questions
+
+- **Opening hours unknown (57% venues)**: currently no label shown. Closed venues hard-filtered. Need to decide: show "Hours unknown"? Or improve coverage (more Google enrichment)? For now — silence = no data, don't lie to user.
+
 ## Cost Tracking
 
 | Month | Google Places | SerpApi | Total | Budget |

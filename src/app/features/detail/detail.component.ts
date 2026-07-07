@@ -107,11 +107,25 @@ import { RecommendationCard } from '../../core/models';
           </div>
         </div>
 
+        @if (c.type === 'event' && c.venueName) {
+          <div class="detail__venue">
+            <span class="detail__label">Место проведения</span>
+            <span>{{ c.venueName }}</span>
+          </div>
+        }
+
+        @if (c.type === 'event' && c.startsAt) {
+          <div class="detail__row">
+            <span class="detail__label">Начало</span>
+            <span>{{ formatEventDateTime(c.startsAt) }}</span>
+          </div>
+        }
+
         <div class="detail__actions">
           @if (c.ticketUrl || c.externalUrl) {
             <a
               pButton
-              [label]="c.type === 'event' ? ('detail.tickets' | translate) : ('detail.website' | translate)"
+              [label]="c.type === 'event' ? 'Купить билет' : ('detail.website' | translate)"
               [href]="c.ticketUrl || c.externalUrl"
               target="_blank"
               rel="noopener"
@@ -120,9 +134,9 @@ import { RecommendationCard } from '../../core/models';
           }
           <a
             pButton
-            [label]="'detail.open_maps' | translate"
+            [label]="c.type === 'event' ? 'Как добраться' : ('detail.open_maps' | translate)"
             severity="secondary"
-            [href]="mapsUrl(c)"
+            [href]="venueMapUrl(c)"
             target="_blank"
             rel="noopener"
             class="detail__action-btn"
@@ -220,6 +234,15 @@ import { RecommendationCard } from '../../core/models';
       margin-bottom: var(--ld-space-lg);
     }
 
+    .detail__venue {
+      display: flex;
+      justify-content: space-between;
+      padding: var(--ld-space-md) 0;
+      border-bottom: 1px solid var(--ld-divider);
+      font-size: 14px;
+      margin-bottom: var(--ld-space-md);
+    }
+
     .detail__info {
       margin-bottom: var(--ld-space-xl);
     }
@@ -278,6 +301,24 @@ export class DetailComponent implements OnInit {
 
   isOpen(status: string): boolean {
     return status === 'Открыто' || status === 'Open' || status === 'ღიაა';
+  }
+
+  formatEventDateTime(iso: string): string {
+    const d = new Date(iso);
+    const day = d.getDate();
+    const month = d.toLocaleDateString('ru', { month: 'long' });
+    const time = d.toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' });
+    const weekday = d.toLocaleDateString('ru', { weekday: 'short' });
+    return `${weekday}, ${day} ${month}, ${time}`;
+  }
+
+  venueMapUrl(c: RecommendationCard): string {
+    // If event has venue name but no coords, search by name
+    if (c.type === 'event' && c.venueName) {
+      const query = encodeURIComponent(c.venueName + ' Tbilisi');
+      return `https://www.google.com/maps/search/?api=1&query=${query}`;
+    }
+    return this.mapsUrl(c);
   }
 
   mapsUrl(c: RecommendationCard): string {
