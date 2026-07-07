@@ -57,6 +57,15 @@ const COMPANY_MODIFIERS: Record<string, { boost: string[]; penalty: string[] }> 
   },
 };
 
+/**
+ * Pet-friendly modifier — applied independently on top of company modifier.
+ * Boosts outdoor venues, penalizes strictly indoor ones.
+ */
+const PET_MODIFIER = {
+  boost: ['outdoor', 'park', 'garden', 'viewpoint', 'playground'],
+  penalty: ['museum', 'cinema', 'mall', 'theater', 'gallery', 'library'],
+};
+
 interface CandidateRow {
   id: string;
   type: 'place' | 'event';
@@ -280,6 +289,21 @@ export class RecommendationService {
       }
     }
 
+    // Pet modifier — boost outdoor, penalize indoor
+    if (dto.profile.hasPet) {
+      const hasPetBoost = tags.some((t) => PET_MODIFIER.boost.includes(t));
+      const hasPetPenalty = tags.some((t) => PET_MODIFIER.penalty.includes(t));
+
+      if (hasPetPenalty) {
+        interestScore = interestScore * 0.3;
+        if (!companyFit) companyFit = 'penalized';
+      }
+      if (hasPetBoost) {
+        interestScore = Math.min(1.0, interestScore * 1.3);
+        if (companyFit !== 'penalized') companyFit = 'boosted';
+      }
+    }
+
     const distance = Math.max(0, 1 - c.distance_m / radiusM);
     const time = this.timeFit(c, dto.timeWindow);
     const quality = Number(c.quality_score) || 0.5;
@@ -470,6 +494,14 @@ export class RecommendationService {
       const label = labels[dto.profile.company];
       if (label) {
         explanations.push({ type: 'company_fit', label, priority: 4 });
+      }
+    }
+
+    // Pet-friendly hint
+    if (dto.profile.hasPet && c.companyFit === 'boosted') {
+      const hasPetBoostTag = (c.tags ?? []).some((t) => PET_MODIFIER.boost.includes(t));
+      if (hasPetBoostTag) {
+        explanations.push({ type: 'pet_friendly', label: 'Можно с питомцем', priority: 4 });
       }
     }
 

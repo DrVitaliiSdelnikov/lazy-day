@@ -64,6 +64,7 @@ export interface DiscoverRequest {
   profile: {
     interests: Record<string, number>;
     company?: CompanyType;
+    hasPet?: boolean;
     budgetMax?: number;
   };
   hiddenIds: string[];

@@ -22,6 +22,7 @@ interface ProfileState {
   deviceId: string;
   interests: Record<string, number>;
   company: CompanyType | null;
+  hasPet: boolean;
   budgetMax: number | null;
   locale: Locale;
   theme: ThemeMode;
@@ -35,6 +36,7 @@ const defaults: ProfileState = {
   deviceId: generateDeviceId(),
   interests: {},
   company: null,
+  hasPet: false,
   budgetMax: null,
   locale: 'ru',
   theme: 'auto',
@@ -52,6 +54,7 @@ export class ProfileStore {
   readonly deviceId = computed(() => this.state().deviceId);
   readonly interests = computed(() => this.state().interests);
   readonly company = computed(() => this.state().company);
+  readonly hasPet = computed(() => this.state().hasPet);
   readonly budgetMax = computed(() => this.state().budgetMax);
   readonly locale = computed(() => this.state().locale);
   readonly theme = computed(() => this.state().theme);
@@ -84,6 +87,10 @@ export class ProfileStore {
 
   setCompany(company: CompanyType | null) {
     this.patch({ company });
+  }
+
+  setHasPet(hasPet: boolean) {
+    this.patch({ hasPet });
   }
 
   setBudgetMax(budgetMax: number | null) {

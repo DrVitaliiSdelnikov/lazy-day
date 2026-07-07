@@ -85,6 +85,12 @@ type PanelType = 'location' | 'company' | 'interests' | 'time' | null;
                 <span>{{ opt.label }}</span>
               </button>
             }
+            <button class="panel-option"
+              [class.panel-option--active]="profileStore.hasPet()"
+              (click)="togglePet()">
+              <span class="panel-option__icon">🐕</span>
+              <span>С питомцем</span>
+            </button>
           </div>
         }
 
@@ -278,7 +284,8 @@ export class ContextBarComponent {
 
   companyLabel(): string {
     const c = this.profileStore.company();
-    return this.companyOptions.find((o) => o.value === c)?.label ?? 'Любой';
+    const base = this.companyOptions.find((o) => o.value === c)?.label ?? 'Любой';
+    return this.profileStore.hasPet() ? `${base} + 🐕` : base;
   }
 
   companyIcon(): string {
@@ -345,6 +352,11 @@ export class ContextBarComponent {
   selectCompany(value: CompanyType) {
     this.profileStore.setCompany(value);
     this.panelVisible = false;
+    this.emitChanged();
+  }
+
+  togglePet() {
+    this.profileStore.setHasPet(!this.profileStore.hasPet());
     this.emitChanged();
   }
 

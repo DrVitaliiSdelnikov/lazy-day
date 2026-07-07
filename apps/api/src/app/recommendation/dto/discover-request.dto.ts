@@ -2,6 +2,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  IsBoolean,
   IsArray,
   IsObject,
   ValidateNested,
@@ -26,6 +27,10 @@ class ProfileDto {
   @IsOptional()
   @IsEnum(['solo', 'couple', 'family', 'friends'])
   company?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  hasPet?: boolean;
 
   @IsOptional()
   @IsNumber()

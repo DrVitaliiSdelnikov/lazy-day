@@ -298,6 +298,7 @@ export class DiscoverComponent implements OnInit {
         profile: {
           interests: this.profileStore.interests(),
           company: this.profileStore.company() ?? undefined,
+          hasPet: this.profileStore.hasPet() || undefined,
           budgetMax: f?.budgetMax ?? this.profileStore.budgetMax() ?? undefined,
         },
         hiddenIds: this.profileStore.hiddenIds(),

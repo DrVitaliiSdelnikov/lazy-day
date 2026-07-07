@@ -69,6 +69,18 @@ Penalty does not hard-filter — it demotes. If user explicitly asked for nightl
 
 Response includes `company_fit` explanation: "Подходит для пары", "Для всей семьи", "Отлично с друзьями".
 
+### Pet-Friendly Modifier
+
+Independent of company — applied on top when `profile.hasPet = true`.
+
+| Boosted (×1.3) | Penalized (×0.3) |
+|---|---|
+| outdoor, park, garden, viewpoint, playground | museum, cinema, mall, theater, gallery, library |
+
+Restaurants/cafes are neutral — some have terraces, but without venue-level data we don't guess.
+
+Explanation: "Можно с питомцем" on boosted outdoor venues.
+
 See `docs/research/company-context-strategy.md` for full research and Phase 2 plan (venue-level attributes).
 
 ## Distance Decay
