@@ -54,6 +54,23 @@ When user has explicit interests, candidates with **zero primary tags are exclud
 
 If fewer than 5 relevant results at the requested radius, the system expands radius x1.5 (up to 2 attempts, max ~2.25x original) to find more matching venues instead of padding with irrelevant ones.
 
+## Company Context Modifier
+
+After base interest score, a company-specific boost/penalty is applied based on venue tags.
+
+| Company | Boosted tags (×1.3) | Penalized tags (×0.3) |
+|---|---|---|
+| solo | — | — |
+| couple | viewpoint, restaurant, cafe, bar, park, garden, attraction | playground, family |
+| family | park, playground, family, museum, swimming, outdoor | nightlife, bar, club |
+| friends | bar, restaurant, nightlife, club, entertainment, sports | — |
+
+Penalty does not hard-filter — it demotes. If user explicitly asked for nightlife as family, bars still appear but ranked lower.
+
+Response includes `company_fit` explanation: "Подходит для пары", "Для всей семьи", "Отлично с друзьями".
+
+See `docs/research/company-context-strategy.md` for full research and Phase 2 plan (venue-level attributes).
+
 ## Distance Decay
 
 ```

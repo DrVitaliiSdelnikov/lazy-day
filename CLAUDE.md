@@ -58,6 +58,7 @@ Migrations: `apps/api/src/app/database/migrations/` (SQL, 001-010). Runner: `npx
 - **Closed venues** (2026-07-06): migration `010_add_place_status.sql`, `detectStatus()` in OSM import, `WHERE p.status = 'active'` filter.
 - **Gym false matches** (2026-07-06): removed `wellness` from spa/bath synonyms — too broad, matched gyms.
 - **Dynamic categories** (2026-07-07): primary/secondary tag classification per request. Interest weight raised 0.35→0.45.
+- **Company context** (2026-07-07): tag boost/penalty matrix per company type. Family penalizes nightlife, couple boosts viewpoints, friends boosts bars.
 
 ## TODO / Known Issues
 
@@ -71,6 +72,12 @@ Migrations: `apps/api/src/app/database/migrations/` (SQL, 001-010). Runner: `npx
 ### Data: multi-category enrichment
 - Venues with multiple functions (park+café, bath+restaurant) only get tags from OSM primary category. Manual or secondary-source enrichment needed.
 - See `docs/research/categorization-and-ranking-strategy.md` §2.
+
+### Company context: venue-level attributes (Phase 2)
+- Currently tag-level boost/penalty matrix per company type (solo/couple/family/friends).
+- Future: `attributes jsonb` column on places with venue-specific flags (`good_for_kids`, `romantic`, `outdoor_seating`).
+- Data sources: Google Places API, user feedback ("Is this kid-friendly?").
+- See `docs/research/company-context-strategy.md`.
 
 ### Behavioral learning (post-MVP)
 - Track click/save/hide patterns to re-rank within interest-filtered set.

@@ -36,6 +36,27 @@ const INTEREST_SYNONYMS: Record<string, string[]> = {
   family: ['family', 'playground', 'park'],
 };
 
+/**
+ * Company context modifiers — boost/penalty tags per group type.
+ * Applied as multiplier to interestScore after base calculation.
+ * See docs/research/company-context-strategy.md for rationale.
+ */
+const COMPANY_MODIFIERS: Record<string, { boost: string[]; penalty: string[] }> = {
+  solo: { boost: [], penalty: [] },
+  couple: {
+    boost: ['viewpoint', 'restaurant', 'cafe', 'bar', 'park', 'garden', 'attraction'],
+    penalty: ['playground', 'family'],
+  },
+  family: {
+    boost: ['park', 'playground', 'family', 'museum', 'swimming', 'outdoor'],
+    penalty: ['nightlife', 'bar', 'club'],
+  },
+  friends: {
+    boost: ['bar', 'restaurant', 'nightlife', 'club', 'entertainment', 'sports'],
+    penalty: [],
+  },
+};
+
 interface CandidateRow {
   id: string;
   type: 'place' | 'event';
@@ -72,6 +93,8 @@ interface ScoredCandidate extends CandidateRow {
   primaryTags: string[];
   /** Tags that did NOT match — secondary traits of the venue. */
   secondaryTags: string[];
+  /** Company modifier applied: 'boosted' | 'penalized' | null. */
+  companyFit: 'boosted' | 'penalized' | null;
 }
 
 @Injectable()
@@ -239,6 +262,24 @@ export class RecommendationService {
         : matchScores[0];
     }
 
+    // Company context modifier — boost/penalty based on who user is with
+    let companyFit: 'boosted' | 'penalized' | null = null;
+    const company = dto.profile.company;
+    if (company && COMPANY_MODIFIERS[company]) {
+      const mod = COMPANY_MODIFIERS[company];
+      const hasBoostedTag = tags.some((t) => mod.boost.includes(t));
+      const hasPenaltyTag = tags.some((t) => mod.penalty.includes(t));
+
+      if (hasPenaltyTag) {
+        interestScore = interestScore * 0.3;
+        companyFit = 'penalized';
+      }
+      if (hasBoostedTag) {
+        interestScore = Math.min(1.0, interestScore * 1.3);
+        companyFit = companyFit === 'penalized' ? 'penalized' : 'boosted';
+      }
+    }
+
     const distance = Math.max(0, 1 - c.distance_m / radiusM);
     const time = this.timeFit(c, dto.timeWindow);
     const quality = Number(c.quality_score) || 0.5;
@@ -255,6 +296,7 @@ export class RecommendationService {
       ...c,
       score,
       interestScore,
+      companyFit,
       primaryTags,
       secondaryTags,
     };
@@ -415,6 +457,19 @@ export class RecommendationService {
           label: `Тебе нравится: ${matchedInterest}`,
           priority: 4,
         });
+      }
+    }
+
+    // Company fit
+    if (c.companyFit === 'boosted' && dto.profile.company) {
+      const labels: Record<string, string> = {
+        couple: 'Подходит для пары',
+        family: 'Для всей семьи',
+        friends: 'Отлично с друзьями',
+      };
+      const label = labels[dto.profile.company];
+      if (label) {
+        explanations.push({ type: 'company_fit', label, priority: 4 });
       }
     }
 
