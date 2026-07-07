@@ -54,6 +54,15 @@ import { FilterSheetComponent, FilterState } from './filter-sheet/filter-sheet.c
         </button>
       </div>
 
+      <!-- Type filter: places / events / all -->
+      <div class="discover__type-filter">
+        @for (tf of typeFilters; track tf.value) {
+          <button class="type-chip"
+            [class.type-chip--active]="activeTypeFilter() === tf.value"
+            (click)="setTypeFilter(tf.value)">{{ tf.label }}</button>
+        }
+      </div>
+
       <!-- Results count -->
       @if (!loading() && cards().length > 0) {
         <div class="discover__count">{{ cards().length }} {{ 'discover.results' | translate }}</div>
@@ -194,6 +203,29 @@ import { FilterSheetComponent, FilterState } from './filter-sheet/filter-sheet.c
       color: var(--ld-text-secondary);
     }
 
+    .discover__type-filter {
+      display: flex;
+      gap: 6px;
+      padding: var(--ld-space-sm) var(--ld-space-lg);
+    }
+
+    .type-chip {
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1px solid var(--ld-divider);
+      background: none;
+      font-size: 13px;
+      color: var(--ld-text-secondary);
+      cursor: pointer;
+      min-height: 36px;
+    }
+
+    .type-chip--active {
+      background: var(--ld-text);
+      color: var(--ld-card-bg, white);
+      border-color: var(--ld-text);
+    }
+
     .discover__more {
       display: flex;
       justify-content: center;
@@ -284,9 +316,22 @@ export class DiscoverComponent implements OnInit {
   readonly debugCoords = signal('');
 
   readonly allCards = signal<RecommendationCard[]>([]);
+  readonly activeTypeFilter = signal<'all' | 'place' | 'event'>('all');
   readonly visibleCount = signal(15);
-  readonly cards = computed(() => this.allCards().slice(0, this.visibleCount()));
-  readonly hasMoreCards = computed(() => this.visibleCount() < this.allCards().length);
+  readonly cards = computed(() => {
+    const type = this.activeTypeFilter();
+    const filtered = type === 'all'
+      ? this.allCards()
+      : this.allCards().filter((c) => c.type === type);
+    return filtered.slice(0, this.visibleCount());
+  });
+  readonly hasMoreCards = computed(() => {
+    const type = this.activeTypeFilter();
+    const total = type === 'all'
+      ? this.allCards().length
+      : this.allCards().filter((c) => c.type === type).length;
+    return this.visibleCount() < total;
+  });
   readonly loading = signal(false);
   readonly loaded = signal(false);
   readonly activePreset = signal<string | null>(null);
@@ -300,6 +345,12 @@ export class DiscoverComponent implements OnInit {
     { key: 'culture', label: '🎭 Культура' },
     { key: 'food', label: '🍽️ Поесть' },
     { key: 'nightlife', label: '🌙 Ночная жизнь' },
+  ];
+
+  typeFilters = [
+    { value: 'all' as const, label: 'Всё' },
+    { value: 'place' as const, label: '📍 Места' },
+    { value: 'event' as const, label: '🎫 События' },
   ];
 
   private readonly MOOD_PRESETS: Record<string, { interests: Record<string, number>; company?: string; radiusM?: number }> = {
@@ -345,6 +396,11 @@ export class DiscoverComponent implements OnInit {
   onFiltersChanged(filters: FilterState) {
     this.currentFilters.set(filters);
     this.loadFeed();
+  }
+
+  setTypeFilter(type: 'all' | 'place' | 'event') {
+    this.activeTypeFilter.set(type);
+    this.visibleCount.set(15);
   }
 
   showMore() {

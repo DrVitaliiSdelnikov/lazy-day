@@ -109,6 +109,22 @@ Month 6-12: Community data (tips, collections, badges — network effect)
 Month 12+:  Curator network + multi-city = sustainable moat
 ```
 
+## Critical: Event Freshness
+
+Events must be refreshed daily. Stale events = broken trust.
+
+Current state: manual `POST /v1/admin/ingestion/events/run`. Need automated cron.
+
+| Source | Refresh | SerpApi cost | Notes |
+|---|---|---|---|
+| opera.ge | 1x/day | 0 | Free HTML parser |
+| google_events | 1x/day | 3 calls/day | 90/month ≈ free tier limit (100/mo) |
+| yolo.ge | 1x/day | 0 | Free AJAX endpoint |
+
+**SerpApi quota**: 100 searches/month (free), resets monthly. 1 city daily = 90/mo. 2 cities = need $50/mo plan (5,000/mo).
+
+**TODO**: Add `@nestjs/schedule` cron for daily event refresh. Mark events past `startsAt` as `status='past'`. Remove stale events not seen in 3 refresh cycles.
+
 ## Cost Tracking
 
 | Month | Google Places | SerpApi | Total | Budget |

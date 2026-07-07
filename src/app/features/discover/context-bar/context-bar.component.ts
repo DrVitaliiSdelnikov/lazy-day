@@ -381,24 +381,63 @@ export class ContextBarComponent {
   getTimeWindow(): { from: string; to: string } {
     const now = new Date();
     const t = this.selectedTime();
+
     if (t === 'evening') {
-      const from = new Date(now); from.setHours(18, 0, 0);
-      const to = new Date(now); to.setHours(23, 59, 0);
+      const from = new Date(now);
+      // If already past 18:00, use current time as start
+      if (now.getHours() < 18) {
+        from.setHours(18, 0, 0, 0);
+      }
+      const to = new Date(from);
+      to.setHours(23, 59, 59, 0);
+      // If evening already passed, shift to tomorrow evening
+      if (to < now) {
+        from.setDate(from.getDate() + 1);
+        from.setHours(18, 0, 0, 0);
+        to.setDate(to.getDate() + 1);
+        to.setHours(23, 59, 59, 0);
+      }
       return { from: from.toISOString(), to: to.toISOString() };
     }
+
     if (t === 'tomorrow') {
-      const from = new Date(now); from.setDate(from.getDate() + 1); from.setHours(10, 0, 0);
-      const to = new Date(from); to.setHours(23, 59, 0);
+      const from = new Date(now);
+      from.setDate(from.getDate() + 1);
+      from.setHours(8, 0, 0, 0);
+      const to = new Date(from);
+      to.setHours(23, 59, 59, 0);
       return { from: from.toISOString(), to: to.toISOString() };
     }
+
     if (t === 'weekend') {
-      const dayOfWeek = now.getDay();
-      const daysToSat = (6 - dayOfWeek + 7) % 7 || 7;
-      const from = new Date(now); from.setDate(from.getDate() + daysToSat); from.setHours(10, 0, 0);
-      const to = new Date(from); to.setDate(to.getDate() + 1); to.setHours(23, 59, 0);
+      const dayOfWeek = now.getDay(); // 0=Sun, 6=Sat
+      const from = new Date(now);
+
+      if (dayOfWeek === 6) {
+        // Saturday — start from now
+        from.setHours(Math.max(from.getHours(), 8), 0, 0, 0);
+      } else if (dayOfWeek === 0) {
+        // Sunday — start from now
+        from.setHours(Math.max(from.getHours(), 8), 0, 0, 0);
+      } else {
+        // Weekday — jump to next Saturday
+        const daysToSat = 6 - dayOfWeek;
+        from.setDate(from.getDate() + daysToSat);
+        from.setHours(8, 0, 0, 0);
+      }
+
+      // End = Sunday 23:59
+      const to = new Date(from);
+      if (from.getDay() === 6) {
+        // from is Saturday → end Sunday
+        to.setDate(to.getDate() + 1);
+      }
+      // from is Sunday → end same day
+      to.setHours(23, 59, 59, 0);
       return { from: from.toISOString(), to: to.toISOString() };
     }
-    // now
+
+    // "now" — next 6 hours
     return { from: now.toISOString(), to: new Date(now.getTime() + 6 * 3600000).toISOString() };
   }
 
