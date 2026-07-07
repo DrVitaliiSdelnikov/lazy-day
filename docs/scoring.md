@@ -114,7 +114,7 @@ Linear decay. 0m = 1.0, radiusM = 0.0.
   - Open → `timeFit = 1.0`
   - Closed → `timeFit = 0.0` (effectively demoted or filtered out)
   - Unknown → `timeFit = 0.8` (neutral)
-- Places without `opening_hours`: `timeFit = 0.8` (849/2976 have hours from OSM)
+- Places without `opening_hours`: `timeFit = 0.8` (1,761/2,976 have hours: 1,497 Google + 264 OSM)
 
 ### opening_hours parser
 
@@ -131,6 +131,11 @@ Does NOT handle: public holidays (PH), week numbers, month ranges.
 ## Quality Score
 
 From `places.quality_score` (0-1). Default 0.5 for OSM imports.
+
+## Rating
+
+Google rating preferred over OSM: `google_rating > rating`. 1,722 venues have Google ratings (avg 4.42).
+Used in `highly_rated` explanation (>= 4.5) and returned in response `rating` field.
 
 ## Diversity Reranker
 
