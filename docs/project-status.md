@@ -124,27 +124,59 @@ score = 0.45 × interest + 0.25 × distance + 0.15 × time + 0.10 × quality + 0
 
 8. **Opening hours dual format** — OSM stores raw strings ("Mo-Su 10:00-22:00"), Google stores structured periods. Parser auto-detects and handles both. Coverage doubled after Google enrichment.
 
-## What's Next
+## Roadmap
 
-### Near-term
+Based on UX review analysis (see `docs/research/ux-improvements-analysis.md`).
 
-| Priority | Task | Impact | Effort |
-|---|---|---|---|
-| 1 | **Events data source** — concerts, exhibitions, shows. Scoring ready, data missing | High (product value) | Medium-high |
-| 2 | **Frontend polish** — use new API fields (openStatus, primaryTags, ratings) in UI cards | Medium (UX) | Medium |
-| 3 | **Deploy** — frontend on Cloudflare Pages, backend on Hetzner VPS | High (go live) | Medium |
+### MVP (July — August 2026)
 
-### Post-MVP
+| # | Task | Impact | Effort | Status |
+|---|---|---|---|---|
+| 1 | **Events ingestion** — TKT.ge, opera.ge, Fabrika, KHIDI, biletebi.ge. Parsers + venue matching + dedup + mixed feed | Highest — transforms "where can I go" into "where should I go tonight" | Heavy | Next |
+| 2 | **Mood presets + availability sort** — preset shortcuts ("Спокойный вечер" → interest+company combo) + sort open-first | High UX | Small | — |
+| 3 | **Compact API + @defer map** — `?compact=1` endpoint, map in @defer/tab | High for weak devices | Small | — |
+| 4 | **Visited status + behavioral start** — extend interactions, start accumulating signals | Medium (foundation) | Medium | — |
+| 5 | **Deploy** — Cloudflare Pages + Hetzner VPS | High (go live) | Medium | — |
 
-| Task | Impact | Effort |
+### v1 (August — September 2026)
+
+| # | Task | Notes |
 |---|---|---|
-| **Behavioral learning** — click/save/hide → personalized re-ranking | High long-term | High |
-| **Google Places refresh** — periodic re-enrichment for new/changed venues | Medium | Low |
-| **Journey-aware scoring** — "café on the way to park" contextual suggestions | Medium | High |
-| **Budget-based filtering** — use Google priceLevel for budget matching | Low | Low |
+| 6 | **Search/autocomplete** — find venues/events by name | Critical once events exist |
+| 7 | **Availability sections** — group by "open now / starts soon / later". *Reconsider*: may fragment short lists, test with >15 results only |
+| 8 | **Event sources wave 2** — Bassiani, museum.ge, teatri.ge, Red Events, Georgia Travel | Adds recall and niche quality |
+| 9 | **Smart empty states** — explain why few results, suggest fallbacks | Quick UX win |
+| 10 | **Basic offline cache** — SW cache last results + saved. Not district packs yet |
+| 11 | **Collections + share links** — lists "для вечера", "с детьми", share URL |
+
+### v2 (October+ 2026)
+
+| # | Task | Notes |
+|---|---|---|
+| 12 | **Behavioral re-ranking** — click/save/hide patterns → personalized scoring | Needs interaction data from MVP users |
+| 13 | **Route-aware bundles** — "кофе перед парком", "ужин после выставки" | Multi-stop planner, travel-time weighting |
+| 14 | **District offline packs** — precomputed area bundles. *Reconsider*: may be overkill, basic SW cache may suffice |
+| 15 | **Event sources wave 3** — Eventbrite, Meetup, Resident Advisor, Telegram monitoring |
+| 16 | **Push notifications** — "3 события под твой вкус рядом" |
+| 17 | **Community reports** — "место закрыто? сообщить" |
+| 18 | **City expansion readiness** — multi-city data model |
+
+### Items marked "Reconsider"
+
+These were proposed in the UX review but have open questions:
+
+- **Mood presets vs interest chips** — presets are attractive UX but mood ≠ interest. Compromise: presets as shortcuts, chips for fine-tuning. Need user testing.
+- **Availability sections** — may fragment short result lists (8-12 cards into 2-3 per section). Better as sort + badge until result counts grow. A/B test needed.
+- **District offline packs** — heavy infrastructure for MVP. Basic SW cache covers 90% of use cases.
+- **Fast-start onboarding "2 screens"** — current 3-step flow works. Reducing to 2 may lose pet/company signal. Test both.
+
+## Done (this session, 2026-07-06 → 07)
+
+Frontend polish, scoring rebuild, Google Places enrichment, localization — see "Resolved Issues" section above.
 
 ## Research Documents
 
+- `docs/research/ux-improvements-analysis.md` — UX review analysis, agreements, disagreements, adjusted priorities
 - `docs/research/categorization-and-ranking-strategy.md` — serendipity, multi-category, interest weights, cold start
 - `docs/research/company-context-strategy.md` — company tag matrix, venue attributes, industry analysis
 - `docs/research/google-places-api-integration.md` — pricing, fields, enrichment strategy, results

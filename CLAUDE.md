@@ -67,28 +67,22 @@ Migrations: `apps/api/src/app/database/migrations/` (SQL, 001-010). Runner: `npx
 - **Google Places Enterprise enrichment** (2026-07-07): 1,753 venues enriched. Opening hours: 1,497 Google structured + 264 OSM raw = 1,761 total (59%). Ratings: 1,722 venues (avg 4.42). `checkOpenStatus()` auto-detects format.
 - **Google Places Atmosphere enrichment** (2026-07-07): 1,058 venues enriched. allowsDogs (523, 294 true), goodForChildren (1,208, 1,110 true), outdoorSeating (548), liveMusic (226). Pet/family scoring now uses real facts with tag proxy fallback.
 
-## TODO / Known Issues (prioritized)
+## TODO / Roadmap
 
-### 1. Localization (user-facing)
-- Venue names: OSM has `name:ka`, `name:en`, Google has `displayName` — currently only `name` (usually Georgian) is shown.
-- Explanations hardcoded in Russian ("Сейчас открыто", "Тебе нравится"). Need i18n for en/ka.
-- Impact: high for non-Russian users. Effort: medium.
+Full roadmap: `docs/project-status.md`. UX analysis: `docs/research/ux-improvements-analysis.md`.
 
-### 2. Pet modifier: use outdoorSeating fact
-- `outdoorSeating` data available (548 venues). Restaurants currently neutral for pets.
-- Could boost restaurants with `outdoorSeating=true` for pet owners.
-- Impact: small. Effort: small (few lines in scoreCandidate).
+### MVP (next)
+1. **Events ingestion** — TKT.ge, opera.ge, Fabrika, KHIDI, biletebi.ge. Parsers + venue matching + mixed feed.
+2. **Mood presets + availability sort** — preset shortcuts in toolbar + sort open-first. *Reconsider: presets vs interest chips.*
+3. **Compact API** — `?compact=1` for weak devices, @defer for map.
+4. **Visited status** — extend interactions, start accumulating behavioral signals.
+5. **Deploy** — Cloudflare Pages + Hetzner VPS.
 
-### 3. Events data source
-- Zero events in DB (Overpass doesn't have events). Need external source: Facebook Events, Eventbrite, local aggregators.
-- Event scoring already works (timeFit, starts_in explanation) — just needs data.
-- Impact: high for product value. Effort: medium-high (new ingestion pipeline).
+### v1
+6. Search/autocomplete. 7. Availability sections (*reconsider: may fragment short lists*). 8. Event sources wave 2. 9. Smart empty states. 10. Basic offline cache. 11. Collections + share.
 
-### 4. Behavioral learning (post-MVP)
-- Track click/save/hide patterns → re-rank within interest-filtered set.
-- Three-phase plan: cold start → learning → mature.
-- Impact: high long-term. Effort: high (interactions pipeline, user profiles, A/B).
-- See `docs/research/categorization-and-ranking-strategy.md` §5.
+### v2
+12. Behavioral re-ranking. 13. Route-aware bundles. 14. District offline packs (*reconsider*). 15. Event sources wave 3. 16. Push notifications. 17. Community reports.
 
 ## Deploy
 
