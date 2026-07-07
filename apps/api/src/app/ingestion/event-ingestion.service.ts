@@ -5,6 +5,7 @@ import { Event } from '../database/entities/event.entity';
 import { Venue } from '../database/entities/venue.entity';
 import { NormalizedEvent, EventSourceAdapter } from './event-sources/types';
 import { OperaGeAdapter } from './event-sources/opera-ge.adapter';
+import { GoogleEventsAdapter } from './event-sources/google-events.adapter';
 
 interface IngestionResult {
   source: string;
@@ -26,9 +27,10 @@ export class EventIngestionService {
     @InjectRepository(Venue) private readonly venueRepo: Repository<Venue>,
   ) {
     // Register adapters
-    this.adapters = new Map([
+    const serpApiKey = process.env['SERPAPI_KEY'] || '';
+    this.adapters = new Map<string, EventSourceAdapter>([
       ['opera.ge', new OperaGeAdapter()],
-      // TODO: add more adapters
+      ['google_events', new GoogleEventsAdapter(serpApiKey, 'events in Tbilisi', 'en')],
     ]);
   }
 
