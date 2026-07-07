@@ -6,6 +6,7 @@ import { Venue } from '../database/entities/venue.entity';
 import { NormalizedEvent, EventSourceAdapter } from './event-sources/types';
 import { OperaGeAdapter } from './event-sources/opera-ge.adapter';
 import { GoogleEventsAdapter } from './event-sources/google-events.adapter';
+import { YoloGeAdapter } from './event-sources/yolo-ge.adapter';
 
 interface IngestionResult {
   source: string;
@@ -31,6 +32,7 @@ export class EventIngestionService {
     this.adapters = new Map<string, EventSourceAdapter>([
       ['opera.ge', new OperaGeAdapter()],
       ['google_events', new GoogleEventsAdapter(serpApiKey, 'events in Tbilisi', 'en')],
+      ['yolo.ge', new YoloGeAdapter()],
     ]);
   }
 

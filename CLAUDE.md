@@ -58,7 +58,7 @@ See `docs/research/product-differentiation.md` for full analysis and competitive
 | Ratings | 1,755 (55%) | Google |
 | allowsDogs | 607 | Google Atmosphere |
 | goodForChildren | 1,292 | Google Atmosphere |
-| Events | 31 (10 opera.ge + 21 Google Events) | Custom parser + SerpApi |
+| Events | 55 (10 opera.ge + 21 Google Events + 24 YOLO.ge) | 3 adapters |
 | Localization | en: ~74%, ka: ~54% | OSM name_en/name_ka |
 
 ## Docs
@@ -90,7 +90,7 @@ See `docs/research/product-differentiation.md` for full analysis and competitive
 ### MVP — Intelligence + Events + Deploy
 1. ~~Events: SerpApi Google Events~~ — DONE (21 events, one adapter any city)
 2. ~~Mood presets~~ — DONE (6 presets: chill, active, family, culture, food, nightlife)
-3. **Events: YOLO.ge parser** — local depth (Cheerio, Allow: /)
+3. ~~Events: YOLO.ge parser~~ — DONE (24 events, AJAX endpoint, workshops/exhibitions/excursions)
 4. **Visited + behavioral start** — "been here", save/hide tracking → proprietary data begins
 5. **Sort modes** — Smart / Closest / Top rated / Open now (research done)
 6. **Deploy** — Cloudflare Pages + Hetzner VPS
