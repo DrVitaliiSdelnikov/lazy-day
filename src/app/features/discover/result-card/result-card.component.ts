@@ -10,7 +10,18 @@ import { RecommendationCard } from '../../../core/models';
   template: `
     <article class="card" (click)="openDetail.emit()">
       <div class="card__header">
-        <h3 class="card__title">{{ card().title }}</h3>
+        <div class="card__header-left">
+          <h3 class="card__title">{{ card().title }}</h3>
+          @if (card().rating) {
+            <div class="card__rating">
+              <span class="card__star">&#9733;</span>
+              <span class="card__rating-value">{{ card().rating }}</span>
+              @if (card().ratingCount) {
+                <span class="card__rating-count">({{ formatRatingCount() }})</span>
+              }
+            </div>
+          }
+        </div>
         <button
           class="card__save"
           [class.card__save--active]="isSaved()"
@@ -25,16 +36,21 @@ import { RecommendationCard } from '../../../core/models';
         <span class="card__category">{{ card().categoryLabel || card().category }}</span>
         <span class="card__dot">&middot;</span>
         <span class="card__distance">{{ formatDistance() }}</span>
+        @if (card().walkMinutes) {
+          <span class="card__walk">&#128694; {{ card().walkMinutes }}m</span>
+        }
         @if (card().openStatus) {
           <span class="card__dot">&middot;</span>
-          <span class="card__status">{{ card().openStatus }}</span>
+          <span class="card__status"
+            [class.card__status--open]="isOpen()"
+            [class.card__status--closed]="!isOpen()">{{ card().openStatus }}</span>
         }
       </div>
 
       @if (card().explanations.length) {
         <div class="card__explanations">
           @for (tag of card().explanations.slice(0, 3); track tag.type) {
-            <p-tag [value]="tag.label" severity="secondary" />
+            <p-tag [value]="tag.label" [severity]="tagSeverity(tag.type)" />
           }
         </div>
       }
@@ -109,17 +125,59 @@ import { RecommendationCard } from '../../../core/models';
       }
     }
 
+    .card__header-left {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .card__rating {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 13px;
+      margin-top: 1px;
+    }
+
+    .card__star {
+      color: #f5a623;
+      font-size: 14px;
+    }
+
+    .card__rating-value {
+      font-weight: 600;
+      color: var(--ld-text);
+    }
+
+    .card__rating-count {
+      color: var(--ld-text-secondary);
+      font-weight: 400;
+    }
+
     .card__meta {
       display: flex;
       align-items: center;
       gap: var(--ld-space-xs);
       font-size: 13px;
       color: var(--ld-text-secondary);
-      margin-top: 2px;
+      margin-top: 4px;
+    }
+
+    .card__walk {
+      font-size: 12px;
     }
 
     .card__dot {
       color: var(--ld-divider);
+    }
+
+    .card__status--open {
+      color: #2e7d32;
+      font-weight: 500;
+    }
+
+    .card__status--closed {
+      color: #c62828;
+      font-weight: 500;
     }
 
     .card__explanations {
@@ -193,6 +251,28 @@ export class ResultCardComponent {
     const d = this.card().distanceM;
     if (d < 1000) return `${Math.round(d)} м`;
     return `${(d / 1000).toFixed(1)} км`;
+  }
+
+  formatRatingCount(): string {
+    const c = this.card().ratingCount ?? 0;
+    if (c >= 1000) return `${(c / 1000).toFixed(1)}k`;
+    return `${c}`;
+  }
+
+  isOpen(): boolean {
+    const s = this.card().openStatus;
+    return s === 'Открыто' || s === 'Open' || s === 'ღიაა';
+  }
+
+  tagSeverity(type: string): 'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contrast' {
+    switch (type) {
+      case 'open_now': return 'success';
+      case 'company_fit': return 'info';
+      case 'pet_friendly': return 'info';
+      case 'matches_interest': return 'secondary';
+      case 'highly_rated': return 'warn';
+      default: return 'secondary';
+    }
   }
 
   onSaveClick(event: Event) {

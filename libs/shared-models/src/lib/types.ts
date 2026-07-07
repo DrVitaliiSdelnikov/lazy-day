@@ -36,6 +36,8 @@ export interface RecommendationCard {
   venueName?: string;
   rating?: number;
   ratingCount?: number;
+  primaryTags?: string[];
+  secondaryTags?: string[];
   source: string;
 }
 
