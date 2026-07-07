@@ -52,14 +52,14 @@ See `docs/research/product-differentiation.md` for full analysis and competitive
 
 | Data | Coverage | Source |
 |---|---|---|
-| Venues | 2,976 | OSM |
-| Google matched | 1,753 (59%) | Google Places |
-| Opening hours | 1,761 (59%) | 1,497 Google + 264 OSM |
-| Ratings | 1,722 (58%) | Google |
-| allowsDogs | 523 (294 true) | Google Atmosphere |
-| goodForChildren | 1,208 (1,110 true) | Google Atmosphere |
+| Venues | 3,166 | OSM (bbox incl. Lilo, Orkhevi) |
+| Google matched | 1,755 (55%) | Google Places |
+| Opening hours | 1,794 (57%) | Google + OSM |
+| Ratings | 1,755 (55%) | Google |
+| allowsDogs | 607 | Google Atmosphere |
+| goodForChildren | 1,292 | Google Atmosphere |
 | Events | 10 (opera.ge) | Custom parser |
-| Localization | en: 74%, ka: 54% | OSM name_en/name_ka |
+| Localization | en: ~74%, ka: ~54% | OSM name_en/name_ka |
 
 ## Docs
 

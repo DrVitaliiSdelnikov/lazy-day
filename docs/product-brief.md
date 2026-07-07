@@ -47,14 +47,14 @@ Modified by: company context (family penalizes nightlife), pet modifier (fact-ba
 
 | Data | Count | Source |
 |---|---|---|
-| Venues | 3,069 | OSM + expanded bbox |
-| Google-matched | 1,753 (57%) | Google Places Text Search |
-| Opening hours | 1,761 (57%) | 1,497 Google + 264 OSM |
-| Ratings | 1,722 (56%) | Google Places |
-| Pet-friendly data | 523 venues | Google Atmosphere |
-| Kid-friendly data | 1,208 venues | Google Atmosphere |
+| Venues | 3,166 | OSM (expanded bbox incl. Lilo, Orkhevi) |
+| Google-matched | 1,755 (55%) | Google Places Text Search |
+| Opening hours | 1,794 (57%) | Google + OSM |
+| Ratings | 1,755 (55%) | Google Places |
+| Pet-friendly data | 607 venues | Google Atmosphere |
+| Kid-friendly data | 1,292 venues | Google Atmosphere |
 | Events | 10 | opera.ge parser |
-| Localization | en: 74%, ka: 54% | OSM + Google |
+| Localization | en: ~74%, ka: ~54% | OSM + Google |
 
 ## What Makes It Different
 
