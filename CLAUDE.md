@@ -66,13 +66,16 @@ Migrations: `apps/api/src/app/database/migrations/` (SQL, 001-010). Runner: `npx
 - **Google Places Pro enrichment** (2026-07-07): 1,753/2,976 venues matched. google_types (multi-category), businessStatus, accessibilityOptions stored. 1,223 unmatched = small OSM-only points without Google presence. Delta-aware: re-run only processes new venues.
 - **Google Places Enterprise enrichment** (2026-07-07): 1,753 venues enriched. Opening hours: 1,497 Google structured + 264 OSM raw = 1,761 total (59%). Ratings: 1,722 venues (avg 4.42). `checkOpenStatus()` auto-detects format.
 - **Google Places Atmosphere enrichment** (2026-07-07): 1,058 venues enriched. allowsDogs (523, 294 true), goodForChildren (1,208, 1,110 true), outdoorSeating (548), liveMusic (226). Pet/family scoring now uses real facts with tag proxy fallback.
+- **Localization** (2026-07-07): venue titles by locale (en: 74%, ka: 54%), all 8 explanation types localized ru/en/ka.
+- **Frontend polish** (2026-07-07): rating stars, colored openStatus, responsive grid (3/2/1 cols), tag severity colors. Detail/saved/onboarding updated.
+- **Events ingestion** (2026-07-07): adapter pattern + opera.ge parser. 10 events (Sleeping Beauty, Laurencia, DAISI, Masurca Fogo). Mixed feed works — events alongside places in recommendations.
 
 ## TODO / Roadmap
 
 Full roadmap: `docs/project-status.md`. UX analysis: `docs/research/ux-improvements-analysis.md`.
 
 ### MVP (next)
-1. **Events ingestion** — TKT.ge, opera.ge, Fabrika, KHIDI, biletebi.ge. Parsers + venue matching + mixed feed.
+1. **Events ingestion wave 1** — opera.ge done. Next: RA, Fabrika, KHIDI. Then wave 2: TKT.ge, biletebi.ge (need headless browser).
 2. **Mood presets + availability sort** — preset shortcuts in toolbar + sort open-first. *Reconsider: presets vs interest chips.*
 3. **Compact API** — `?compact=1` for weak devices, @defer for map.
 4. **Visited status** — extend interactions, start accumulating behavioral signals.
