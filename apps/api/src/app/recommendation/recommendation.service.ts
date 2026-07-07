@@ -31,12 +31,12 @@ const INTEREST_SYNONYMS: Record<string, string[]> = {
   food: ['food', 'restaurant', 'cafe', 'bakery'],
   nightlife: ['nightlife', 'bar', 'club'],
   culture: ['culture', 'museum', 'gallery', 'theater'],
-  gym: ['gym', 'sports', 'wellness'],
-  sports: ['gym', 'sports', 'climbing', 'karting', 'paintball', 'trampoline'],
+  gym: ['gym', 'wellness', 'sports'],
+  sports: ['gym', 'sports', 'climbing', 'karting', 'paintball', 'trampoline', 'bowling'],
   shopping: ['shopping', 'mall'],
-  entertainment: ['entertainment', 'cinema', 'club', 'bowling', 'escape_room', 'gaming', 'arcade'],
-  family: ['family', 'playground', 'park', 'trampoline', 'water_park'],
-  active: ['sports', 'climbing', 'karting', 'paintball', 'trampoline', 'gym'],
+  entertainment: ['entertainment', 'cinema', 'club', 'bowling', 'escape_room', 'gaming', 'arcade', 'water_park'],
+  family: ['family', 'playground', 'park', 'trampoline', 'water_park', 'arcade'],
+  active: ['sports', 'climbing', 'karting', 'paintball', 'trampoline', 'gym', 'bowling', 'escape_room', 'gaming', 'arcade', 'water_park'],
 };
 
 /**
@@ -132,6 +132,8 @@ function lInterest(interest: string, locale: string): string {
     sports: { ru: 'спорт', en: 'sports', ka: 'სპორტი' },
     shopping: { ru: 'шоппинг', en: 'shopping', ka: 'შოპინგი' },
     entertainment: { ru: 'развлечения', en: 'entertainment', ka: 'გართობა' },
+    active: { ru: 'активный отдых', en: 'active leisure', ka: 'აქტიური დასვენება' },
+    gym: { ru: 'фитнес', en: 'fitness', ka: 'ფიტნესი' },
     family: { ru: 'семья', en: 'family', ka: 'ოჯახი' },
   };
   return map[interest]?.[locale] ?? interest;
