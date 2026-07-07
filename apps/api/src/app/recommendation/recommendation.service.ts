@@ -31,6 +31,7 @@ const INTEREST_SYNONYMS: Record<string, string[]> = {
   food: ['food', 'restaurant', 'cafe', 'bakery'],
   nightlife: ['nightlife', 'bar', 'club'],
   culture: ['culture', 'museum', 'gallery', 'theater'],
+  gym: ['gym', 'sports', 'wellness'],
   sports: ['gym', 'sports', 'climbing', 'karting', 'paintball', 'trampoline'],
   shopping: ['shopping', 'mall'],
   entertainment: ['entertainment', 'cinema', 'club', 'bowling', 'escape_room', 'gaming', 'arcade'],
@@ -483,8 +484,8 @@ export class RecommendationService {
           $3
         )
       ORDER BY distance_m
-      LIMIT 200`,
-      [lat, lng, radiusM],
+      LIMIT $4`,
+      [lat, lng, radiusM, radiusM > 5000 ? 1000 : 500],
     );
     return rows;
   }
