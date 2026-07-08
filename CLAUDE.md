@@ -91,9 +91,14 @@ See `docs/research/product-differentiation.md` for full analysis and competitive
 1. ~~Events: SerpApi Google Events~~ — DONE (21 events, one adapter any city)
 2. ~~Mood presets~~ — DONE (6 presets: chill, active, family, culture, food, nightlife)
 3. ~~Events: YOLO.ge parser~~ — DONE (24 events, AJAX endpoint, workshops/exhibitions/excursions)
-4. **Visited + behavioral start** — "been here", save/hide tracking → proprietary data begins
-5. **Sort modes** — Smart / Closest / Top rated / Open now (research done)
-6. **Deploy** — Cloudflare Pages + Hetzner VPS
+4. ~~Event cron~~ — DONE (daily 06:00 Tbilisi, marks past, refreshes all sources)
+5. ~~Type filter~~ — DONE (Всё / Места / События, client-side)
+6. ~~Closed venues filter~~ — DONE (hard-filtered from results)
+7. ~~Location: GPS + coords~~ — DONE (removed districts, DMS parser)
+8. ~~Interest categories~~ — DONE (11 intent-based: food, nature, culture, active, entertainment...)
+9. **Deploy** — Cloudflare Pages + Hetzner VPS ← NEXT
+10. **Visited + behavioral start** — after deploy, needs real users
+11. **Sort modes** — Smart / Closest / Top rated / Open now (research done)
 
 ### v1 — Community Layer (the moat)
 6. Events: TKT.ge (Puppeteer, only if Google gap >30%). 7. Micro-tips + collections + "been here" badges. 8. Search/autocomplete. 9. Conversational discovery (one smart question per session). 10. Compact API + offline cache.
@@ -113,7 +118,7 @@ Month 12+:  Curator network + multi-city = sustainable moat
 
 Events must be refreshed daily. Stale events = broken trust.
 
-Current state: manual `POST /v1/admin/ingestion/events/run`. Need automated cron.
+Automated via `@nestjs/schedule` cron (daily 02:00 UTC = 06:00 Tbilisi). Manual: `POST /v1/admin/ingestion/events/run`.
 
 | Source | Refresh | SerpApi cost | Notes |
 |---|---|---|---|
