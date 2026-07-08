@@ -80,7 +80,7 @@ User-generated content that Google doesn't have. Tips, collections, "been here" 
 - [ ] Fake "been here" clicks: does it matter? Gaming risk?
 
 **2.4 Share mechanics**
-- [ ] What URL structure? `lazyday.app/collection/abc123`?
+- [ ] What URL structure? `lazigo.app/collection/abc123`?
 - [ ] OG meta tags for social preview (image, title, description)?
 - [ ] Deep links: shared link opens app if installed, web if not?
 - [ ] Share single place/event or only collections?

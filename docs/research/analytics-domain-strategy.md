@@ -12,7 +12,7 @@
 
 | Domain | Available? | Pros | Cons |
 |---|---|---|---|
-| `lazyday.app` | Check | Perfect match to brand. `.app` = modern, HTTPS-only | `.app` less familiar than `.com` |
+| `lazigo.app` | Check | Perfect match to brand. `.app` = modern, HTTPS-only | `.app` less familiar than `.com` |
 | `lazyday.com` | Check | Classic, trustworthy | Likely taken |
 | `lazyday.io` | Check | Tech/startup feel | Less consumer-friendly |
 | `getlazyday.com` | Check | Probably available | Longer, "get" prefix overused |
@@ -21,15 +21,15 @@
 | `lazydayapp.com` | Check | Probably available | Redundant "app" |
 
 ### Recommendation
-- **Primary**: `lazyday.app` — brand match, HTTPS enforced, modern
+- **Primary**: `lazigo.app` — brand match, HTTPS enforced, modern
 - **Fallback**: `lazyday.ge` — local trust for Georgian market MVP
 - **Check both** before deciding. `.app` domains ~$14/year via Google Domains or Cloudflare.
 
 ### What domain affects
 - All meta tags, OG URLs, sitemap
 - SSL certificate (Cloudflare auto for Pages)
-- Email (future: hello@lazyday.app)
-- API endpoint (api.lazyday.app or lazyday.app/v1)
+- Email (future: hello@lazigo.app)
+- API endpoint (api.lazigo.app or lazigo.app/v1)
 - Google Search Console, Yandex Webmaster verification
 
 ---
@@ -143,15 +143,15 @@
 
 | Pattern | Example | Pros | Cons |
 |---|---|---|---|
-| Subdomain | `api.lazyday.app` + `lazyday.app` | Clean separation, independent scaling | CORS setup needed, separate SSL |
-| Path prefix | `lazyday.app/v1/*` | Simple, no CORS, one SSL | Harder to scale independently |
+| Subdomain | `api.lazigo.app` + `lazigo.app` | Clean separation, independent scaling | CORS setup needed, separate SSL |
+| Path prefix | `lazigo.app/v1/*` | Simple, no CORS, one SSL | Harder to scale independently |
 | Same origin + proxy | Cloudflare proxies `/v1` to backend | Zero CORS, simple frontend | Cloudflare dependency |
 
-**Recommendation**: `api.lazyday.app` subdomain pointing to Hetzner VPS. Frontend on `lazyday.app` via Cloudflare Pages. Clean, scalable, standard.
+**Recommendation**: `api.lazigo.app` subdomain pointing to Hetzner VPS. Frontend on `lazigo.app` via Cloudflare Pages. Clean, scalable, standard.
 
 CORS config on API:
 ```typescript
-app.enableCors({ origin: ['https://lazyday.app', 'http://localhost:4200'] });
+app.enableCors({ origin: ['https://lazigo.app', 'http://localhost:4200'] });
 ```
 
 ---
@@ -159,8 +159,8 @@ app.enableCors({ origin: ['https://lazyday.app', 'http://localhost:4200'] });
 ## 5. Pre-Deploy Checklist (updated)
 
 ### Domain & DNS (day 1)
-- [ ] Buy domain (lazyday.app or lazyday.ge)
-- [ ] Configure DNS: `lazyday.app` → Cloudflare Pages, `api.lazyday.app` → Hetzner VPS
+- [ ] Buy domain (lazigo.app or lazyday.ge)
+- [ ] Configure DNS: `lazigo.app` → Cloudflare Pages, `api.lazigo.app` → Hetzner VPS
 - [ ] SSL: automatic via Cloudflare (frontend) + Let's Encrypt (API)
 
 ### Analytics (deploy day)

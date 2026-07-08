@@ -25,7 +25,7 @@ Single source of truth for what we do, what we decide, and when.
 
 | # | Task | Effort | Blocks deploy? |
 |---|---|---|---|
-| 11 | **Domain** — buy lazyday.app / lazyday.ge / lazyday.today, configure DNS | 30 min | Yes |
+| 11 | **Domain** — buy lazigo.app / lazyday.ge / lazyday.today, configure DNS | 30 min | Yes |
 | 12 | **Privacy policy page** — static /privacy route, what we collect, how, why | 1-2 hours | Yes (legal) |
 | 13 | **Consent banner** — opt-in for personalization tracking, localStorage flag | 1-2 hours | Yes (GDPR) |
 | 14 | **Interaction schema migration** — interaction_events + venue_interaction_stats + user_preference_aggregates | 2 hours | Should (foundation) |
@@ -38,10 +38,10 @@ Single source of truth for what we do, what we decide, and when.
 
 | Question | Options | Impact |
 |---|---|---|
-| **Domain name** | lazyday.app ($14/yr) · lazyday.ge (local) · lazyday.today (semantic) | All URLs, SSL, branding |
+| **Domain name** | lazigo.app ($14/yr) · lazyday.ge (local) · lazyday.today (semantic) | All URLs, SSL, branding |
 | **Analytics tool** | Plausible (€9/mo cloud) · Umami (free self-hosted on VPS) | Cost vs simplicity |
 | **Consent scope** | Personalization only · All tracking · Split (analytics separate from behavioral) | GDPR compliance |
-| **API subdomain** | api.lazyday.app (clean) · lazyday.app/v1 (simpler, no CORS) | Architecture |
+| **API subdomain** | api.lazigo.app (clean) · lazigo.app/v1 (simpler, no CORS) | Architecture |
 | **SSR before deploy?** | No (MVP static) · Yes (detail pages for JSON-LD) | SEO vs speed to market |
 
 ---

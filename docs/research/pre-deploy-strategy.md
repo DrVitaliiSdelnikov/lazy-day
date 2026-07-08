@@ -38,14 +38,14 @@ Disallow: /discover
 Disallow: /settings
 Disallow: /saved
 
-Sitemap: https://lazyday.app/sitemap.xml
+Sitemap: https://lazigo.app/sitemap.xml
 ```
 
 **2. `sitemap.xml`** (статический для MVP)
 ```xml
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://lazyday.app/</loc><changefreq>daily</changefreq></url>
-  <url><loc>https://lazyday.app/about</loc></url>
+  <url><loc>https://lazigo.app/</loc><changefreq>daily</changefreq></url>
+  <url><loc>https://lazigo.app/about</loc></url>
 </urlset>
 ```
 Динамический (v1): генерировать из events + venue categories на сервере.
@@ -56,8 +56,8 @@ Sitemap: https://lazyday.app/sitemap.xml
 <meta name="description" content="Personalized leisure discovery in Tbilisi. Find places, events, restaurants matched to your mood, company, and time.">
 <meta property="og:title" content="LazyDay — What to do in Tbilisi">
 <meta property="og:description" content="Your lazy guide to the best of Tbilisi">
-<meta property="og:image" content="https://lazyday.app/og-image.png">
-<meta property="og:url" content="https://lazyday.app">
+<meta property="og:image" content="https://lazigo.app/og-image.png">
+<meta property="og:url" content="https://lazigo.app">
 <meta name="twitter:card" content="summary_large_image">
 ```
 
@@ -201,7 +201,7 @@ User finds cool place → Saves to collection → Shares link with friend
 ```typescript
 // Frontend
 async share(card: RecommendationCard) {
-  const url = `https://lazyday.app/detail/${card.type}/${card.id}`;
+  const url = `https://lazigo.app/detail/${card.type}/${card.id}`;
   if (navigator.share) {
     await navigator.share({ title: card.title, url });
   } else {

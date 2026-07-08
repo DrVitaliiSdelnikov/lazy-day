@@ -150,5 +150,6 @@ Google Places breakdown: Pro (free) + Enterprise (~$35) + Atmosphere (~$39). One
 
 ## Deploy
 
-- Frontend: push to `main` → Cloudflare Pages → `lazy-day-app.pages.dev`
-- Backend: TBD (Hetzner VPS + Docker Compose)
+- Domain: **lazigo.app** (lazy + go)
+- Frontend: `lazigo.app` → Cloudflare Pages
+- API: `api.lazigo.app` → Hetzner VPS + Docker Compose
