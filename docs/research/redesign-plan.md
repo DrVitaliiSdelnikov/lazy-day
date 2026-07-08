@@ -131,6 +131,20 @@ body { font-family: 'Manrope', 'Noto Sans Georgian', system-ui, sans-serif; }
 
 No component library. Pure CSS + native HTML + Angular standalone components.
 
+### Design Decisions (confirmed)
+
+1. **Category chip priority (6 visible + "Ещё N")**:
+   - (1) Currently selected — always visible
+   - (2) ProfileStore.interests by weight (user picked before)
+   - (3) Static order: day=[nature, food, family, culture, active, entertainment], evening=[nightlife, food, culture, entertainment, active, nature]
+   - v2: reorder from user_preference_aggregates
+
+2. **URL-query sync → v1, NOT MVP**. Avoid parsing conflicts with localStorage.
+
+3. **Two layouts only**: <1024 = bottom sheet, ≥1024 = sidebar. No tablet drawer.
+
+4. **Instant apply on desktop sidebar**: no "Show" button, debounce 300ms, counts update live.
+
 ### Risk Assessment
 
 | Risk | Impact | Mitigation |

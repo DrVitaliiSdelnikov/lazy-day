@@ -1,0 +1,108 @@
+<h2 class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Десктопный макет LazyDay: левый сайдбар с фильтрами локации и секций, справа сетка карточек</h2>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700&family=Unbounded:wght@500&display=swap" rel="stylesheet">
+<div style="background: var(--surface-1); border-radius: 12px; padding: 16px;">
+<div style="border: 1px solid #D8D2C6; border-radius: 14px; overflow: hidden; font-family: 'Manrope', sans-serif;">
+  <div style="background: #EFEAE0; padding: 7px 12px; display: flex; align-items: center; gap: 6px;">
+    <span style="width: 9px; height: 9px; border-radius: 50%; background: #E07070;"></span>
+    <span style="width: 9px; height: 9px; border-radius: 50%; background: #E3B25C;"></span>
+    <span style="width: 9px; height: 9px; border-radius: 50%; background: #6FBF87;"></span>
+    <span style="flex: 1; background: #FFFFFF; border-radius: 6px; padding: 3px 10px; font-size: 11px; color: #7C7465; margin-left: 8px;">lazyday.today/tbilisi</span>
+  </div>
+  <div style="background: #FAF6ED; color: #322E26;">
+    <div style="display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid #EFE7D7; background: #FFFFFF;">
+      <span style="font-family: 'Unbounded', sans-serif; font-size: 14px; font-weight: 500; color: #E8862D;">LazyDay</span>
+      <span style="flex: 1;"></span>
+      <span style="font-size: 12px; font-weight: 500; color: #E8862D; border-bottom: 2px solid #E8862D; padding: 4px 2px;">Лента</span>
+      <span style="font-size: 12px; color: #7C7465; padding: 4px 2px;">Избранное</span>
+      <span style="font-size: 12px; color: #7C7465; padding: 4px 2px;">Профиль</span>
+      <i class="ti ti-sun" style="font-size: 16px; color: #7C7465;" aria-label="Тема"></i>
+    </div>
+    <div style="display: flex;">
+      <div style="width: 190px; flex-shrink: 0; border-right: 1px solid #EFE7D7; padding: 14px 12px; background: #FFFFFF;">
+        <p style="font-size: 11px; font-weight: 500; color: #A39A8C; margin: 0 0 6px; letter-spacing: 0.4px;">Локация</p>
+        <div style="display: flex; align-items: center; gap: 5px; background: #FAF6ED; border: 1px solid #EFE7D7; border-radius: 10px; padding: 6px 8px; font-size: 12px;"><i class="ti ti-map-pin" style="font-size: 13px; color: #E8862D;" aria-hidden="true"></i>Ваке, Тбилиси</div>
+        <p style="font-size: 11px; color: #7C7465; margin: 8px 0 3px;">Радиус · 2 км</p>
+        <div style="height: 4px; background: #EFE7D7; border-radius: 999px; position: relative; margin: 6px 2px 14px;">
+          <div style="width: 40%; height: 4px; background: #E8862D; border-radius: 999px;"></div>
+          <span style="position: absolute; left: 40%; top: -5px; width: 14px; height: 14px; background: #E8862D; border-radius: 50%; border: 2px solid #FFFFFF;"></span>
+        </div>
+        <p style="font-size: 11px; font-weight: 500; color: #A39A8C; margin: 0 0 6px; letter-spacing: 0.4px;">Секции</p>
+        <div style="background: #FAF6ED; border-radius: 10px; padding: 3px; display: flex; flex-direction: column; gap: 2px; margin-bottom: 14px;">
+          <span style="background: #FFFFFF; border-radius: 8px; padding: 5px 8px; font-size: 12px; font-weight: 500; color: #8A4E12; display: flex; justify-content: space-between;">Все <span style="color: #A39A8C; font-weight: 400;">42</span></span>
+          <span style="padding: 5px 8px; font-size: 12px; color: #7C7465; display: flex; justify-content: space-between;">Места <span style="color: #A39A8C;">31</span></span>
+          <span style="padding: 5px 8px; font-size: 12px; color: #7C7465; display: flex; justify-content: space-between;">События <span style="color: #A39A8C;">11</span></span>
+        </div>
+        <p style="font-size: 11px; font-weight: 500; color: #A39A8C; margin: 0 0 6px; letter-spacing: 0.4px;">Категории</p>
+        <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 14px;">
+          <span style="background: #FBEDDB; color: #8A4E12; border-radius: 999px; padding: 4px 9px; font-size: 11px; font-weight: 500;">Природа</span>
+          <span style="background: #FBEDDB; color: #8A4E12; border-radius: 999px; padding: 4px 9px; font-size: 11px; font-weight: 500;">Кофе</span>
+          <span style="background: #FFFFFF; border: 1px solid #EFE7D7; color: #7C7465; border-radius: 999px; padding: 4px 9px; font-size: 11px;">Ночь</span>
+          <span style="background: #FFFFFF; border: 1px solid #EFE7D7; color: #7C7465; border-radius: 999px; padding: 4px 9px; font-size: 11px;">Спорт</span>
+          <span style="background: #FFFFFF; border: 1px solid #EFE7D7; color: #7C7465; border-radius: 999px; padding: 4px 9px; font-size: 11px;">Ещё 7</span>
+        </div>
+        <p style="font-size: 11px; font-weight: 500; color: #A39A8C; margin: 0 0 6px; letter-spacing: 0.4px;">Компания</p>
+        <div style="display: flex; gap: 4px; margin-bottom: 12px;">
+          <span style="background: #FBEDDB; border-radius: 8px; padding: 6px; color: #8A4E12;"><i class="ti ti-user" style="font-size: 14px;" aria-label="Один"></i></span>
+          <span style="background: #FFFFFF; border: 1px solid #EFE7D7; border-radius: 8px; padding: 6px; color: #A39A8C;"><i class="ti ti-hearts" style="font-size: 14px;" aria-label="Пара"></i></span>
+          <span style="background: #FFFFFF; border: 1px solid #EFE7D7; border-radius: 8px; padding: 6px; color: #A39A8C;"><i class="ti ti-users" style="font-size: 14px;" aria-label="Друзья"></i></span>
+          <span style="background: #FFFFFF; border: 1px solid #EFE7D7; border-radius: 8px; padding: 6px; color: #A39A8C;"><i class="ti ti-balloon" style="font-size: 14px;" aria-label="Семья"></i></span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+          <span style="font-size: 12px; color: #322E26;"><i class="ti ti-dog" style="font-size: 14px; color: #6FA07C;" aria-hidden="true"></i> С питомцем</span>
+          <span style="width: 30px; height: 17px; background: #6FA07C; border-radius: 999px; position: relative;"><span style="position: absolute; right: 2px; top: 2px; width: 13px; height: 13px; background: #FFFFFF; border-radius: 50%;"></span></span>
+        </div>
+        <span style="font-size: 12px; color: #E8862D;">Сбросить всё</span>
+      </div>
+      <div style="flex: 1; padding: 14px 16px; min-width: 0;">
+        <p style="font-family: 'Unbounded', sans-serif; font-size: 15px; font-weight: 500; margin: 0 0 10px;">Лениво? Сейчас найдём.</p>
+        <div style="display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap;">
+          <span style="background: #FBEDDB; color: #8A4E12; border-radius: 999px; padding: 6px 11px; font-size: 12px; font-weight: 500;"><i class="ti ti-trees" style="font-size: 13px;" aria-hidden="true"></i> Прогулка</span>
+          <span style="background: #FFFFFF; border: 1px solid #EFE7D7; color: #7C7465; border-radius: 999px; padding: 6px 11px; font-size: 12px;"><i class="ti ti-coffee" style="font-size: 13px;" aria-hidden="true"></i> Кофе</span>
+          <span style="background: #FFFFFF; border: 1px solid #EFE7D7; color: #7C7465; border-radius: 999px; padding: 6px 11px; font-size: 12px;"><i class="ti ti-balloon" style="font-size: 13px;" aria-hidden="true"></i> С детьми</span>
+          <span style="background: #FFFFFF; border: 1px solid #EFE7D7; color: #7C7465; border-radius: 999px; padding: 6px 11px; font-size: 12px;"><i class="ti ti-run" style="font-size: 13px;" aria-hidden="true"></i> Активно</span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;">
+          <div style="background: #FFFFFF; border: 1px solid #EFE7D7; border-radius: 16px; padding: 12px;">
+            <div style="display: flex; justify-content: space-between;"><p style="font-size: 13px; font-weight: 700; margin: 0;">Ботанический сад</p><i class="ti ti-heart" style="font-size: 16px; color: #C9BFAE;" aria-hidden="true"></i></div>
+            <p style="font-size: 11px; color: #7C7465; margin: 2px 0 7px;">Парк · 1.8 км · 23 мин</p>
+            <div style="display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 7px;">
+              <span style="background: #E1F0E4; color: #1F5C36; border-radius: 999px; padding: 2px 7px; font-size: 11px;">Открыто</span>
+              <span style="background: #FBEDDB; color: #8A4E12; border-radius: 999px; padding: 2px 7px; font-size: 11px;">Природа</span>
+            </div>
+            <p style="font-size: 11px; margin: 0;"><i class="ti ti-star" style="font-size: 12px; color: #D99A26;" aria-hidden="true"></i> 4.8 <span style="color: #7C7465;">(2 741)</span></p>
+          </div>
+          <div style="background: #FFFFFF; border: 1px solid #EFE7D7; border-radius: 16px; overflow: hidden; display: flex;">
+            <div style="width: 4px; background: #8A64C0;"></div>
+            <div style="padding: 12px; flex: 1;">
+              <div style="display: flex; justify-content: space-between;"><p style="font-size: 13px; font-weight: 700; margin: 0;">Лебединое озеро</p><i class="ti ti-ticket" style="font-size: 15px; color: #8A64C0;" aria-hidden="true"></i></div>
+              <p style="font-size: 11px; color: #7C7465; margin: 2px 0 7px;">Опера · сегодня 19:00</p>
+              <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                <span style="background: #F0EAFA; color: #4E3579; border-radius: 999px; padding: 2px 7px; font-size: 11px;">Событие</span>
+                <span style="background: #FBEDDB; color: #8A4E12; border-radius: 999px; padding: 2px 7px; font-size: 11px;">от 30 ₾</span>
+              </div>
+            </div>
+          </div>
+          <div style="background: #FFFFFF; border: 1px solid #EFE7D7; border-radius: 16px; padding: 12px;">
+            <div style="display: flex; justify-content: space-between;"><p style="font-size: 13px; font-weight: 700; margin: 0;">Черепашье озеро</p><i class="ti ti-heart" style="font-size: 16px; color: #E05D5D;" aria-hidden="true"></i></div>
+            <p style="font-size: 11px; color: #7C7465; margin: 2px 0 7px;">Озеро · 3.1 км · подъёмник</p>
+            <div style="display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 7px;">
+              <span style="background: #E1F0E4; color: #1F5C36; border-radius: 999px; padding: 2px 7px; font-size: 11px;">Открыто</span>
+              <span style="background: #E7F1E4; color: #33573D; border-radius: 999px; padding: 2px 7px; font-size: 11px;">Pet friendly</span>
+            </div>
+            <p style="font-size: 11px; margin: 0;"><i class="ti ti-star" style="font-size: 12px; color: #D99A26;" aria-hidden="true"></i> 4.7 <span style="color: #7C7465;">(1 903)</span></p>
+          </div>
+          <div style="background: #FFFFFF; border: 1px solid #EFE7D7; border-radius: 16px; padding: 12px;">
+            <div style="display: flex; justify-content: space-between;"><p style="font-size: 13px; font-weight: 700; margin: 0;">Stamba Café</p><i class="ti ti-heart" style="font-size: 16px; color: #C9BFAE;" aria-hidden="true"></i></div>
+            <p style="font-size: 11px; color: #7C7465; margin: 2px 0 7px;">Кафе · 0.9 км · 12 мин</p>
+            <div style="display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 7px;">
+              <span style="background: #E1F0E4; color: #1F5C36; border-radius: 999px; padding: 2px 7px; font-size: 11px;">Открыто до 23:00</span>
+              <span style="background: #FBEDDB; color: #8A4E12; border-radius: 999px; padding: 2px 7px; font-size: 11px;">Кофе</span>
+            </div>
+            <p style="font-size: 11px; margin: 0;"><i class="ti ti-star" style="font-size: 12px; color: #D99A26;" aria-hidden="true"></i> 4.6 <span style="color: #7C7465;">(3 220)</span></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
