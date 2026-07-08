@@ -1,16 +1,19 @@
 import { Component } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
+import { ConsentBannerComponent } from '../components/consent-banner.component';
 
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [RouterModule, TranslatePipe],
+  imports: [RouterModule, TranslatePipe, ConsentBannerComponent],
   template: `
     <div class="shell">
       <main class="shell__content">
         <ng-content />
       </main>
+
+      <app-consent-banner />
 
       <nav class="shell__nav">
         <a

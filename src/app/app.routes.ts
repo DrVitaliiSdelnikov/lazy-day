@@ -27,6 +27,11 @@ export const appRoutes: Route[] = [
       import('./features/settings/settings.component').then((m) => m.SettingsComponent),
   },
   {
+    path: 'privacy',
+    loadComponent: () =>
+      import('./features/privacy/privacy.component').then((m) => m.PrivacyComponent),
+  },
+  {
     path: '**',
     redirectTo: 'discover',
   },
