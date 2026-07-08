@@ -123,7 +123,7 @@ Current state: manual `POST /v1/admin/ingestion/events/run`. Need automated cron
 
 **SerpApi quota**: 100 searches/month (free tier), resets 1st of each month. Cached (identical) queries = free, don't count. Our 1 run = 3 searches. Daily refresh = 90/month. Fits in free tier for 1 city. No cost. 2+ cities = $50/mo plan (5,000 searches).
 
-**TODO**: Add `@nestjs/schedule` cron for daily event refresh. Mark events past `startsAt` as `status='past'`. Remove stale events not seen in 3 refresh cycles.
+**Automated**: `@nestjs/schedule` cron runs daily at 06:00 Tbilisi (02:00 UTC). Marks past events, refreshes all sources. Manual trigger: `POST /v1/admin/ingestion/events/run`.
 
 ## Open UX Questions
 
