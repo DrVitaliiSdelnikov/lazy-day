@@ -96,9 +96,17 @@ See `docs/research/product-differentiation.md` for full analysis and competitive
 6. ~~Closed venues filter~~ — DONE (hard-filtered from results)
 7. ~~Location: GPS + coords~~ — DONE (removed districts, DMS parser)
 8. ~~Interest categories~~ — DONE (11 intent-based: food, nature, culture, active, entertainment...)
-9. **Deploy** — Cloudflare Pages + Hetzner VPS ← NEXT
-10. **Visited + behavioral start** — after deploy, needs real users
-11. **Sort modes** — Smart / Closest / Top rated / Open now (research done)
+9. **Pre-deploy: Domain** — buy lazyday.app or lazyday.ge, configure DNS ← NEXT
+10. **Pre-deploy: SEO basics** — robots.txt, sitemap.xml, meta+OG tags on index.html
+11. **Pre-deploy: Privacy** — privacy policy page, consent banner (GDPR)
+12. **Pre-deploy: Analytics** — Plausible/Umami (no consent) + Yandex.Metrica (with consent)
+13. **Pre-deploy: Webmaster** — Google Search Console + Yandex.Webmaster (verify domain)
+14. **Deploy** — Cloudflare Pages (frontend) + Hetzner VPS (API: api.lazyday.app)
+15. **Post-deploy: Share button** — native share on cards + detail page
+16. **Post-deploy: Behavioral tracking** — verify interactions, add dwell time, session context
+17. **Post-deploy: SSR for detail pages** — event/venue JSON-LD for Google rich results
+18. **Visited + behavioral re-ranking** — after enough data
+19. **Sort modes** — Smart / Closest / Top rated / Open now
 
 ### v1 — Community Layer (the moat)
 6. Events: TKT.ge (Puppeteer, only if Google gap >30%). 7. Micro-tips + collections + "been here" badges. 8. Search/autocomplete. 9. Conversational discovery (one smart question per session). 10. Compact API + offline cache.
