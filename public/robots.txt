@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /discover
+Disallow: /settings
+Disallow: /saved
+
+Sitemap: https://lazyday.app/sitemap.xml
