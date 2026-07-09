@@ -1,16 +1,15 @@
 import { Component, computed, inject, isDevMode, OnInit, signal, viewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
-import { ButtonModule } from 'primeng/button';
-import { SkeletonModule } from 'primeng/skeleton';
-import { TagModule } from 'primeng/tag';
 import { ProfileStore } from '../../core/stores/profile.store';
+import { ThemeService } from '../../core/services/theme.service';
 import { SavedStore } from '../../core/stores/saved.store';
 import { ApiService } from '../../core/services/api.service';
 import { GeolocationService } from '../../core/services/geolocation.service';
 import { apiProviders } from '../../core/providers';
 import { RecommendationCard } from '../../core/models';
 import { ResultCardComponent } from './result-card/result-card.component';
+import { LdIconComponent } from '../../core/components/ld-icon.component';
 import { ContextBarComponent } from './context-bar/context-bar.component';
 import { FilterSheetComponent, FilterState } from './filter-sheet/filter-sheet.component';
 
@@ -19,34 +18,101 @@ import { FilterSheetComponent, FilterState } from './filter-sheet/filter-sheet.c
   standalone: true,
   imports: [
     TranslatePipe,
-    ButtonModule,
-    SkeletonModule,
-    TagModule,
     ResultCardComponent,
     ContextBarComponent,
     FilterSheetComponent,
+    LdIconComponent,
   ],
   providers: [...apiProviders],
   template: `
     <div class="discover">
-      <!-- Title -->
+      <!-- Desktop sidebar (≥1024) -->
+      <aside class="discover__sidebar">
+        <div class="sidebar__section">
+          <p class="sidebar__label">Локация</p>
+          <div class="sidebar__location">
+            <ld-icon name="map-pin" [size]="14" />
+            <span>{{ geo.position().lat.toFixed(3) }}, {{ geo.position().lng.toFixed(3) }}</span>
+          </div>
+        </div>
+        <div class="sidebar__section">
+          <p class="sidebar__label">Радиус · {{ sidebarRadius() }} км</p>
+          <input type="range" class="ld-slider"
+            [value]="sidebarRadius()" (input)="onSidebarRadiusChange($event)" min="1" max="15" step="1" />
+        </div>
+        <div class="sidebar__section">
+          <p class="sidebar__label">Секции</p>
+          <div class="sidebar__segments">
+            @for (tf of typeFilters; track tf.value) {
+              <button class="sidebar__seg"
+                [class.sidebar__seg--active]="activeTypeFilter() === tf.value"
+                (click)="setTypeFilter(tf.value)">
+                {{ tf.label }}
+                <span class="sidebar__seg-count">{{ countByType(tf.value) }}</span>
+              </button>
+            }
+          </div>
+        </div>
+        <div class="sidebar__section">
+          <p class="sidebar__label">Категории</p>
+          <div class="sidebar__chips">
+            @for (p of presets; track p.key) {
+              <button class="ld-chip"
+                [class.ld-chip--active]="activePreset() === p.key"
+                (click)="applyPreset(p.key)">{{ p.label }}</button>
+            }
+          </div>
+        </div>
+        <div class="sidebar__section">
+          <p class="sidebar__label">Компания</p>
+          <div class="sidebar__company">
+            @for (opt of companyOptions; track opt.value) {
+              <button class="sidebar__company-btn"
+                [class.sidebar__company-btn--active]="profileStore.company() === opt.value"
+                (click)="setCompany(opt.value)"
+                [attr.aria-label]="opt.label">
+                <ld-icon [name]="opt.icon" [size]="16" />
+              </button>
+            }
+          </div>
+        </div>
+        <div class="sidebar__section">
+          <div class="sidebar__pet-row">
+            <span style="font-size: 12px; display: flex; align-items: center; gap: 5px">
+              <ld-icon name="dog" [size]="16" /> С питомцем
+            </span>
+            <button class="ld-toggle" [class.ld-toggle--on]="profileStore.hasPet()" aria-label="Pet toggle"
+              (click)="togglePet()"></button>
+          </div>
+        </div>
+        <button class="ld-btn ld-btn--ghost" style="color: var(--ld-primary); font-size: 12px; margin-top: 8px"
+          (click)="resetSidebar()">Сбросить всё</button>
+      </aside>
+
+      <!-- Main content area -->
+      <div class="discover__main">
+      <!-- Greeting -->
       <header class="discover__header">
-        <h1 class="discover__title">{{ 'discover.title' | translate }}</h1>
+        <p class="discover__context">{{ contextLine() }}</p>
+        <h1 class="discover__greeting ld-display">{{ greeting() }}</h1>
       </header>
 
-      <!-- Context bar: location, company, interests, time — all tappable -->
-      <app-context-bar (changed)="onContextChanged()" />
+      <!-- Context bar: mobile only -->
+      <app-context-bar class="discover__context-bar" (changed)="onContextChanged()" />
 
       <!-- Quick presets + filter button -->
       <div class="discover__toolbar">
         <div class="discover__presets">
           @for (p of presets; track p.key) {
-            <button class="preset-chip"
-              [class.preset-chip--active]="activePreset() === p.key"
-              (click)="applyPreset(p.key)">{{ p.label }}</button>
+            <button class="ld-chip"
+              [class.ld-chip--active]="activePreset() === p.key"
+              (click)="applyPreset(p.key)">
+              <ld-icon [name]="p.icon" [size]="14" />
+              {{ p.label }}
+            </button>
           }
         </div>
-        <button class="discover__filter-btn" (click)="openFilters()">
+        <button class="discover__filter-btn" (click)="openFilters()" aria-label="Filters">
           &#9776;
           @if (activeFilterCount() > 0) {
             <span class="filter-badge">{{ activeFilterCount() }}</span>
@@ -57,9 +123,12 @@ import { FilterSheetComponent, FilterState } from './filter-sheet/filter-sheet.c
       <!-- Type filter: places / events / all -->
       <div class="discover__type-filter">
         @for (tf of typeFilters; track tf.value) {
-          <button class="type-chip"
-            [class.type-chip--active]="activeTypeFilter() === tf.value"
-            (click)="setTypeFilter(tf.value)">{{ tf.label }}</button>
+          <button class="ld-chip"
+            [class.ld-chip--active]="activeTypeFilter() === tf.value"
+            (click)="setTypeFilter(tf.value)">
+            @if (tf.icon) { <ld-icon [name]="tf.icon" [size]="13" /> }
+            {{ tf.label }}
+          </button>
         }
       </div>
 
@@ -72,10 +141,10 @@ import { FilterSheetComponent, FilterState } from './filter-sheet/filter-sheet.c
       @if (loading()) {
         <div class="discover__skeletons">
           @for (i of [1,2,3,4,5]; track i) {
-            <div class="skeleton-card">
-              <p-skeleton height="18px" width="60%" />
-              <p-skeleton height="14px" width="80%" styleClass="mt-1" />
-              <p-skeleton height="14px" width="40%" styleClass="mt-1" />
+            <div class="skeleton-card ld-card">
+              <div class="ld-skeleton" style="height:18px;width:60%;margin-bottom:8px"></div>
+              <div class="ld-skeleton" style="height:14px;width:80%;margin-bottom:6px"></div>
+              <div class="ld-skeleton" style="height:14px;width:40%"></div>
             </div>
           }
         </div>
@@ -111,23 +180,161 @@ import { FilterSheetComponent, FilterState } from './filter-sheet/filter-sheet.c
           <p>{{ 'discover.empty' | translate }}</p>
         </div>
       }
-    </div>
+
+      </div><!-- /discover__main -->
+    </div><!-- /discover -->
 
     <app-filter-sheet (filtersChanged)="onFiltersChanged($event)" />
   `,
   styles: `
+    /* ─── Desktop layout ─── */
+    @media (min-width: 1024px) {
+      .discover {
+        display: flex;
+        min-height: 100%;
+      }
+      .discover__context-bar { display: none; }
+      .discover__toolbar .discover__filter-btn { display: none; }
+    }
+
+    .discover__sidebar {
+      display: none;
+    }
+
+    @media (min-width: 1024px) {
+      .discover__sidebar {
+        display: block;
+        width: 260px;
+        flex-shrink: 0;
+        border-right: 1px solid var(--ld-border);
+        padding: 16px;
+        background: var(--ld-surface);
+        position: sticky;
+        top: 0;
+        height: calc(100vh - 52px);
+        overflow-y: auto;
+      }
+      .discover__main { flex: 1; min-width: 0; }
+    }
+
+    .sidebar__section {
+      margin-bottom: 20px;
+    }
+
+    .sidebar__label {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--ld-text-3);
+      letter-spacing: 0.4px;
+      margin: 0 0 6px;
+    }
+
+    .sidebar__location {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: var(--ld-bg);
+      border: 1px solid var(--ld-border);
+      border-radius: 10px;
+      padding: 6px 8px;
+      font-size: 12px;
+      color: var(--ld-text);
+    }
+
+    .sidebar__segments {
+      background: var(--ld-bg);
+      border-radius: 10px;
+      padding: 3px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .sidebar__seg {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px 8px;
+      font-size: 12px;
+      color: var(--ld-text-2);
+      background: none;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .sidebar__seg--active {
+      background: var(--ld-surface);
+      color: var(--ld-on-primary-soft);
+      font-weight: 500;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+
+    .sidebar__seg-count {
+      color: var(--ld-text-3);
+      font-weight: 400;
+    }
+
+    .sidebar__chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+
+    .sidebar__company {
+      display: flex;
+      gap: 4px;
+    }
+
+    .sidebar__company-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      border: 1px solid var(--ld-border);
+      background: var(--ld-surface);
+      color: var(--ld-text-3);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 150ms, color 150ms;
+    }
+
+    .sidebar__company-btn--active {
+      background: var(--ld-primary-soft);
+      color: var(--ld-on-primary-soft);
+      border-color: transparent;
+    }
+
+    .sidebar__pet-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
     .discover {
       padding-bottom: 80px;
     }
 
     .discover__header {
-      padding: var(--ld-space-lg) var(--ld-space-lg) var(--ld-space-sm);
+      padding: 10px var(--ld-space-lg) 4px;
     }
 
-    .discover__title {
-      font-size: 22px;
-      font-weight: 600;
-      line-height: 28px;
+    .discover__context {
+      font-size: 11px;
+      color: var(--ld-text-2);
+      margin: 0;
+    }
+
+    .discover__greeting {
+      font-size: 20px;
+      line-height: 1.3;
+      margin: 2px 0 0;
+      color: var(--ld-text);
+    }
+
+    .theme-evening .discover__greeting {
+      color: var(--ld-primary);
     }
 
     .discover__toolbar {
@@ -205,8 +412,13 @@ import { FilterSheetComponent, FilterState } from './filter-sheet/filter-sheet.c
 
     .discover__type-filter {
       display: flex;
-      gap: 6px;
+      gap: 3px;
       padding: var(--ld-space-sm) var(--ld-space-lg);
+      background: var(--ld-surface-2);
+      border-radius: 12px;
+      margin: 0 var(--ld-space-lg) var(--ld-space-sm);
+
+      @media (min-width: 1024px) { display: none; }
     }
 
     .type-chip {
@@ -308,6 +520,58 @@ export class DiscoverComponent implements OnInit {
   private api = inject(ApiService);
   readonly geo = inject(GeolocationService);
   private router = inject(Router);
+  private theme = inject(ThemeService);
+
+  sidebarRadius = signal(5);
+
+  companyOptions = [
+    { value: 'solo', label: 'Один', icon: 'user' },
+    { value: 'couple', label: 'Пара', icon: 'hearts' },
+    { value: 'friends', label: 'Друзья', icon: 'users' },
+    { value: 'family', label: 'Семья', icon: 'balloon' },
+  ];
+
+  setCompany(value: string) {
+    const current = this.profileStore.company();
+    this.profileStore.setCompany(current === value ? null : value as any);
+    this.onContextChanged();
+  }
+
+  togglePet() {
+    this.profileStore.setHasPet(!this.profileStore.hasPet());
+    this.onContextChanged();
+  }
+
+  onSidebarRadiusChange(event: any) {
+    this.sidebarRadius.set(Number(event.target.value));
+    this.onContextChanged();
+  }
+
+  countByType(type: string): number {
+    if (type === 'all') return this.allCards().length;
+    return this.allCards().filter(c => c.type === type).length;
+  }
+
+  resetSidebar() {
+    this.activePreset.set(null);
+    this.activeTypeFilter.set('all');
+    this.sidebarRadius.set(5);
+    this.loadFeed();
+  }
+
+  greeting(): string {
+    const hour = (new Date().getUTCHours() + 4) % 24; // Tbilisi
+    if (hour >= 6 && hour < 12) return 'Доброе утро. Куда лениво сходить?';
+    if (hour >= 12 && hour < 18) return 'Лениво? Сейчас найдём.';
+    if (hour >= 18 && hour < 23) return 'Куда выйдем вечером?';
+    return 'Не спится? Есть варианты.';
+  }
+
+  contextLine(): string {
+    const days = ['воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота'];
+    const now = new Date();
+    return `${days[now.getDay()]} · Тбилиси`;
+  }
 
   private filterSheet = viewChild(FilterSheetComponent);
   private contextBar = viewChild(ContextBarComponent);
@@ -339,18 +603,18 @@ export class DiscoverComponent implements OnInit {
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   presets = [
-    { key: 'chill', label: '😌 Спокойный вечер' },
-    { key: 'active', label: '🏃 Активный день' },
-    { key: 'family', label: '👨‍👩‍👧 С детьми' },
-    { key: 'culture', label: '🎭 Культура' },
-    { key: 'food', label: '🍽️ Поесть' },
-    { key: 'nightlife', label: '🌙 Ночная жизнь' },
+    { key: 'chill', label: 'Прогулка', icon: 'trees' },
+    { key: 'food', label: 'Поесть', icon: 'tools-kitchen-2' },
+    { key: 'culture', label: 'Культура', icon: 'masks-theater' },
+    { key: 'active', label: 'Активно', icon: 'run' },
+    { key: 'family', label: 'С детьми', icon: 'balloon' },
+    { key: 'nightlife', label: 'Ночная жизнь', icon: 'moon' },
   ];
 
   typeFilters = [
-    { value: 'all' as const, label: 'Всё' },
-    { value: 'place' as const, label: '📍 Места' },
-    { value: 'event' as const, label: '🎫 События' },
+    { value: 'all' as const, label: 'Всё', icon: '' },
+    { value: 'place' as const, label: 'Места', icon: 'map-pin' },
+    { value: 'event' as const, label: 'События', icon: 'ticket' },
   ];
 
   private readonly MOOD_PRESETS: Record<string, { interests: Record<string, number>; company?: string; radiusM?: number }> = {

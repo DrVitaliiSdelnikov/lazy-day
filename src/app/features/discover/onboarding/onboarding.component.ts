@@ -1,9 +1,6 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
-import { ButtonModule } from 'primeng/button';
-import { ToggleButtonModule } from 'primeng/togglebutton';
-import { SelectButtonModule } from 'primeng/selectbutton';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../../core/services/api.service';
 import { ProfileStore } from '../../../core/stores/profile.store';
@@ -14,13 +11,7 @@ import { CategoryNode, CompanyType } from '../../../core/models';
 @Component({
   selector: 'app-onboarding',
   standalone: true,
-  imports: [
-    TranslatePipe,
-    ButtonModule,
-    ToggleButtonModule,
-    SelectButtonModule,
-    FormsModule,
-  ],
+  imports: [TranslatePipe, FormsModule],
   providers: [...apiProviders],
   template: `
     <div class="onboarding">
@@ -45,12 +36,9 @@ import { CategoryNode, CompanyType } from '../../../core/models';
           }
         </div>
 
-        <button
-          pButton
-          [label]="'onboarding.next' | translate"
+        <button class="ld-btn ld-btn--primary onboarding__btn"
           [disabled]="selectedInterests().size === 0"
-          (click)="step.set(2)"
-          class="onboarding__btn"></button>
+          (click)="step.set(2)">{{ 'onboarding.next' | translate }}</button>
       }
 
       <!-- Step 2: Company -->
@@ -80,11 +68,8 @@ import { CategoryNode, CompanyType } from '../../../core/models';
           </button>
         </div>
 
-        <button
-          pButton
-          [label]="'onboarding.next' | translate"
-          (click)="step.set(3)"
-          class="onboarding__btn"></button>
+        <button class="ld-btn ld-btn--primary onboarding__btn"
+          (click)="step.set(3)">{{ 'onboarding.next' | translate }}</button>
       }
 
       <!-- Step 3: Location -->
@@ -96,12 +81,10 @@ import { CategoryNode, CompanyType } from '../../../core/models';
           {{ 'onboarding.location_subtitle' | translate }}
         </p>
 
-        <button
-          pButton
-          [label]="geoLoading() ? ('onboarding.locating' | translate) : ('onboarding.use_location' | translate)"
-          [loading]="geoLoading()"
-          (click)="requestGeo()"
-          class="onboarding__btn"></button>
+        <button class="ld-btn ld-btn--primary onboarding__btn"
+          (click)="requestGeo()">
+          {{ geoLoading() ? ('onboarding.locating' | translate) : ('onboarding.use_location' | translate) }}
+        </button>
 
         <p class="onboarding__or">{{ 'onboarding.or' | translate }}</p>
 
@@ -109,9 +92,8 @@ import { CategoryNode, CompanyType } from '../../../core/models';
           <input class="onboarding__coords-input"
             placeholder="41°41'39.0&quot;N 45°00'33.9&quot;E  или  41.694, 45.009"
             #onboardCoordsInput />
-          <button pButton label="OK" severity="secondary"
-            (click)="applyCoords(onboardCoordsInput.value)"
-            class="onboarding__coords-btn"></button>
+          <button class="ld-btn ld-btn--secondary onboarding__coords-btn"
+            (click)="applyCoords(onboardCoordsInput.value)">OK</button>
         </div>
         @if (coordsError()) {
           <p class="onboarding__error">{{ coordsError() }}</p>
@@ -120,13 +102,8 @@ import { CategoryNode, CompanyType } from '../../../core/models';
 
       <!-- Skip -->
       @if (step() < 3) {
-        <button
-          pButton
-          [label]="'onboarding.skip' | translate"
-          [text]="true"
-          severity="secondary"
-          (click)="skip()"
-          class="onboarding__skip"></button>
+        <button class="ld-btn ld-btn--ghost onboarding__skip"
+          (click)="skip()">{{ 'onboarding.skip' | translate }}</button>
       }
     </div>
   `,

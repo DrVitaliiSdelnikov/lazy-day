@@ -1,8 +1,6 @@
 import { Component, inject, input, OnInit, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
-import { ButtonModule } from 'primeng/button';
-import { TagModule } from 'primeng/tag';
 import { ApiService } from '../../core/services/api.service';
 import { ProfileStore } from '../../core/stores/profile.store';
 import { apiProviders } from '../../core/providers';
@@ -11,17 +9,11 @@ import { RecommendationCard } from '../../core/models';
 @Component({
   selector: 'app-detail',
   standalone: true,
-  imports: [TranslatePipe, ButtonModule, TagModule],
+  imports: [TranslatePipe],
   providers: [...apiProviders],
   template: `
     <div class="detail">
-      <button
-        pButton
-        icon="pi pi-arrow-left"
-        [text]="true"
-        severity="secondary"
-        (click)="goBack()"
-        class="detail__back"></button>
+      <button class="ld-btn ld-btn--ghost detail__back" (click)="goBack()">← Назад</button>
 
       @if (card(); as c) {
         <h1 class="detail__title">{{ c.title }}</h1>
@@ -50,10 +42,7 @@ import { RecommendationCard } from '../../core/models';
                   [class.detail__closed]="!isOpen(c.openStatus)">{{ c.openStatus }}</span>
           }
           @if (c.status) {
-            <p-tag
-              [value]="c.status"
-              [severity]="c.status === 'cancelled' ? 'danger' : 'warn'"
-            />
+            <span class="ld-badge ld-badge--primary">{{ c.status }}</span>
           }
         </div>
 
@@ -64,7 +53,7 @@ import { RecommendationCard } from '../../core/models';
             </h3>
             <div class="detail__tags">
               @for (tag of c.explanations; track tag.type) {
-                <p-tag [value]="tag.label" severity="secondary" />
+                <span class="ld-badge ld-badge--primary">{{ tag.label }}</span>
               }
             </div>
           </div>
@@ -123,31 +112,21 @@ import { RecommendationCard } from '../../core/models';
 
         <div class="detail__actions">
           @if (c.ticketUrl || c.externalUrl) {
-            <a
-              pButton
-              [label]="c.type === 'event' ? 'Купить билет' : ('detail.website' | translate)"
+            <a class="ld-btn ld-btn--primary detail__action-btn"
               [href]="c.ticketUrl || c.externalUrl"
-              target="_blank"
-              rel="noopener"
-              class="detail__action-btn"
-            ></a>
+              target="_blank" rel="noopener">
+              {{ c.type === 'event' ? 'Купить билет' : 'Сайт' }}
+            </a>
           }
-          <a
-            pButton
-            [label]="c.type === 'event' ? 'Как добраться' : ('detail.open_maps' | translate)"
-            severity="secondary"
+          <a class="ld-btn ld-btn--secondary detail__action-btn"
             [href]="venueMapUrl(c)"
-            target="_blank"
-            rel="noopener"
-            class="detail__action-btn"
-          ></a>
-          <button
-            pButton
-            [label]="isSaved() ? ('detail.saved' | translate) : ('detail.save' | translate)"
-            [severity]="isSaved() ? 'success' : 'secondary'"
-            [outlined]="!isSaved()"
-            (click)="onToggleSave()"
-            class="detail__action-btn"></button>
+            target="_blank" rel="noopener">
+            {{ c.type === 'event' ? 'Как добраться' : 'На карте' }}
+          </a>
+          <button class="ld-btn ld-btn--secondary detail__action-btn"
+            (click)="onToggleSave()">
+            {{ isSaved() ? 'Сохранено ♥' : 'Сохранить' }}
+          </button>
         </div>
       }
     </div>

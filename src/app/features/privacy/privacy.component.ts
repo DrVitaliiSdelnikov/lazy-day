@@ -5,7 +5,7 @@ import { Component } from '@angular/core';
   standalone: true,
   template: `
     <div class="privacy">
-      <button class="privacy__back" (click)="goBack()">← Back</button>
+      <button class="privacy__back" aria-label="Go back" (click)="goBack()">← Back</button>
 
       <h1>Privacy Policy</h1>
       <p class="privacy__updated">Last updated: July 9, 2026</p>

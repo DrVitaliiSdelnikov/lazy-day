@@ -1,339 +1,183 @@
 import { Component, input, output, signal } from '@angular/core';
 import { TranslatePipe } from '@ngx-translate/core';
-import { TagModule } from 'primeng/tag';
 import { RecommendationCard } from '../../../core/models';
+import { LdIconComponent } from '../../../core/components/ld-icon.component';
 
 @Component({
   selector: 'app-result-card',
   standalone: true,
-  imports: [TagModule, TranslatePipe],
+  imports: [TranslatePipe, LdIconComponent],
   template: `
-    <article class="card" [class.card--event]="card().type === 'event'" (click)="openDetail.emit()">
+    <article class="card ld-card" [class.card--event]="card().type === 'event'" (click)="openDetail.emit()">
       @if (card().type === 'event') {
-        <div class="card__event-stripe">
-          <span class="card__event-icon">{{ eventIcon() }}</span>
-        </div>
+        <div class="card__stripe"></div>
       }
-      <div class="card__body" [class.card__body--place]="card().type !== 'event'">
-      <div class="card__header">
-        <div class="card__header-left">
+      <div class="card__inner">
+        <!-- Header: title + save -->
+        <div class="card__header">
           <h3 class="card__title">{{ card().title }}</h3>
-          @if (card().rating) {
-            <div class="card__rating">
-              <span class="card__star">&#9733;</span>
-              <span class="card__rating-value">{{ card().rating }}</span>
-              @if (card().ratingCount) {
-                <span class="card__rating-count">({{ formatRatingCount() }})</span>
-              }
-            </div>
+          @if (card().type === 'event') {
+            <ld-icon name="ticket" [size]="18" class="card__ticket-icon" />
           }
+          <button
+            class="card__heart"
+            [class.card__heart--saved]="isSaved()"
+            (click)="onSaveClick($event)"
+            [attr.aria-label]="isSaved() ? 'Unsave' : 'Save'">
+            <ld-icon [name]="isSaved() ? 'heart-filled' : 'heart'" [size]="18" />
+          </button>
         </div>
-        <button
-          class="card__save"
-          [class.card__save--active]="isSaved()"
-          (click)="onSaveClick($event)"
-          aria-label="Save"
-        >
-          {{ isSaved() ? '&#9829;' : '&#9825;' }}
-        </button>
-      </div>
 
-      <div class="card__meta">
-        <span class="card__category">{{ card().type === 'event' ? eventLabel() : categoryLabel() }}</span>
-        <span class="card__dot">&middot;</span>
-        <span class="card__distance">{{ formatDistance() }}</span>
-        @if (card().walkMinutes && card().type !== 'event') {
-          <span class="card__walk">&#128694; {{ card().walkMinutes }} min</span>
-        }
-        @if (card().startsAt) {
-          <span class="card__dot">&middot;</span>
-          <span class="card__event-time">{{ formatEventTime() }}</span>
-        }
-        @if (card().openStatus) {
-          <span class="card__dot">&middot;</span>
-          <span class="card__status"
-            [class.card__status--open]="isOpen()"
-            [class.card__status--closed]="!isOpen()">{{ card().openStatus }}</span>
-        }
-      </div>
-
-      @if (card().address) {
-        <div class="card__address">{{ card().address }}</div>
-      }
-
-      @if (allTags().length > 0) {
-        <div class="card__secondary">
-          @for (tag of allTags(); track tag) {
-            <span class="card__stag">{{ tag }}</span>
+        <!-- Meta line -->
+        <p class="card__meta">
+          {{ card().type === 'event' ? eventLabel() : categoryLabel() }}
+          · {{ formatDistance() }}
+          @if (card().walkMinutes && card().type !== 'event') {
+            · {{ card().walkMinutes }} мин
           }
-        </div>
-      }
+          @if (card().startsAt) {
+            · <span class="card__event-time">{{ formatEventTime() }}</span>
+          }
+        </p>
 
-      @if (card().explanations.length) {
-        <div class="card__explanations">
+        <!-- Badges row -->
+        <div class="card__badges">
+          @if (card().openStatus) {
+            <span class="ld-badge" [class.ld-badge--open]="isOpen()" [class.ld-badge--closed]="!isOpen()">
+              {{ card().openStatus }}
+            </span>
+          }
           @for (tag of card().explanations.slice(0, 3); track tag.type) {
-            <p-tag [value]="tag.label" [severity]="tagSeverity(tag.type)" />
+            <span class="ld-badge" [class]="badgeClass(tag.type)">{{ tag.label }}</span>
           }
         </div>
-      }
 
-      <div class="card__footer">
-        @if (card().priceLabel) {
-          <span class="card__price">{{ card().priceLabel }}</span>
+        <!-- Rating -->
+        @if (card().rating) {
+          <p class="card__rating tabular-nums">
+            <ld-icon name="star-filled" [size]="13" class="card__star" />
+            {{ card().rating }}
+            @if (card().ratingCount) {
+              <span class="card__rating-count">({{ formatRatingCount() }})</span>
+            }
+          </p>
         }
-        @if (card().timeLabel) {
-          <span class="card__time">{{ card().timeLabel }}</span>
-        }
-        @if (card().status) {
-          <p-tag
-            [value]="card().status!"
-            [severity]="card().status === 'cancelled' ? 'danger' : 'warn'"
-          />
-        }
-      </div>
-
-      <!-- Hide menu -->
-      @if (showHideMenu()) {
-        <div class="card__hide-menu" (click)="$event.stopPropagation()">
-          <button class="hide-option" (click)="onHide('far')">{{ 'hide.far' | translate }}</button>
-          <button class="hide-option" (click)="onHide('expensive')">{{ 'hide.expensive' | translate }}</button>
-          <button class="hide-option" (click)="onHide('not_mine')">{{ 'hide.not_mine' | translate }}</button>
-        </div>
-      }
       </div>
     </article>
   `,
   styles: `
-    :host {
-      display: block;
-    }
+    :host { display: block; }
 
     .card {
-      padding: var(--ld-space-md) var(--ld-space-lg);
-      border-bottom: 1px solid var(--ld-divider);
       cursor: pointer;
-      transition: background 120ms;
       position: relative;
+      overflow: hidden;
+      padding: 0;
 
-      &:active {
-        background: rgba(0, 0, 0, 0.03);
-      }
+      &:active { transform: scale(0.98); }
     }
 
-    @media (min-width: 640px) {
-      .card {
-        border: 1px solid var(--ld-divider);
-        border-radius: var(--ld-radius-md, 12px);
-        border-bottom: 1px solid var(--ld-divider);
-      }
+    .card--event {
+      display: flex;
+    }
+
+    .card__stripe {
+      width: 4px;
+      flex-shrink: 0;
+      background: var(--ld-event);
+    }
+
+    .theme-evening .card__stripe { width: 5px; }
+
+    .card__inner {
+      flex: 1;
+      padding: 14px 16px;
+      min-width: 0;
     }
 
     .card__header {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      gap: var(--ld-space-sm);
+      gap: 8px;
     }
 
     .card__title {
       font-size: 17px;
-      font-weight: 500;
-      line-height: 22px;
+      font-weight: 700;
+      line-height: 1.3;
       color: var(--ld-text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
-    .card__save {
+    .card__heart {
       background: none;
       border: none;
-      font-size: 20px;
-      color: var(--ld-text-secondary);
+      font-size: 18px;
+      color: var(--ld-text-3);
       cursor: pointer;
-      padding: 4px;
-      min-width: 48px;
-      min-height: 48px;
+      padding: 2px;
+      min-width: 36px;
+      min-height: 36px;
       display: flex;
       align-items: center;
       justify-content: center;
+      transition: transform 150ms;
 
-      &--active {
-        color: var(--ld-error);
+      &--saved {
+        color: var(--ld-heart);
+        animation: heart-pop 300ms ease;
       }
+
+      &:active { transform: scale(1.2); }
     }
 
-    .card__header-left {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .card__rating {
-      display: flex;
-      align-items: center;
-      gap: 3px;
-      font-size: 13px;
-      margin-top: 1px;
-    }
-
-    .card__star {
-      color: #f5a623;
-      font-size: 14px;
-    }
-
-    .card__rating-value {
-      font-weight: 600;
-      color: var(--ld-text);
-    }
-
-    .card__rating-count {
-      color: var(--ld-text-secondary);
-      font-weight: 400;
+    @keyframes heart-pop {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.2); }
+      100% { transform: scale(1); }
     }
 
     .card__meta {
-      display: flex;
-      align-items: center;
-      gap: var(--ld-space-xs);
-      font-size: 13px;
-      color: var(--ld-text-secondary);
-      margin-top: 4px;
-    }
-
-    .card__walk {
-      font-size: 12px;
-    }
-
-    .card__dot {
-      color: var(--ld-divider);
-    }
-
-    .card__status--open {
-      color: #2e7d32;
-      font-weight: 500;
-    }
-
-    .card__status--closed {
-      color: #c62828;
-      font-weight: 500;
-    }
-
-    .card--event {
-      display: flex;
-      gap: 0;
-      padding: 0;
-    }
-
-    .card__body--place {
-      padding: 0;
-    }
-
-    .card--event .card__body {
-      flex: 1;
-      padding: var(--ld-space-md) var(--ld-space-lg);
-      min-width: 0;
-    }
-
-    .card__event-stripe {
-      width: 44px;
-      min-height: 100%;
-      background: linear-gradient(135deg, #6366f1, #8b5cf6);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-
-    @media (min-width: 640px) {
-      .card--event .card__event-stripe {
-        border-radius: var(--ld-radius-md, 12px) 0 0 var(--ld-radius-md, 12px);
-      }
-    }
-
-    .card__event-icon {
-      font-size: 20px;
-    }
-
-    .card__event-time {
-      font-weight: 500;
-      color: #6366f1;
-    }
-
-    .card__address {
-      font-size: 12px;
-      color: var(--ld-text-secondary);
-      margin-top: 2px;
+      font-size: 11px;
+      color: var(--ld-text-2);
+      margin: 3px 0 8px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
 
-    .card__secondary {
-      display: flex;
-      gap: 4px;
-      margin-top: 4px;
+    .card__ticket-icon {
+      color: var(--ld-event);
     }
 
-    .card__stag {
-      font-size: 11px;
-      color: var(--ld-text-secondary);
-      background: rgba(0,0,0,0.05);
-      padding: 1px 6px;
-      border-radius: 4px;
-    }
-
-    .card__explanations {
-      display: flex;
-      gap: var(--ld-space-xs);
-      flex-wrap: wrap;
-      margin-top: var(--ld-space-sm);
-    }
-
-    .card__footer {
-      display: flex;
-      align-items: center;
-      gap: var(--ld-space-sm);
-      margin-top: var(--ld-space-sm);
-      font-size: 14px;
-    }
-
-    .card__price {
+    .card__event-time {
+      color: var(--ld-event);
       font-weight: 500;
     }
 
-    .card__time {
-      color: var(--ld-text-secondary);
+    .card__badges {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
     }
 
-    .card__hide-menu {
-      position: absolute;
-      right: var(--ld-space-lg);
-      top: 50%;
-      transform: translateY(-50%);
-      background: var(--ld-card-bg);
-      border: 1px solid var(--ld-divider);
-      border-radius: var(--ld-radius-sm);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-      z-index: 10;
-      overflow: hidden;
-    }
-
-    .hide-option {
-      display: block;
-      width: 100%;
-      padding: 10px 16px;
-      border: none;
-      background: none;
+    .card__rating {
+      font-size: 12px;
+      margin: 0;
       color: var(--ld-text);
-      font-size: 14px;
-      text-align: left;
-      cursor: pointer;
-      min-height: 44px;
+    }
 
-      &:hover {
-        background: rgba(0,0,0,0.04);
-      }
+    .card__star {
+      color: var(--ld-warn);
+      font-size: 13px;
+    }
 
-      &:not(:last-child) {
-        border-bottom: 1px solid var(--ld-divider);
-      }
+    .card__rating-count {
+      color: var(--ld-text-2);
     }
   `,
 })
@@ -355,15 +199,6 @@ export class ResultCardComponent {
 
   categoryLabel(): string {
     return this.card().categoryLabel || this.CATEGORY_LABELS[this.card().category] || this.card().category;
-  }
-
-  private readonly EVENT_ICONS: Record<string, string> = {
-    music: '🎵', theater: '🎭', exhibition: '🎨', festival: '🎉',
-    sports: '🏃', entertainment: '🎤', workshop: '🔧', market: '🛍️', family: '👨‍👩‍👧',
-  };
-
-  eventIcon(): string {
-    return this.EVENT_ICONS[this.card().category] ?? '📅';
   }
 
   eventLabel(): string {
@@ -402,46 +237,15 @@ export class ResultCardComponent {
     return s === 'Открыто' || s === 'Open' || s === 'ღიაა';
   }
 
-  private readonly TAG_LABELS: Record<string, string> = {
-    outdoor: 'Outdoor', park: 'Park', garden: 'Garden', viewpoint: 'View',
-    food: 'Food', restaurant: 'Restaurant', cafe: 'Café', bar: 'Bar', bakery: 'Bakery',
-    culture: 'Culture', museum: 'Museum', gallery: 'Gallery', theater: 'Theater',
-    nightlife: 'Nightlife', club: 'Club', cinema: 'Cinema',
-    wellness: 'Wellness', gym: 'Gym', sports: 'Sports', bath: 'Bath', swimming: 'Pool',
-    shopping: 'Shopping', mall: 'Mall',
-    entertainment: 'Fun', bowling: 'Bowling', escape_room: 'Escape', gaming: 'Gaming',
-    arcade: 'Arcade', karting: 'Karting', climbing: 'Climbing', water_park: 'Water Park',
-    family: 'Family', playground: 'Playground', attraction: 'Attraction',
-  };
-
-  allTags(): string[] {
-    const primary = this.card().primaryTags ?? [];
-    const secondary = this.card().secondaryTags ?? [];
-    const all = [...primary, ...secondary];
-    // Filter to human-readable, unique, max 4, skip category duplicate
-    const cat = this.card().category;
-    const seen = new Set<string>();
-    const result: string[] = [];
-    for (const tag of all) {
-      const label = this.TAG_LABELS[tag];
-      if (!label) continue;
-      if (label.toLowerCase() === cat) continue; // skip if same as category
-      if (seen.has(label)) continue;
-      seen.add(label);
-      result.push(label);
-      if (result.length >= 4) break;
-    }
-    return result;
-  }
-
-  tagSeverity(type: string): 'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contrast' {
+  badgeClass(type: string): string {
     switch (type) {
-      case 'open_now': return 'success';
-      case 'company_fit': return 'info';
-      case 'pet_friendly': return 'info';
-      case 'matches_interest': return 'secondary';
-      case 'highly_rated': return 'warn';
-      default: return 'secondary';
+      case 'open_now': return 'ld-badge--open';
+      case 'company_fit':
+      case 'pet_friendly': return 'ld-badge--secondary';
+      case 'matches_interest': return 'ld-badge--primary';
+      case 'highly_rated': return 'ld-badge--primary';
+      case 'also_has': return 'ld-badge--event';
+      default: return 'ld-badge--primary';
     }
   }
 
@@ -453,12 +257,5 @@ export class ResultCardComponent {
   onHide(reason: string) {
     this.showHideMenu.set(false);
     this.hideCard.emit();
-  }
-
-  // Long press to show hide menu (simple version: context menu)
-  onContextMenu(event: Event) {
-    event.preventDefault();
-    this.showHideMenu.set(true);
-    setTimeout(() => this.showHideMenu.set(false), 5000);
   }
 }

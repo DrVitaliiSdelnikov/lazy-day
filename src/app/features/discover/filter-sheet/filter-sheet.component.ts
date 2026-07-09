@@ -1,9 +1,6 @@
-import { Component, input, output, signal } from '@angular/core';
+import { Component, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { TranslatePipe } from '@ngx-translate/core';
-import { DrawerModule } from 'primeng/drawer';
-import { ButtonModule } from 'primeng/button';
-import { SliderModule } from 'primeng/slider';
 
 export interface FilterState {
   openNow: boolean;
@@ -26,137 +23,80 @@ export const defaultFilters: FilterState = {
 @Component({
   selector: 'app-filter-sheet',
   standalone: true,
-  imports: [DrawerModule, ButtonModule, SliderModule, FormsModule, TranslatePipe],
+  imports: [FormsModule, TranslatePipe],
   template: `
-    <p-drawer
-      [(visible)]="visible"
-      position="bottom"
-      [modal]="true"
-      [style]="{ height: 'auto', maxHeight: '70vh' }"
-      styleClass="filter-drawer"
-    >
-      <ng-template #header>
-        <h3 class="filter-sheet__title">{{ 'filters.title' | translate }}</h3>
-      </ng-template>
+    @if (visible) {
+      <div class="ld-sheet-backdrop ld-sheet-backdrop--visible" (click)="visible = false"></div>
+    }
+
+    <div class="ld-sheet" [class.ld-sheet--open]="visible">
+      <div class="ld-sheet__handle"></div>
+      <h3 class="filter-sheet__title">{{ 'filters.title' | translate }}</h3>
 
       <div class="filter-sheet">
         <div class="filter-sheet__chips">
-          <button
-            class="filter-chip"
-            [class.filter-chip--active]="filters().openNow"
-            (click)="toggle('openNow')"
-          >{{ 'filters.open_now' | translate }}</button>
-
-          <button
-            class="filter-chip"
-            [class.filter-chip--active]="filters().freeOnly"
-            (click)="toggle('freeOnly')"
-          >{{ 'filters.free' | translate }}</button>
-
-          <button
-            class="filter-chip"
-            [class.filter-chip--active]="filters().walkMax20"
-            (click)="toggle('walkMax20')"
-          >{{ 'filters.walk_20' | translate }}</button>
-
-          <button
-            class="filter-chip"
-            [class.filter-chip--active]="filters().outdoor"
-            (click)="toggle('outdoor')"
-          >{{ 'filters.outdoor' | translate }}</button>
-
-          <button
-            class="filter-chip"
-            [class.filter-chip--active]="filters().forTwo"
-            (click)="toggle('forTwo')"
-          >{{ 'filters.for_two' | translate }}</button>
+          @for (f of filterOptions; track f.key) {
+            <button class="ld-chip"
+              [class.ld-chip--active]="isActive(f.key)"
+              (click)="toggle(f.key)">{{ f.label | translate }}</button>
+          }
         </div>
 
         <div class="filter-sheet__budget">
           <label class="filter-sheet__label">
             {{ 'filters.budget' | translate }}
             @if (budgetValue() > 0) {
-              <span>: {{ budgetValue() }} GEL</span>
+              : {{ budgetValue() }} GEL
             }
           </label>
-          <p-slider
-            [ngModel]="budgetValue()"
-            (ngModelChange)="onBudgetChange($event)"
-            [min]="0"
-            [max]="500"
-            [step]="10"
-          ></p-slider>
+          <input type="range" class="ld-slider"
+            [ngModel]="budgetValue()" (ngModelChange)="onBudgetChange($event)"
+            min="0" max="500" step="10" />
         </div>
 
         <div class="filter-sheet__actions">
-          <button
-            pButton
-            [label]="'filters.apply' | translate"
-            (click)="onApply()"
-            class="filter-sheet__btn"
-          ></button>
-          <button
-            pButton
-            [label]="'filters.reset' | translate"
-            severity="secondary"
-            [outlined]="true"
-            (click)="onReset()"
-            class="filter-sheet__btn"
-          ></button>
+          <button class="ld-btn ld-btn--primary filter-sheet__btn" (click)="onApply()">
+            {{ 'filters.apply' | translate }}
+          </button>
+          <button class="ld-btn ld-btn--secondary filter-sheet__btn" (click)="onReset()">
+            {{ 'filters.reset' | translate }}
+          </button>
         </div>
       </div>
-    </p-drawer>
+    </div>
   `,
   styles: `
     .filter-sheet {
-      padding: 0 var(--ld-space-lg) var(--ld-space-lg);
+      padding: 0 0 16px;
     }
 
     .filter-sheet__title {
       font-size: 17px;
       font-weight: 600;
+      margin-bottom: 16px;
     }
 
     .filter-sheet__chips {
       display: flex;
       flex-wrap: wrap;
-      gap: var(--ld-space-sm);
-      margin-bottom: var(--ld-space-xl);
-    }
-
-    .filter-chip {
-      padding: 8px 16px;
-      border-radius: 20px;
-      border: 1.5px solid var(--ld-divider);
-      background: var(--ld-card-bg);
-      color: var(--ld-text);
-      font-size: 14px;
-      cursor: pointer;
-      min-height: 44px;
-      transition: all 120ms;
-
-      &--active {
-        border-color: var(--ld-accent);
-        background: rgba(47, 111, 237, 0.08);
-        color: var(--ld-accent);
-        font-weight: 500;
-      }
+      gap: 8px;
+      margin-bottom: 24px;
     }
 
     .filter-sheet__budget {
-      margin-bottom: var(--ld-space-xl);
+      margin-bottom: 24px;
     }
 
     .filter-sheet__label {
       display: block;
       font-size: 14px;
-      color: var(--ld-text-secondary);
-      margin-bottom: var(--ld-space-sm);
+      color: var(--ld-text-2);
+      margin-bottom: 8px;
     }
 
     .filter-sheet__actions {
       display: flex;
-      gap: var(--ld-space-sm);
+      gap: 8px;
     }
 
     .filter-sheet__btn {
@@ -171,8 +111,20 @@ export class FilterSheetComponent {
 
   filtersChanged = output<FilterState>();
 
+  filterOptions = [
+    { key: 'openNow' as const, label: 'filters.open_now' },
+    { key: 'freeOnly' as const, label: 'filters.free' },
+    { key: 'walkMax20' as const, label: 'filters.walk_20' },
+    { key: 'outdoor' as const, label: 'filters.outdoor' },
+    { key: 'forTwo' as const, label: 'filters.for_two' },
+  ];
+
   open() {
     this.visible = true;
+  }
+
+  isActive(key: keyof Omit<FilterState, 'budgetMax'>): boolean {
+    return this.filters()[key];
   }
 
   toggle(key: keyof Omit<FilterState, 'budgetMax'>) {

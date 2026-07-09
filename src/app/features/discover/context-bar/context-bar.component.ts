@@ -1,10 +1,8 @@
 import { Component, inject, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { TranslatePipe } from '@ngx-translate/core';
-import { DrawerModule } from 'primeng/drawer';
-import { SelectButtonModule } from 'primeng/selectbutton';
-import { SliderModule } from 'primeng/slider';
 import { ProfileStore } from '../../../core/stores/profile.store';
+import { LdIconComponent } from '../../../core/components/ld-icon.component';
 import { GeolocationService } from '../../../core/services/geolocation.service';
 import { ApiService } from '../../../core/services/api.service';
 import { apiProviders } from '../../../core/providers';
@@ -15,47 +13,38 @@ type PanelType = 'location' | 'company' | 'interests' | 'time' | null;
 @Component({
   selector: 'app-context-bar',
   standalone: true,
-  imports: [TranslatePipe, DrawerModule, SelectButtonModule, SliderModule, FormsModule],
+  imports: [TranslatePipe, FormsModule, LdIconComponent],
   providers: [...apiProviders],
   template: `
     <div class="ctx">
       <div class="ctx__chips">
         <button class="ctx__chip" (click)="openPanel('location')">
-          <span class="ctx__icon">&#128205;</span>
+          <ld-icon name="map-pin" [size]="14" />
           {{ locationLabel() }}
         </button>
-        <button class="ctx__chip" (click)="openPanel('company')">
-          <span class="ctx__icon">{{ companyIcon() }}</span>
-          {{ companyLabel() }}
-        </button>
-        <button class="ctx__chip" (click)="openPanel('interests')">
-          <span class="ctx__icon">&#9733;</span>
-          {{ interestsLabel() }}
-        </button>
         <button class="ctx__chip" (click)="openPanel('time')">
-          <span class="ctx__icon">&#9201;</span>
+          <ld-icon name="clock" [size]="14" />
           {{ timeLabel() }}
         </button>
       </div>
     </div>
 
     <!-- Bottom sheet for editing -->
-    <p-drawer
-      [(visible)]="panelVisible"
-      position="bottom"
-      [modal]="true"
-      [style]="{ height: 'auto', maxHeight: '70vh' }"
-    >
-      <ng-template #header>
-        <h3 class="panel-title">
-          @switch (activePanel()) {
-            @case ('location') { {{ 'context.location' | translate }} }
-            @case ('company') { {{ 'context.company' | translate }} }
-            @case ('interests') { {{ 'context.interests' | translate }} }
-            @case ('time') { {{ 'context.time' | translate }} }
-          }
-        </h3>
-      </ng-template>
+    <!-- Sheet backdrop -->
+    @if (panelVisible) {
+      <div class="ld-sheet-backdrop ld-sheet-backdrop--visible" (click)="panelVisible = false"></div>
+    }
+
+    <div class="ld-sheet" [class.ld-sheet--open]="panelVisible">
+      <div class="ld-sheet__handle"></div>
+      <h3 class="panel-title">
+        @switch (activePanel()) {
+          @case ('location') { {{ 'context.location' | translate }} }
+          @case ('company') { {{ 'context.company' | translate }} }
+          @case ('interests') { {{ 'context.interests' | translate }} }
+          @case ('time') { {{ 'context.time' | translate }} }
+        }
+      </h3>
 
       <div class="panel-body">
         <!-- Location panel -->
@@ -79,8 +68,9 @@ type PanelType = 'location' | 'company' | 'interests' | 'time' | null;
           </div>
           <div class="panel-section">
             <label class="panel-label">Радиус: {{ radiusKm() }} km</label>
-            <p-slider [ngModel]="radiusKm()" (ngModelChange)="onRadiusChange($event)"
-              [min]="1" [max]="15" [step]="1"></p-slider>
+            <input type="range" class="ld-slider"
+              [ngModel]="radiusKm()" (ngModelChange)="onRadiusChange($event)"
+              min="1" max="15" step="1" />
           </div>
           <div class="panel-section panel-pos-info">
             📍 {{ geo.position().lat.toFixed(5) }}, {{ geo.position().lng.toFixed(5) }}
@@ -137,7 +127,7 @@ type PanelType = 'location' | 'company' | 'interests' | 'time' | null;
           </div>
         }
       </div>
-    </p-drawer>
+    </div>
   `,
   styles: `
     .ctx {

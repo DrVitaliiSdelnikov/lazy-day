@@ -1,45 +1,64 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { SavedStore } from '../../core/stores/saved.store';
+import { LdIconComponent } from '../../core/components/ld-icon.component';
 
 @Component({
   selector: 'app-saved',
   standalone: true,
-  imports: [TranslatePipe],
+  imports: [TranslatePipe, LdIconComponent],
   template: `
     <div class="saved">
-      <h1 class="saved__title">{{ 'saved.title' | translate }}</h1>
+      <div class="saved__header">
+        <h1 class="saved__title">{{ 'saved.title' | translate }}</h1>
+        <span class="saved__count">{{ savedStore.count() }}</span>
+      </div>
 
-      @if (savedStore.count() === 0) {
+      <!-- Segment control -->
+      <div class="saved__segments">
+        @for (seg of segments; track seg.value) {
+          <button class="saved__seg"
+            [class.saved__seg--active]="activeSegment() === seg.value"
+            (click)="activeSegment.set(seg.value)">{{ seg.label }}</button>
+        }
+      </div>
+
+      @if (filteredItems().length === 0) {
         <div class="saved__empty">
-          <p>{{ 'saved.empty' | translate }}</p>
+          <ld-icon name="zzz" [size]="40" class="saved__empty-icon" />
+          <h3 class="saved__empty-title">Пока пусто</h3>
+          <p class="saved__empty-text">Сердечко на карточке — и оно появится здесь</p>
+          <button class="ld-btn ld-btn--secondary" (click)="goToFeed()">В ленту</button>
         </div>
       } @else {
         <div class="saved__list">
-          @for (item of savedStore.all(); track item.id) {
-            <div class="saved__item" (click)="openDetail(item)">
-              <div class="saved__item-header">
-                <h3 class="saved__item-title">{{ item.title }}</h3>
-                <button class="saved__remove" (click)="onRemove($event, item.id)">&times;</button>
-              </div>
-              <div class="saved__item-meta">
-                <span>{{ item.categoryLabel || item.category }}</span>
-                @if (item.rating) {
-                  <span> &middot; &#9733; {{ item.rating }}</span>
-                }
-                @if (item.openStatus) {
-                  <span> &middot; </span>
-                  <span [style.color]="isOpen(item.openStatus) ? '#2e7d32' : '#c62828'"
-                        [style.font-weight]="'500'">{{ item.openStatus }}</span>
-                }
-                @if (item.priceLabel) {
-                  <span> &middot; {{ item.priceLabel }}</span>
-                }
-              </div>
-              @if (item.address) {
-                <div class="saved__item-address">{{ item.address }}</div>
+          @for (item of filteredItems(); track item.id) {
+            <div class="saved__card ld-card" (click)="openDetail(item)">
+              @if (item.type === 'event') {
+                <div class="saved__stripe"></div>
               }
+              <div class="saved__card-inner">
+                <div class="saved__card-header">
+                  <h3 class="saved__card-title">{{ item.title }}</h3>
+                  <button class="saved__heart" aria-label="Remove from saved" (click)="onRemove($event, item.id)" aria-label="Remove">
+                    <ld-icon name="heart-filled" [size]="18" />
+                  </button>
+                </div>
+                <p class="saved__card-meta">
+                  {{ item.categoryLabel || item.category }}
+                  @if (item.rating) {
+                    · <ld-icon name="star-filled" [size]="12" class="saved__star" /> {{ item.rating }}
+                  }
+                  @if (item.openStatus) {
+                    · <span [class.saved__open]="isOpen(item.openStatus)"
+                            [class.saved__closed]="!isOpen(item.openStatus)">{{ item.openStatus }}</span>
+                  }
+                </p>
+                @if (item.address) {
+                  <p class="saved__card-address">{{ item.address }}</p>
+                }
+              </div>
             </div>
           }
         </div>
@@ -50,68 +69,176 @@ import { SavedStore } from '../../core/stores/saved.store';
     .saved {
       padding: var(--ld-space-lg);
       padding-bottom: 80px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .saved__header {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      margin-bottom: var(--ld-space-md);
     }
 
     .saved__title {
-      font-size: 22px;
-      font-weight: 600;
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .saved__count {
+      font-size: 12px;
+      color: var(--ld-text-2);
+    }
+
+    .saved__segments {
+      display: flex;
+      gap: 3px;
+      background: var(--ld-surface-2);
+      border-radius: 12px;
+      padding: 3px;
       margin-bottom: var(--ld-space-lg);
+    }
+
+    .saved__seg {
+      flex: 1;
+      padding: 6px 12px;
+      font-size: 13px;
+      font-weight: 500;
+      border: none;
+      border-radius: 9px;
+      background: none;
+      color: var(--ld-text-2);
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .saved__seg--active {
+      background: var(--ld-surface);
+      color: var(--ld-on-primary-soft);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
     }
 
     .saved__empty {
       text-align: center;
-      padding: var(--ld-space-xl);
-      color: var(--ld-text-secondary);
+      padding: 48px 16px;
     }
 
-    .saved__item {
-      padding: var(--ld-space-md) 0;
-      border-bottom: 1px solid var(--ld-divider);
+    .saved__empty-icon {
+      color: var(--ld-text-3);
+      margin-bottom: 12px;
+    }
+
+    .saved__empty-title {
+      font-size: 17px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .saved__empty-text {
+      font-size: 13px;
+      color: var(--ld-text-2);
+      margin-bottom: 16px;
+    }
+
+    .saved__list {
+      display: grid;
+      gap: 12px;
+    }
+
+    @media (min-width: 640px) {
+      .saved__list {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .saved__card {
       cursor: pointer;
+      display: flex;
+      overflow: hidden;
     }
 
-    .saved__item-header {
+    .saved__stripe {
+      width: 4px;
+      flex-shrink: 0;
+      background: var(--ld-event);
+    }
+
+    .saved__card-inner {
+      flex: 1;
+      padding: 12px 16px;
+      min-width: 0;
+    }
+
+    .saved__card-header {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
+      gap: 8px;
     }
 
-    .saved__item-title {
-      font-size: 17px;
-      font-weight: 500;
-      line-height: 22px;
+    .saved__card-title {
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.3;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
-    .saved__remove {
+    .saved__heart {
       background: none;
       border: none;
-      font-size: 20px;
-      color: var(--ld-text-secondary);
+      color: var(--ld-heart);
       cursor: pointer;
-      padding: 4px 8px;
-      min-width: 44px;
-      min-height: 44px;
+      padding: 2px;
+      min-width: 36px;
+      min-height: 36px;
       display: flex;
       align-items: center;
       justify-content: center;
     }
 
-    .saved__item-meta {
-      font-size: 13px;
-      color: var(--ld-text-secondary);
-      margin-top: 2px;
+    .saved__card-meta {
+      font-size: 12px;
+      color: var(--ld-text-2);
+      margin: 3px 0 0;
+      display: flex;
+      align-items: center;
+      gap: 2px;
     }
 
-    .saved__item-address {
-      font-size: 13px;
-      color: var(--ld-text-secondary);
+    .saved__star { color: var(--ld-warn); }
+    .saved__open { color: var(--ld-open); font-weight: 500; }
+    .saved__closed { color: var(--ld-danger); font-weight: 500; }
+
+    .saved__card-address {
+      font-size: 11px;
+      color: var(--ld-text-3);
       margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
   `,
 })
 export class SavedComponent {
   readonly savedStore = inject(SavedStore);
   private router = inject(Router);
+
+  activeSegment = signal<'all' | 'place' | 'event'>('all');
+
+  segments = [
+    { value: 'all' as const, label: 'Все' },
+    { value: 'place' as const, label: 'Места' },
+    { value: 'event' as const, label: 'События' },
+  ];
+
+  filteredItems() {
+    const seg = this.activeSegment();
+    const all = this.savedStore.all();
+    if (seg === 'all') return all;
+    return all.filter((i) => i.type === seg);
+  }
 
   openDetail(item: { id: string; type: string }) {
     this.router.navigate(['/detail', item.type, item.id]);
@@ -120,6 +247,10 @@ export class SavedComponent {
   onRemove(event: Event, id: string) {
     event.stopPropagation();
     this.savedStore.remove(id);
+  }
+
+  goToFeed() {
+    this.router.navigate(['/discover']);
   }
 
   isOpen(status: string): boolean {
