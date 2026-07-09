@@ -5,248 +5,339 @@ import { ApiService } from '../../core/services/api.service';
 import { ProfileStore } from '../../core/stores/profile.store';
 import { apiProviders } from '../../core/providers';
 import { RecommendationCard } from '../../core/models';
+import { LdIconComponent } from '../../core/components/ld-icon.component';
 
 @Component({
   selector: 'app-detail',
   standalone: true,
-  imports: [TranslatePipe],
+  imports: [TranslatePipe, LdIconComponent],
   providers: [...apiProviders],
   template: `
+    @if (card(); as c) {
     <div class="detail">
-      <button class="ld-btn ld-btn--ghost detail__back" (click)="goBack()">← Назад</button>
-
-      @if (card(); as c) {
-        <h1 class="detail__title">{{ c.title }}</h1>
-
-        @if (c.rating) {
-          <div class="detail__rating">
-            <span class="detail__star">&#9733;</span>
-            <span class="detail__rating-value">{{ c.rating }}</span>
-            @if (c.ratingCount) {
-              <span class="detail__rating-count">({{ formatRatingCount(c.ratingCount) }})</span>
-            }
+      <!-- Color header -->
+      <div class="detail__header" [class.detail__header--event]="c.type === 'event'">
+        <div class="detail__header-nav">
+          <button class="detail__icon-btn" (click)="goBack()" aria-label="Back">
+            <ld-icon name="arrow-left" [size]="16" />
+          </button>
+          <div class="detail__header-actions">
+            <button class="detail__icon-btn" aria-label="Share">
+              <ld-icon name="share-2" [size]="15" />
+            </button>
+            <button class="detail__icon-btn" [class.detail__icon-btn--heart]="isSaved()"
+              (click)="onToggleSave()" [attr.aria-label]="isSaved() ? 'Unsave' : 'Save'">
+              <ld-icon [name]="isSaved() ? 'heart-filled' : 'heart'" [size]="16" />
+            </button>
           </div>
+        </div>
+        <div class="detail__header-icon">
+          <ld-icon [name]="categoryIcon(c)" [size]="38" />
+        </div>
+      </div>
+
+      <!-- Content -->
+      <div class="detail__body">
+        @if (c.type === 'event') {
+          <span class="ld-badge ld-badge--event" style="margin-bottom: 8px">Событие · {{ eventTypeLabel(c) }}</span>
         }
 
-        <div class="detail__meta">
-          <span>{{ c.categoryLabel || c.category }}</span>
-          <span>&middot;</span>
-          <span>{{ formatDistance(c.distanceM) }}</span>
-          @if (c.walkMinutes) {
-            <span>&middot;</span>
-            <span>&#128694; {{ c.walkMinutes }}m</span>
+        <h1 class="detail__title">{{ c.title }}</h1>
+        <p class="detail__meta">
+          {{ c.categoryLabel || c.category }} · {{ formatDistance(c.distanceM) }}
+          @if (c.walkMinutes) { · {{ c.walkMinutes }} мин }
+          @if (c.rating) {
+            · <ld-icon name="star-filled" [size]="12" class="detail__star" /> {{ c.rating }}
+            @if (c.ratingCount) { ({{ formatRatingCount(c.ratingCount) }}) }
           }
-          @if (c.openStatus) {
-            <span>&middot;</span>
-            <span [class.detail__open]="isOpen(c.openStatus)"
-                  [class.detail__closed]="!isOpen(c.openStatus)">{{ c.openStatus }}</span>
-          }
-          @if (c.status) {
-            <span class="ld-badge ld-badge--primary">{{ c.status }}</span>
-          }
-        </div>
+        </p>
 
-        @if (c.explanations?.length) {
-          <div class="detail__why">
-            <h3 class="detail__section-title">
-              {{ 'detail.why_recommended' | translate }}
-            </h3>
-            <div class="detail__tags">
-              @for (tag of c.explanations; track tag.type) {
-                <span class="ld-badge ld-badge--primary">{{ tag.label }}</span>
+        <!-- Event: date block -->
+        @if (c.type === 'event' && c.startsAt) {
+          <div class="detail__card">
+            <div class="detail__date-row">
+              <div>
+                <p class="detail__date-title">{{ formatEventDateTime(c.startsAt) }}</p>
+                @if (c.endsAt) {
+                  <p class="detail__date-sub">длится ~{{ estimateDuration(c.startsAt, c.endsAt) }}</p>
+                }
+              </div>
+              @if (minutesUntil(c.startsAt); as mins) {
+                @if (mins > 0 && mins <= 180) {
+                  <span class="ld-badge" style="background: var(--ld-glow-soft, var(--ld-primary-soft)); color: var(--ld-on-glow-soft, var(--ld-on-primary-soft))">
+                    Через {{ formatCountdown(mins) }}
+                  </span>
+                }
               }
             </div>
           </div>
         }
 
-        @if (c.description) {
-          <div class="detail__description">
-            <p>{{ c.description }}</p>
-          </div>
-        }
-
-        <div class="detail__info">
-          @if (c.address) {
-            <div class="detail__row">
-              <span class="detail__label">{{ 'detail.address' | translate }}</span>
-              <span>{{ c.address }}</span>
-            </div>
+        <!-- Badges -->
+        <div class="detail__badges">
+          @if (c.openStatus) {
+            <span class="ld-badge" [class.ld-badge--open]="isOpen(c.openStatus)" [class.ld-badge--closed]="!isOpen(c.openStatus)">
+              {{ c.openStatus }}
+            </span>
           }
-          @if (c.timeLabel) {
-            <div class="detail__row">
-              <span class="detail__label">{{ 'detail.time' | translate }}</span>
-              <span>{{ c.timeLabel }}</span>
-            </div>
+          @for (tag of c.explanations?.slice(0, 3); track tag.type) {
+            <span class="ld-badge" [class]="badgeClass(tag.type)">{{ tag.label }}</span>
           }
-          @if (c.priceLabel) {
-            <div class="detail__row">
-              <span class="detail__label">{{ 'detail.price' | translate }}</span>
-              <span>{{ c.priceLabel }}</span>
-            </div>
-          }
-          @if (c.freshness) {
-            <div class="detail__row">
-              <span class="detail__label">{{ 'detail.verified' | translate }}</span>
-              <span>{{ c.freshness }}</span>
-            </div>
-          }
-          <div class="detail__row">
-            <span class="detail__label">{{ 'detail.source' | translate }}</span>
-            <span>{{ c.source }}</span>
-          </div>
         </div>
 
+        <!-- Why this -->
+        @if (c.explanations?.length) {
+          <div class="detail__card">
+            <p class="detail__card-title">Почему это вам</p>
+            @for (tag of c.explanations; track tag.type) {
+              <p class="detail__why-line">
+                <ld-icon [name]="whyIcon(tag.type)" [size]="13" [class]="'detail__why-icon detail__why-icon--' + tag.type" />
+                {{ tag.label }}
+              </p>
+            }
+          </div>
+        }
+
+        <!-- Address -->
+        @if (c.address) {
+          <div class="detail__card">
+            <p class="detail__address">
+              <ld-icon name="map-pin" [size]="13" class="detail__addr-icon" /> {{ c.address }}
+            </p>
+          </div>
+        }
+
         @if (c.type === 'event' && c.venueName) {
-          <div class="detail__venue">
-            <span class="detail__label">Место проведения</span>
-            <span>{{ c.venueName }}</span>
+          <div class="detail__card">
+            <p class="detail__address">
+              <ld-icon name="map-pin" [size]="13" class="detail__addr-icon" /> {{ c.venueName }}
+            </p>
           </div>
         }
 
-        @if (c.type === 'event' && c.startsAt) {
-          <div class="detail__row">
-            <span class="detail__label">Начало</span>
-            <span>{{ formatEventDateTime(c.startsAt) }}</span>
+        <!-- Event: price -->
+        @if (c.priceLabel) {
+          <div class="detail__card detail__price-row">
+            <span style="color: var(--ld-text-2); font-size: 12px">Билеты</span>
+            <span style="font-weight: 700; font-size: 12px">{{ c.priceLabel }}</span>
           </div>
         }
 
+        <!-- Actions (mobile) -->
         <div class="detail__actions">
-          @if (c.ticketUrl || c.externalUrl) {
-            <a class="ld-btn ld-btn--primary detail__action-btn"
-              [href]="c.ticketUrl || c.externalUrl"
-              target="_blank" rel="noopener">
-              {{ c.type === 'event' ? 'Купить билет' : 'Сайт' }}
-            </a>
-          }
-          <a class="ld-btn ld-btn--secondary detail__action-btn"
-            [href]="venueMapUrl(c)"
-            target="_blank" rel="noopener">
-            {{ c.type === 'event' ? 'Как добраться' : 'На карте' }}
+          <a class="ld-btn ld-btn--primary detail__action-main" [href]="venueMapUrl(c)" target="_blank" rel="noopener">
+            <ld-icon name="route" [size]="14" /> Маршрут
           </a>
-          <button class="ld-btn ld-btn--secondary detail__action-btn"
-            (click)="onToggleSave()">
-            {{ isSaved() ? 'Сохранено ♥' : 'Сохранить' }}
+          <button class="detail__icon-action" aria-label="Share">
+            <ld-icon name="share-2" [size]="15" />
           </button>
+          <button class="detail__icon-action detail__icon-action--danger" aria-label="Hide">
+            <ld-icon name="eye-off" [size]="15" />
+          </button>
+        </div>
+      </div>
+
+      <!-- Event: sticky ticket CTA -->
+      @if (c.type === 'event' && (c.ticketUrl || c.externalUrl)) {
+        <div class="detail__sticky-cta">
+          <a class="ld-btn ld-btn--primary detail__ticket-btn" [href]="c.ticketUrl || c.externalUrl" target="_blank" rel="noopener">
+            <ld-icon name="ticket" [size]="15" />
+            Билеты{{ c.priceLabel ? ' от ' + c.priceLabel : '' }}
+            @if (c.source) { · {{ c.source }} }
+          </a>
         </div>
       }
     </div>
+    }
   `,
   styles: `
-    .detail {
-      padding: var(--ld-space-lg);
-      padding-bottom: 100px;
+    .detail { position: relative; }
+
+    .detail__header {
+      background: var(--ld-primary-soft);
+      padding: 8px 14px 18px;
     }
 
-    .detail__back {
-      margin-bottom: var(--ld-space-md);
+    .detail__header--event {
+      background: var(--ld-event-soft);
+    }
+
+    .detail__header-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .detail__header-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .detail__icon-btn {
+      width: 34px;
+      height: 34px;
+      background: var(--ld-surface);
+      border: none;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--ld-text);
+    }
+
+    .detail__icon-btn--heart {
+      color: var(--ld-heart);
+    }
+
+    .detail__header-icon {
+      text-align: center;
+      color: var(--ld-primary);
+    }
+
+    .detail__header--event .detail__header-icon {
+      color: var(--ld-event);
+    }
+
+    .detail__body {
+      padding: 14px 16px 100px;
     }
 
     .detail__title {
-      font-size: 22px;
-      font-weight: 600;
-      line-height: 28px;
-      margin-bottom: var(--ld-space-sm);
-    }
-
-    .detail__rating {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 15px;
-      margin-bottom: var(--ld-space-sm);
-    }
-
-    .detail__star {
-      color: #f5a623;
-      font-size: 18px;
-    }
-
-    .detail__rating-value {
-      font-weight: 600;
-    }
-
-    .detail__rating-count {
-      color: var(--ld-text-secondary);
-      font-weight: 400;
+      font-size: 19px;
+      font-weight: 700;
+      margin: 0 0 3px;
     }
 
     .detail__meta {
+      font-size: 12px;
+      color: var(--ld-text-2);
+      margin: 0 0 10px;
       display: flex;
       align-items: center;
-      gap: var(--ld-space-xs);
-      font-size: 14px;
-      color: var(--ld-text-secondary);
-      margin-bottom: var(--ld-space-lg);
+      gap: 3px;
       flex-wrap: wrap;
     }
 
-    .detail__open {
-      color: #2e7d32;
-      font-weight: 500;
-    }
+    .detail__star { color: var(--ld-warn); }
 
-    .detail__closed {
-      color: #c62828;
-      font-weight: 500;
-    }
-
-    .detail__why {
-      margin-bottom: var(--ld-space-lg);
-    }
-
-    .detail__section-title {
-      font-size: 14px;
-      font-weight: 500;
-      color: var(--ld-text-secondary);
-      margin-bottom: var(--ld-space-sm);
-    }
-
-    .detail__tags {
+    .detail__badges {
       display: flex;
+      gap: 5px;
       flex-wrap: wrap;
-      gap: var(--ld-space-xs);
+      margin-bottom: 12px;
     }
 
-    .detail__description {
-      font-size: 15px;
-      line-height: 22px;
-      margin-bottom: var(--ld-space-lg);
+    .detail__card {
+      background: var(--ld-surface);
+      border: 1px solid var(--ld-border);
+      border-radius: 16px;
+      padding: 12px;
+      margin-bottom: 8px;
     }
 
-    .detail__venue {
+    .detail__card-title {
+      font-size: 13px;
+      font-weight: 700;
+      margin: 0 0 8px;
+    }
+
+    .detail__why-line {
+      font-size: 12px;
+      margin: 0 0 6px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .detail__why-line:last-child { margin-bottom: 0; }
+
+    .detail__why-icon--matches_interest,
+    .detail__why-icon--pet_friendly,
+    .detail__why-icon--company_fit { color: var(--ld-secondary); }
+    .detail__why-icon--open_now,
+    .detail__why-icon--walk_time { color: var(--ld-primary); }
+    .detail__why-icon--highly_rated { color: var(--ld-warn); }
+
+    .detail__address {
+      font-size: 12px;
+      color: var(--ld-text-2);
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .detail__addr-icon { color: var(--ld-primary); }
+
+    .detail__date-row {
       display: flex;
       justify-content: space-between;
-      padding: var(--ld-space-md) 0;
-      border-bottom: 1px solid var(--ld-divider);
-      font-size: 14px;
-      margin-bottom: var(--ld-space-md);
+      align-items: center;
     }
 
-    .detail__info {
-      margin-bottom: var(--ld-space-xl);
+    .detail__date-title {
+      font-size: 13px;
+      font-weight: 700;
+      margin: 0;
     }
 
-    .detail__row {
+    .detail__date-sub {
+      font-size: 11px;
+      color: var(--ld-text-2);
+      margin: 2px 0 0;
+    }
+
+    .detail__price-row {
       display: flex;
       justify-content: space-between;
-      padding: var(--ld-space-md) 0;
-      border-bottom: 1px solid var(--ld-divider);
-      font-size: 14px;
-    }
-
-    .detail__label {
-      color: var(--ld-text-secondary);
     }
 
     .detail__actions {
       display: flex;
-      flex-direction: column;
-      gap: var(--ld-space-sm);
+      gap: 6px;
+      margin-top: 12px;
     }
 
-    .detail__action-btn {
-      width: 100%;
+    .detail__action-main {
+      flex: 1;
+    }
+
+    .detail__icon-action {
+      width: 44px;
+      height: 48px;
+      background: var(--ld-surface);
+      border: 1px solid var(--ld-border);
+      border-radius: var(--ld-radius-btn);
+      display: flex;
+      align-items: center;
       justify-content: center;
+      cursor: pointer;
+      color: var(--ld-text-2);
+    }
+
+    .detail__icon-action--danger { color: var(--ld-danger); }
+
+    .detail__sticky-cta {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 12px 14px;
+      background: var(--ld-surface);
+      border-top: 1px solid var(--ld-border);
+      z-index: 100;
+    }
+
+    .detail__ticket-btn {
+      width: 100%;
+    }
+
+    /* Desktop: hide sticky, adjust padding */
+    @media (min-width: 1024px) {
+      .detail__body { padding-bottom: 24px; }
+      .detail__sticky-cta { position: static; border: none; padding: 0 16px 16px; }
     }
   `,
 })
@@ -266,6 +357,44 @@ export class DetailComponent implements OnInit {
       this.card.set(c);
       this.isSaved.set(this.profileStore.isSaved(c.id));
     });
+  }
+
+  categoryIcon(c: RecommendationCard): string {
+    const map: Record<string, string> = {
+      park: 'trees', viewpoint: 'compass', museum: 'masks-theater',
+      gallery: 'masks-theater', theater: 'masks-theater', cinema: 'movie',
+      restaurant: 'tools-kitchen-2', cafe: 'coffee', bar: 'glass-cocktail',
+      club: 'music', gym: 'run', spa: 'dog', bath: 'dog',
+      music: 'music', exhibition: 'masks-theater', festival: 'balloon',
+      entertainment: 'star', workshop: 'star', market: 'star', sports: 'run',
+    };
+    return map[c.category] ?? 'compass';
+  }
+
+  eventTypeLabel(c: RecommendationCard): string {
+    const map: Record<string, string> = {
+      music: 'Концерт', theater: 'Театр', exhibition: 'Выставка',
+      festival: 'Фестиваль', entertainment: 'Событие', workshop: 'Мастер-класс',
+    };
+    return map[c.category] ?? 'Событие';
+  }
+
+  whyIcon(type: string): string {
+    const map: Record<string, string> = {
+      matches_interest: 'trees', pet_friendly: 'dog', company_fit: 'users',
+      open_now: 'clock', walk_time: 'clock', highly_rated: 'star',
+    };
+    return map[type] ?? 'compass';
+  }
+
+  badgeClass(type: string): string {
+    switch (type) {
+      case 'open_now': return 'ld-badge--open';
+      case 'pet_friendly':
+      case 'company_fit': return 'ld-badge--secondary';
+      case 'matches_interest': return 'ld-badge--primary';
+      default: return 'ld-badge--primary';
+    }
   }
 
   formatDistance(m: number): string {
@@ -291,19 +420,29 @@ export class DetailComponent implements OnInit {
     return `${weekday}, ${day} ${month}, ${time}`;
   }
 
-  venueMapUrl(c: RecommendationCard): string {
-    // If event has venue name but no coords, search by name
-    if (c.type === 'event' && c.venueName) {
-      const query = encodeURIComponent(c.venueName + ' Tbilisi');
-      return `https://www.google.com/maps/search/?api=1&query=${query}`;
-    }
-    return this.mapsUrl(c);
+  minutesUntil(iso: string): number {
+    return Math.round((new Date(iso).getTime() - Date.now()) / 60000);
   }
 
-  mapsUrl(c: RecommendationCard): string {
-    // Use place name + coordinates for better Google Maps result
-    const query = encodeURIComponent(c.title);
-    return `https://www.google.com/maps/search/?api=1&query=${query}&query_place_id=&center=${c.lat},${c.lng}`;
+  formatCountdown(mins: number): string {
+    if (mins < 60) return `${mins} мин`;
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return `${h}:${String(m).padStart(2, '0')}`;
+  }
+
+  estimateDuration(startIso: string, endIso: string): string {
+    const mins = Math.round((new Date(endIso).getTime() - new Date(startIso).getTime()) / 60000);
+    if (mins < 60) return `${mins} мин`;
+    const h = Math.round(mins / 60);
+    return `${h} ${h === 1 ? 'час' : h < 5 ? 'часа' : 'часов'}`;
+  }
+
+  venueMapUrl(c: RecommendationCard): string {
+    if (c.type === 'event' && c.venueName) {
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.venueName + ' Tbilisi')}`;
+    }
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.title)}&center=${c.lat},${c.lng}`;
   }
 
   onToggleSave() {
@@ -314,6 +453,6 @@ export class DetailComponent implements OnInit {
   }
 
   goBack() {
-    this.router.navigate(['/discover']);
+    history.back();
   }
 }

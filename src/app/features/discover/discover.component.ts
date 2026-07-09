@@ -10,6 +10,7 @@ import { apiProviders } from '../../core/providers';
 import { RecommendationCard } from '../../core/models';
 import { ResultCardComponent } from './result-card/result-card.component';
 import { LdIconComponent } from '../../core/components/ld-icon.component';
+import { DetailComponent } from '../detail/detail.component';
 import { ContextBarComponent } from './context-bar/context-bar.component';
 import { FilterSheetComponent, FilterState } from './filter-sheet/filter-sheet.component';
 
@@ -22,6 +23,7 @@ import { FilterSheetComponent, FilterState } from './filter-sheet/filter-sheet.c
     ContextBarComponent,
     FilterSheetComponent,
     LdIconComponent,
+    DetailComponent,
   ],
   providers: [...apiProviders],
   template: `
@@ -185,6 +187,17 @@ import { FilterSheetComponent, FilterState } from './filter-sheet/filter-sheet.c
     </div><!-- /discover -->
 
     <app-filter-sheet (filtersChanged)="onFiltersChanged($event)" />
+
+    <!-- Desktop detail modal -->
+    @if (modalCard()) {
+      <div class="discover__modal-backdrop" (click)="closeModal()"></div>
+      <div class="discover__modal">
+        <app-detail [type]="modalCard()!.type" [id]="modalCard()!.id" />
+        <button class="discover__modal-close" (click)="closeModal()" aria-label="Close">
+          <ld-icon name="x" [size]="16" />
+        </button>
+      </div>
+    }
   `,
   styles: `
     /* ─── Desktop layout ─── */
@@ -438,6 +451,62 @@ import { FilterSheetComponent, FilterState } from './filter-sheet/filter-sheet.c
       border-color: var(--ld-text);
     }
 
+    /* ─── Desktop detail modal ─── */
+    .discover__modal-backdrop {
+      display: none;
+    }
+
+    .discover__modal {
+      display: none;
+    }
+
+    @media (min-width: 1024px) {
+      .discover__modal-backdrop {
+        display: block;
+        position: fixed;
+        inset: 0;
+        background: rgba(45, 38, 26, 0.4);
+        z-index: 500;
+      }
+
+      .theme-evening .discover__modal-backdrop {
+        background: rgba(35, 26, 42, 0.45);
+      }
+
+      .discover__modal {
+        display: block;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 600px;
+        max-width: 90vw;
+        max-height: 85vh;
+        overflow-y: auto;
+        background: var(--ld-bg);
+        border-radius: var(--ld-radius-card);
+        z-index: 501;
+        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.15);
+      }
+
+      .discover__modal-close {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        width: 28px;
+        height: 28px;
+        background: var(--ld-surface);
+        border: none;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        color: var(--ld-text);
+        z-index: 502;
+      }
+    }
+
     .discover__more {
       display: flex;
       justify-content: center;
@@ -577,6 +646,7 @@ export class DiscoverComponent implements OnInit {
   private contextBar = viewChild(ContextBarComponent);
 
   readonly isDev = isDevMode();
+  readonly modalCard = signal<RecommendationCard | null>(null);
   readonly debugCoords = signal('');
 
   readonly allCards = signal<RecommendationCard[]>([]);
@@ -749,7 +819,19 @@ export class DiscoverComponent implements OnInit {
   }
 
   onOpenDetail(card: RecommendationCard) {
-    this.router.navigate(['/detail', card.type, card.id]);
+    if (window.innerWidth >= 1024) {
+      // Desktop: open modal overlay
+      this.modalCard.set(card);
+      history.pushState(null, '', `/detail/${card.type}/${card.id}`);
+    } else {
+      // Mobile: navigate to full page
+      this.router.navigate(['/detail', card.type, card.id]);
+    }
+  }
+
+  closeModal() {
+    this.modalCard.set(null);
+    history.pushState(null, '', '/discover');
   }
 
   onToggleSave(card: RecommendationCard) {
