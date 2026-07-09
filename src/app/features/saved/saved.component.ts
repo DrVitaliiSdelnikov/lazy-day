@@ -20,16 +20,16 @@ import { LdIconComponent } from '../../core/components/ld-icon.component';
         @for (seg of segments; track seg.value) {
           <button class="saved__seg"
             [class.saved__seg--active]="activeSegment() === seg.value"
-            (click)="activeSegment.set(seg.value)">{{ seg.label }}</button>
+            (click)="activeSegment.set(seg.value)">{{ seg.labelKey | translate }}</button>
         }
       </div>
 
       @if (filteredItems().length === 0) {
         <div class="saved__empty">
           <ld-icon name="zzz" [size]="40" class="saved__empty-icon" />
-          <h3 class="saved__empty-title">Пока пусто</h3>
-          <p class="saved__empty-text">Сердечко на карточке — и оно появится здесь</p>
-          <button class="ld-btn ld-btn--secondary" (click)="goToFeed()">В ленту</button>
+          <h3 class="saved__empty-title">{{ 'saved.empty_title' | translate }}</h3>
+          <p class="saved__empty-text">{{ 'saved.empty_text' | translate }}</p>
+          <button class="ld-btn ld-btn--secondary" (click)="goToFeed()">{{ 'saved.to_feed' | translate }}</button>
         </div>
       } @else {
         <div class="saved__list">
@@ -41,7 +41,7 @@ import { LdIconComponent } from '../../core/components/ld-icon.component';
               <div class="saved__card-inner">
                 <div class="saved__card-header">
                   <h3 class="saved__card-title">{{ item.title }}</h3>
-                  <button class="saved__heart" aria-label="Remove from saved" (click)="onRemove($event, item.id)" aria-label="Remove">
+                  <button class="saved__heart" [attr.aria-label]="'detail.unsave' | translate" (click)="onRemove($event, item.id)">
                     <ld-icon name="heart-filled" [size]="18" />
                   </button>
                 </div>
@@ -228,9 +228,9 @@ export class SavedComponent {
   activeSegment = signal<'all' | 'place' | 'event'>('all');
 
   segments = [
-    { value: 'all' as const, label: 'Все' },
-    { value: 'place' as const, label: 'Места' },
-    { value: 'event' as const, label: 'События' },
+    { value: 'all' as const, labelKey: 'saved.all' },
+    { value: 'place' as const, labelKey: 'saved.places' },
+    { value: 'event' as const, labelKey: 'saved.events' },
   ];
 
   filteredItems() {

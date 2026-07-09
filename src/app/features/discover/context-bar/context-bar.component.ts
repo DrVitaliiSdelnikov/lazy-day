@@ -1,6 +1,6 @@
 import { Component, inject, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { ProfileStore } from '../../../core/stores/profile.store';
 import { LdIconComponent } from '../../../core/components/ld-icon.component';
 import { GeolocationService } from '../../../core/services/geolocation.service';
@@ -51,11 +51,11 @@ type PanelType = 'location' | 'company' | 'interests' | 'time' | null;
         @if (activePanel() === 'location') {
           <div class="panel-section">
             <button class="panel-geo-btn" (click)="useMyLocation()" [disabled]="geoLoading()">
-              📍 {{ geoLoading() ? 'Определяю...' : 'Моя локация' }}
+              📍 {{ (geoLoading() ? 'context.locating' : 'context.my_location') | translate }}
             </button>
           </div>
           <div class="panel-section">
-            <label class="panel-label">Или вставьте координаты:</label>
+            <label class="panel-label">{{ 'context.coords_label' | translate }}</label>
             <div class="panel-coords-row">
               <input class="panel-coords-input"
                 placeholder="41°41'39.0&quot;N 45°00'33.9&quot;E  или  41.694, 45.009"
@@ -67,7 +67,7 @@ type PanelType = 'location' | 'company' | 'interests' | 'time' | null;
             }
           </div>
           <div class="panel-section">
-            <label class="panel-label">Радиус: {{ radiusKm() }} km</label>
+            <label class="panel-label">{{ radiusLabel() }}</label>
             <input type="range" class="ld-slider"
               [ngModel]="radiusKm()" (ngModelChange)="onRadiusChange($event)"
               min="1" max="15" step="1" />
@@ -86,14 +86,14 @@ type PanelType = 'location' | 'company' | 'interests' | 'time' | null;
                 [class.panel-option--active]="profileStore.company() === opt.value"
                 (click)="selectCompany(opt.value)">
                 <span class="panel-option__icon">{{ opt.icon }}</span>
-                <span>{{ opt.label }}</span>
+                <span>{{ opt.labelKey | translate }}</span>
               </button>
             }
             <button class="panel-option"
               [class.panel-option--active]="profileStore.hasPet()"
               (click)="togglePet()">
               <span class="panel-option__icon">🐕</span>
-              <span>С питомцем</span>
+              <span>{{ 'company.with_pet' | translate }}</span>
             </button>
           </div>
         }
@@ -311,6 +311,7 @@ export class ContextBarComponent {
   readonly profileStore = inject(ProfileStore);
   readonly geo = inject(GeolocationService);
   private api = inject(ApiService);
+  private translate = inject(TranslateService);
 
   changed = output<void>();
 
@@ -322,26 +323,33 @@ export class ContextBarComponent {
   geoLoading = signal(false);
   coordsError = signal<string | null>(null);
 
-  companyOptions: { value: CompanyType; label: string; icon: string }[] = [
-    { value: 'solo', label: 'Один', icon: '🧑' },
-    { value: 'couple', label: 'Вдвоём', icon: '👫' },
-    { value: 'family', label: 'С семьёй', icon: '👨‍👩‍👧' },
-    { value: 'friends', label: 'С друзьями', icon: '👥' },
+  companyOptions: { value: CompanyType; labelKey: string; icon: string }[] = [
+    { value: 'solo', labelKey: 'company.solo', icon: '🧑' },
+    { value: 'couple', labelKey: 'company.couple_alt', icon: '👫' },
+    { value: 'family', labelKey: 'company.family_alt', icon: '👨‍👩‍👧' },
+    { value: 'friends', labelKey: 'company.friends_alt', icon: '👥' },
   ];
 
   constructor() {
     this.api.getCategories().subscribe((cats) => this.categories.set(cats));
   }
 
+  radiusLabel(): string {
+    return this.translate.instant('context.radius_label', { km: this.radiusKm() });
+  }
+
   locationLabel(): string {
     const r = this.radiusKm();
-    const src = this.geo.position().source;
-    return src === 'gps' ? `📍 ${r}км` : `${r}км`;
+    const pos = this.geo.position();
+    if (pos.source === 'gps') return `${r} км`;
+    if (pos.label) return `${pos.label} · ${r} км`;
+    return `${this.translate.instant('context.center')} · ${r} км`;
   }
 
   companyLabel(): string {
     const c = this.profileStore.company();
-    const base = this.companyOptions.find((o) => o.value === c)?.label ?? 'Любой';
+    const opt = this.companyOptions.find((o) => o.value === c);
+    const base = opt ? this.translate.instant(opt.labelKey) : this.translate.instant('company.any');
     return this.profileStore.hasPet() ? `${base} + 🐕` : base;
   }
 
@@ -352,16 +360,14 @@ export class ContextBarComponent {
 
   interestsLabel(): string {
     const keys = Object.keys(this.profileStore.interests());
-    if (keys.length === 0) return 'Все';
+    if (keys.length === 0) return this.translate.instant('context.all_interests');
     if (keys.length <= 2) return keys.join(', ');
     return `${keys.slice(0, 2).join(', ')} +${keys.length - 2}`;
   }
 
   timeLabel(): string {
-    const map: Record<string, string> = {
-      now: 'Сейчас', evening: 'Вечер', tomorrow: 'Завтра', weekend: 'Выходные',
-    };
-    return map[this.selectedTime()] ?? 'Сейчас';
+    const key = `context.${this.selectedTime()}`;
+    return this.translate.instant(key) ?? this.translate.instant('context.now');
   }
 
   getRadiusM(): number {
@@ -473,7 +479,7 @@ export class ContextBarComponent {
       this.panelVisible = false;
       this.emitChanged();
     } else {
-      this.coordsError.set('Неверный формат. Примеры: 41°41\'39.0"N 45°00\'33.9"E  или  41.694, 45.009');
+      this.coordsError.set(this.translate.instant('coords.error'));
     }
   }
 

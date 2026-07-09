@@ -38,6 +38,7 @@ export interface RecommendationCard {
   ratingCount?: number;
   primaryTags?: string[];
   secondaryTags?: string[];
+  googlePlaceId?: string;
   source: string;
 }
 
@@ -71,12 +72,19 @@ export interface DiscoverRequest {
   };
   hiddenIds: string[];
   locale: Locale;
+  forcedNow?: boolean;
+}
+
+export interface DiscoverMeta {
+  fallback?: 'tomorrow' | 'exhausted';
+  originalCount?: number;
 }
 
 export interface DiscoverResponse {
   sessionId: string;
   cards: RecommendationCard[];
   hasMore: boolean;
+  meta?: DiscoverMeta;
 }
 
 export interface InteractionRequest {

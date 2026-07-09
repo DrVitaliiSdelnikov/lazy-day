@@ -8,4 +8,5 @@ export type {
   UserProfile,
   DiscoverRequest,
   DiscoverResponse,
+  DiscoverMeta,
 } from '@lazy-day/shared-models';

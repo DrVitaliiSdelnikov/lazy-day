@@ -23,16 +23,32 @@ Single source of truth for what we do, what we decide, and when.
 
 ### 🔲 TODO (before deploy)
 
+**UX blockers** (full specs: `docs/ux-specs/`)
+
+| # | Task | Effort | Spec |
+|---|---|---|---|
+| 11 | **UX-2: Location without GPS** — city center default, location sheet, Google Maps URL parsing, preset chips | 1.5-2 days | [ux-2](ux-specs/ux-2-location-fallback.md) |
+| 12 | **UX-3: Night fallback** — tomorrow pipeline step 9, fallback banner, 24/7 boost, greeting override | 1 day | [ux-3](ux-specs/ux-3-night-fallback.md) |
+| 13 | **UX-16: Access model** — membership hard-filter (gyms out of feed), classification migration | 0.5-1 day | [ux-16](ux-specs/ux-16-access-model.md) |
+| 14 | **UX-1: Ghost-path tune-block** — interests tune-block at position 6 in feed, dismiss logic | 1 day | [ux-1](ux-specs/ux-1-progressive-onboarding.md) |
+| 15 | **UX-4: Hide undo toast** — 6s undo, desktop hover icon, detail "Скрыть" | 0.5 day | [ux-4](ux-specs/ux-4-hide-improvements.md) |
+| 16 | **UX-15: Route navigation** — Google Maps dir link, walking mode <2.5km, "На карте" | 1-2 hours | [ux-15](ux-specs/ux-15-route-navigation.md) |
+| 17 | **UX-13: Linear onboarding** — hide tab bar during welcome/onboarding | 1-2 hours | [ux-13](ux-specs/ux-13-linear-onboarding.md) |
+| 18 | **UX-6: Preset reset** — × on active mood chip | 15 min | [ux-6](ux-specs/ux-6-preset-reset.md) |
+| 19 | **UX-12: Theme-color meta** — status bar matches theme from first frame | 5 min | [ux-12](ux-specs/ux-12-theme-color.md) |
+
+**Infrastructure**
+
 | # | Task | Effort | Blocks deploy? |
 |---|---|---|---|
-| 11 | **Domain** — buy lazigo.app / lazyday.ge / lazyday.today, configure DNS | 30 min | Yes |
-| 12 | **Privacy policy page** — static /privacy route, what we collect, how, why | 1-2 hours | Yes (legal) |
-| 13 | **Consent banner** — opt-in for personalization tracking, localStorage flag | 1-2 hours | Yes (GDPR) |
-| 14 | **Interaction schema migration** — interaction_events + venue_interaction_stats + user_preference_aggregates | 2 hours | Should (foundation) |
-| 15 | **Analytics script** — Plausible or Umami (no consent needed for cookie-free) | 30 min | No but important |
-| 16 | **Webmaster verification** — Google Search Console + Yandex.Webmaster meta tags | 30 min | No but important |
-| 17 | **OG image** — 1200×630 branded image for social sharing preview | 1 hour | No but visible |
-| 18 | **Deploy** — Cloudflare Pages (frontend) + Hetzner VPS (API + DB + Docker) | 2-3 hours | — |
+| 20 | **Domain** — buy lazigo.app, configure DNS | 30 min | Yes |
+| 21 | **Privacy policy page** — static /privacy route, what we collect, how, why | 1-2 hours | Yes (legal) |
+| 22 | **Consent banner** — opt-in for personalization tracking, localStorage flag | 1-2 hours | Yes (GDPR) |
+| 23 | **Interaction schema migration** — interaction_events + venue_interaction_stats + user_preference_aggregates | 2 hours | Should (foundation) |
+| 24 | **Analytics script** — Plausible or Umami (no consent needed for cookie-free) | 30 min | No but important |
+| 25 | **Webmaster verification** — Google Search Console + Yandex.Webmaster meta tags | 30 min | No but important |
+| 26 | **OG image** — 1200×630 branded image for social sharing preview | 1 hour | No but visible |
+| 27 | **Deploy** — Cloudflare Pages (frontend) + Hetzner VPS (API + DB + Docker) | 2-3 hours | — |
 
 ### 🤔 DECIDE (before or at deploy)
 
@@ -46,19 +62,52 @@ Single source of truth for what we do, what we decide, and when.
 
 ---
 
+## Post-Deploy Checklist (verify on real device)
+
+| # | What | Status |
+|---|---|---|
+| 1 | Taxi deeplinks: Bolt (`bolt://ride`) + Yandex Go (`yandextaxi://route`) — test on phone with apps installed | pending |
+| 2 | Taxi fallback: verify behavior when app not installed (add App Store/Play Store redirect?) | pending |
+| 3 | GPS permission flow on mobile Safari + Chrome | pending |
+| 4 | PWA install prompt + splash screen | pending |
+| 5 | Night fallback (test at 23:00+ Tbilisi time) | pending |
+
+---
+
 ## Post-Deploy: Month 1 (observe + basics)
 
 ### 🔲 TODO
 
+**UX week 1** (full specs: `docs/ux-specs/`)
+
+| # | Task | Effort | Spec |
+|---|---|---|---|
+| 28 | **UX-14: Feedback + Telegram** — bottom sheet, 4 categories, telegram forwarding | 0.5-1 day | [ux-14](ux-specs/ux-14-feedback.md) |
+| 29 | **UX-5: Daily rotation** — date-seeded tie-breaker, new event boost | 2-3 hours | [ux-5](ux-specs/ux-5-daily-rotation.md) |
+| 30 | **UX-7: Scroll restore** — cache feed + scroll position on detail navigation | 3-4 hours | [ux-7](ux-specs/ux-7-scroll-restore.md) |
+| 31 | **UX-8: Stale-while-revalidate** — instant cached feed + silent background refresh | 3-4 hours | [ux-8](ux-specs/ux-8-swr-entry.md) |
+| 32 | **UX-4 phase 2** — reason chips in undo toast + interaction API | 2-3 hours | [ux-4](ux-specs/ux-4-hide-improvements.md) |
+| 33 | **UX-1 phase 2** — session cooldown + company tune-block | 3-4 hours | [ux-1](ux-specs/ux-1-progressive-onboarding.md) |
+
+**Infrastructure**
+
 | # | Task | Effort | Impact |
 |---|---|---|---|
-| 19 | **Share button** — native share on cards + detail page | 2 hours | Virality (word of mouth) |
-| 20 | **Behavioral tracking verify** — clicks, saves, hides going to interaction_events | 1 hour | Data foundation |
-| 21 | **Dwell time tracking** — timer on detail page → interaction | 1 hour | Signal quality |
-| 22 | **Google Search Console** — submit sitemap, monitor indexing | 30 min | SEO visibility |
-| 23 | **Yandex.Metrica** (with consent) — session replay for UX insights | 1 hour | UX debugging |
-| 24 | **Error monitoring** — Sentry free tier or LogRocket | 1 hour | Stability |
-| 25 | **Uptime monitoring** — UptimeRobot free | 15 min | Reliability |
+| 34 | **Share button** — native share on cards + detail page | 2 hours | Virality (word of mouth) |
+| 35 | **Behavioral tracking verify** — clicks, saves, hides going to interaction_events | 1 hour | Data foundation |
+| 36 | **Dwell time tracking** — timer on detail page → interaction | 1 hour | Signal quality |
+| 37 | **Google Search Console** — submit sitemap, monitor indexing | 30 min | SEO visibility |
+| 38 | **Yandex.Metrica** (with consent) — session replay for UX insights | 1 hour | UX debugging |
+| 39 | **Error monitoring** — Sentry free tier or LogRocket | 1 hour | Stability |
+| 40 | **Uptime monitoring** — UptimeRobot free | 15 min | Reliability |
+
+**Polish** (ongoing)
+
+| # | Task | Effort | Spec |
+|---|---|---|---|
+| 41 | **UX-9: Heart hit-area** — 44×44px touch target | 30 min | [ux-9](ux-specs/ux-9-heart-hit-area.md) |
+| 42 | **UX-10: Language fallback** — ru → en → ka name chain | 1 hour | [ux-10](ux-specs/ux-10-language-fallback.md) |
+| 43 | **UX-11: Saved tab badge** — dot on tab when event is today/tomorrow | 30 min | [ux-11](ux-specs/ux-11-saved-badge.md) |
 
 ### 🤔 DECIDE
 

@@ -1,18 +1,19 @@
-import { Component, computed, inject, isDevMode, OnInit, signal, viewChild } from '@angular/core';
+import { Component, computed, effect, inject, isDevMode, OnInit, signal, viewChild } from '@angular/core';
 import { Router } from '@angular/router';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { ProfileStore } from '../../core/stores/profile.store';
 import { ThemeService } from '../../core/services/theme.service';
 import { SavedStore } from '../../core/stores/saved.store';
 import { ApiService } from '../../core/services/api.service';
 import { GeolocationService } from '../../core/services/geolocation.service';
 import { apiProviders } from '../../core/providers';
-import { RecommendationCard } from '../../core/models';
+import { RecommendationCard, DiscoverMeta } from '../../core/models';
 import { ResultCardComponent } from './result-card/result-card.component';
 import { LdIconComponent } from '../../core/components/ld-icon.component';
 import { DetailComponent } from '../detail/detail.component';
 import { ContextBarComponent } from './context-bar/context-bar.component';
 import { FilterSheetComponent, FilterState } from './filter-sheet/filter-sheet.component';
+import { FeedLoaderComponent } from './feed-loader/feed-loader.component';
 
 @Component({
   selector: 'app-discover',
@@ -24,6 +25,7 @@ import { FilterSheetComponent, FilterState } from './filter-sheet/filter-sheet.c
     FilterSheetComponent,
     LdIconComponent,
     DetailComponent,
+    FeedLoaderComponent,
   ],
   providers: [...apiProviders],
   template: `
@@ -31,48 +33,57 @@ import { FilterSheetComponent, FilterState } from './filter-sheet/filter-sheet.c
       <!-- Desktop sidebar (≥1024) -->
       <aside class="discover__sidebar">
         <div class="sidebar__section">
-          <p class="sidebar__label">Локация</p>
-          <div class="sidebar__location">
+          <p class="sidebar__label">{{ 'sidebar.location' | translate }}</p>
+          <div class="sidebar__location" [class.sidebar__location--default]="geo.position().source === 'default'">
             <ld-icon name="map-pin" [size]="14" />
-            <span>{{ geo.position().lat.toFixed(3) }}, {{ geo.position().lng.toFixed(3) }}</span>
+            <span>{{ geo.position().label || (geo.position().source === 'gps' ? ('sidebar.my_location' | translate) : ('sidebar.tbilisi_center' | translate)) }}</span>
+            @if (geo.position().source === 'default') {
+              <button class="ld-btn ld-btn--ghost" style="font-size:11px; color:var(--ld-primary); margin-left:auto"
+                (click)="requestGps()">{{ 'sidebar.detect' | translate }}</button>
+            }
           </div>
         </div>
         <div class="sidebar__section">
-          <p class="sidebar__label">Радиус · {{ sidebarRadius() }} км</p>
+          <p class="sidebar__label">{{ 'sidebar.radius' | translate }} · {{ sidebarRadius() }} км</p>
           <input type="range" class="ld-slider"
             [value]="sidebarRadius()" (input)="onSidebarRadiusChange($event)" min="1" max="15" step="1" />
         </div>
         <div class="sidebar__section">
-          <p class="sidebar__label">Секции</p>
+          <p class="sidebar__label">{{ 'sidebar.sections' | translate }}</p>
           <div class="sidebar__segments">
             @for (tf of typeFilters; track tf.value) {
               <button class="sidebar__seg"
                 [class.sidebar__seg--active]="activeTypeFilter() === tf.value"
                 (click)="setTypeFilter(tf.value)">
-                {{ tf.label }}
+                {{ tf.labelKey | translate }}
                 <span class="sidebar__seg-count">{{ countByType(tf.value) }}</span>
               </button>
             }
           </div>
         </div>
         <div class="sidebar__section">
-          <p class="sidebar__label">Категории</p>
+          <p class="sidebar__label">{{ 'sidebar.categories' | translate }}</p>
           <div class="sidebar__chips">
             @for (p of presets; track p.key) {
               <button class="ld-chip"
                 [class.ld-chip--active]="activePreset() === p.key"
-                (click)="applyPreset(p.key)">{{ p.label }}</button>
+                (click)="applyPreset(p.key)">
+                {{ p.labelKey | translate }}
+                @if (activePreset() === p.key) {
+                  <ld-icon name="x" [size]="11" class="ld-chip__clear" />
+                }
+              </button>
             }
           </div>
         </div>
         <div class="sidebar__section">
-          <p class="sidebar__label">Компания</p>
+          <p class="sidebar__label">{{ 'sidebar.company' | translate }}</p>
           <div class="sidebar__company">
             @for (opt of companyOptions; track opt.value) {
               <button class="sidebar__company-btn"
                 [class.sidebar__company-btn--active]="profileStore.company() === opt.value"
                 (click)="setCompany(opt.value)"
-                [attr.aria-label]="opt.label">
+                [attr.aria-label]="opt.labelKey | translate">
                 <ld-icon [name]="opt.icon" [size]="16" />
               </button>
             }
@@ -81,14 +92,14 @@ import { FilterSheetComponent, FilterState } from './filter-sheet/filter-sheet.c
         <div class="sidebar__section">
           <div class="sidebar__pet-row">
             <span style="font-size: 12px; display: flex; align-items: center; gap: 5px">
-              <ld-icon name="dog" [size]="16" /> С питомцем
+              <ld-icon name="dog" [size]="16" /> {{ 'sidebar.with_pet' | translate }}
             </span>
             <button class="ld-toggle" [class.ld-toggle--on]="profileStore.hasPet()" aria-label="Pet toggle"
               (click)="togglePet()"></button>
           </div>
         </div>
         <button class="ld-btn ld-btn--ghost" style="color: var(--ld-primary); font-size: 12px; margin-top: 8px"
-          (click)="resetSidebar()">Сбросить всё</button>
+          (click)="resetSidebar()">{{ 'sidebar.reset_all' | translate }}</button>
       </aside>
 
       <!-- Main content area -->
@@ -110,7 +121,10 @@ import { FilterSheetComponent, FilterState } from './filter-sheet/filter-sheet.c
               [class.ld-chip--active]="activePreset() === p.key"
               (click)="applyPreset(p.key)">
               <ld-icon [name]="p.icon" [size]="14" />
-              {{ p.label }}
+              {{ p.labelKey | translate }}
+              @if (activePreset() === p.key) {
+                <ld-icon name="x" [size]="12" class="ld-chip__clear" />
+              }
             </button>
           }
         </div>
@@ -129,31 +143,31 @@ import { FilterSheetComponent, FilterState } from './filter-sheet/filter-sheet.c
             [class.ld-chip--active]="activeTypeFilter() === tf.value"
             (click)="setTypeFilter(tf.value)">
             @if (tf.icon) { <ld-icon [name]="tf.icon" [size]="13" /> }
-            {{ tf.label }}
+            {{ tf.labelKey | translate }}
           </button>
         }
       </div>
+
+      <!-- Fallback banner: tomorrow mode -->
+      @if (!loading() && feedMeta()?.fallback === 'tomorrow') {
+        <div class="discover__fallback-banner">
+          <span>{{ 'fallback.tomorrow_banner' | translate }}</span>
+          <button class="ld-btn ld-btn--ghost discover__fallback-action" (click)="forceNow()">{{ 'fallback.force_now' | translate }}</button>
+        </div>
+      }
 
       <!-- Results count -->
       @if (!loading() && cards().length > 0) {
         <div class="discover__count">{{ cards().length }} {{ 'discover.results' | translate }}</div>
       }
 
-      <!-- Loading skeletons -->
+      <!-- Loading: feed loader animation -->
       @if (loading()) {
-        <div class="discover__skeletons">
-          @for (i of [1,2,3,4,5]; track i) {
-            <div class="skeleton-card ld-card">
-              <div class="ld-skeleton" style="height:18px;width:60%;margin-bottom:8px"></div>
-              <div class="ld-skeleton" style="height:14px;width:80%;margin-bottom:6px"></div>
-              <div class="ld-skeleton" style="height:14px;width:40%"></div>
-            </div>
-          }
-        </div>
+        <app-feed-loader />
       }
 
       <!-- Card list -->
-      @if (cards().length > 0) {
+      @if (!loading() && cards().length > 0) {
         <section class="discover__results">
           @for (card of cards(); track card.id) {
             <app-result-card
@@ -168,7 +182,7 @@ import { FilterSheetComponent, FilterState } from './filter-sheet/filter-sheet.c
       }
 
       <!-- Show more -->
-      @if (hasMoreCards()) {
+      @if (!loading() && hasMoreCards()) {
         <div class="discover__more">
           <button class="discover__more-btn" (click)="showMore()">
             {{ 'discover.show_more' | translate }} ({{ allCards().length - visibleCount() }})
@@ -176,8 +190,17 @@ import { FilterSheetComponent, FilterState } from './filter-sheet/filter-sheet.c
         </div>
       }
 
-      <!-- Empty state -->
-      @if (!loading() && loaded() && cards().length === 0) {
+      <!-- Empty state: night -->
+      @if (!loading() && loaded() && cards().length === 0 && forcedNow()) {
+        <div class="discover__empty discover__empty--night">
+          <ld-icon name="zzz" [size]="40" />
+          <p>{{ 'fallback.city_sleeps' | translate }}</p>
+          <button class="ld-btn ld-btn--primary" (click)="showTomorrow()">{{ 'fallback.show_tomorrow' | translate }}</button>
+        </div>
+      }
+
+      <!-- Empty state: generic -->
+      @if (!loading() && loaded() && cards().length === 0 && !forcedNow()) {
         <div class="discover__empty">
           <p>{{ 'discover.empty' | translate }}</p>
         </div>
@@ -192,9 +215,9 @@ import { FilterSheetComponent, FilterState } from './filter-sheet/filter-sheet.c
     @if (modalCard()) {
       <div class="discover__modal-backdrop" (click)="closeModal()"></div>
       <div class="discover__modal">
-        <app-detail [type]="modalCard()!.type" [id]="modalCard()!.id" />
+        <app-detail [type]="modalCard()!.type" [id]="modalCard()!.id" [isModal]="true" />
         <button class="discover__modal-close" (click)="closeModal()" aria-label="Close">
-          <ld-icon name="x" [size]="16" />
+          <ld-icon name="x" [size]="14" />
         </button>
       </div>
     }
@@ -371,9 +394,9 @@ import { FilterSheetComponent, FilterState } from './filter-sheet/filter-sheet.c
     .preset-chip {
       padding: 6px 14px;
       border-radius: 16px;
-      border: 1px solid var(--ld-divider);
-      background: var(--ld-card-bg);
-      color: var(--ld-text-secondary);
+      border: 1px solid var(--ld-border);
+      background: var(--ld-surface);
+      color: var(--ld-text-2);
       font-size: 13px;
       white-space: nowrap;
       cursor: pointer;
@@ -381,19 +404,19 @@ import { FilterSheetComponent, FilterState } from './filter-sheet/filter-sheet.c
       transition: all 120ms;
 
       &--active {
-        border-color: var(--ld-accent);
-        background: var(--ld-accent);
+        border-color: var(--ld-primary);
+        background: var(--ld-primary);
         color: #fff;
       }
     }
 
     .discover__filter-btn {
       background: none;
-      border: 1px solid var(--ld-divider);
+      border: 1px solid var(--ld-border);
       border-radius: 8px;
       padding: 6px 10px;
       font-size: 16px;
-      color: var(--ld-text-secondary);
+      color: var(--ld-text-2);
       cursor: pointer;
       min-width: 40px;
       min-height: 36px;
@@ -405,7 +428,7 @@ import { FilterSheetComponent, FilterState } from './filter-sheet/filter-sheet.c
       position: absolute;
       top: -4px;
       right: -4px;
-      background: var(--ld-accent);
+      background: var(--ld-primary);
       color: #fff;
       font-size: 10px;
       width: 16px;
@@ -420,7 +443,7 @@ import { FilterSheetComponent, FilterState } from './filter-sheet/filter-sheet.c
       padding: 0 var(--ld-space-lg);
       margin-bottom: var(--ld-space-sm);
       font-size: 13px;
-      color: var(--ld-text-secondary);
+      color: var(--ld-text-2);
     }
 
     .discover__type-filter {
@@ -437,10 +460,10 @@ import { FilterSheetComponent, FilterState } from './filter-sheet/filter-sheet.c
     .type-chip {
       padding: 6px 14px;
       border-radius: 20px;
-      border: 1px solid var(--ld-divider);
+      border: 1px solid var(--ld-border);
       background: none;
       font-size: 13px;
-      color: var(--ld-text-secondary);
+      color: var(--ld-text-2);
       cursor: pointer;
       min-height: 36px;
     }
@@ -489,12 +512,14 @@ import { FilterSheetComponent, FilterState } from './filter-sheet/filter-sheet.c
         box-shadow: 0 16px 48px rgba(0, 0, 0, 0.15);
       }
 
+
       .discover__modal-close {
         position: absolute;
         top: 12px;
         right: 12px;
         width: 28px;
         height: 28px;
+        padding: 0;
         background: var(--ld-surface);
         border: none;
         border-radius: 50%;
@@ -515,11 +540,11 @@ import { FilterSheetComponent, FilterState } from './filter-sheet/filter-sheet.c
 
     .discover__more-btn {
       background: none;
-      border: 1px solid var(--ld-divider);
+      border: 1px solid var(--ld-border);
       border-radius: var(--ld-radius-md, 12px);
       padding: 10px 24px;
       font-size: 14px;
-      color: var(--ld-text-secondary);
+      color: var(--ld-text-2);
       cursor: pointer;
       min-height: 44px;
 
@@ -550,37 +575,40 @@ import { FilterSheetComponent, FilterState } from './filter-sheet/filter-sheet.c
       }
     }
 
-    .discover__skeletons {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: var(--ld-space-md);
-      padding: 0 var(--ld-space-lg);
-    }
-
-    @media (min-width: 640px) {
-      .discover__skeletons {
-        grid-template-columns: repeat(2, 1fr);
-      }
-    }
-
-    @media (min-width: 1024px) {
-      .discover__skeletons {
-        grid-template-columns: repeat(3, 1fr);
-      }
-    }
-
-    .skeleton-card {
-      padding: var(--ld-space-md) 0;
+    .discover__fallback-banner {
       display: flex;
-      flex-direction: column;
-      gap: 6px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin: 0 var(--ld-space-lg) var(--ld-space-sm);
+      padding: 12px 16px;
+      background: var(--ld-surface-2);
+      border-radius: 14px;
+      font-size: 12px;
+      color: var(--ld-text);
+    }
+
+    .discover__fallback-action {
+      font-size: 12px;
+      white-space: nowrap;
+      color: var(--ld-primary);
     }
 
     .discover__empty {
       text-align: center;
       padding: var(--ld-space-xl);
-      color: var(--ld-text-secondary);
+      color: var(--ld-text-2);
     }
+
+    .discover__empty--night {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      padding: 48px var(--ld-space-lg);
+      color: var(--ld-text-3);
+    }
+
   `,
 })
 export class DiscoverComponent implements OnInit {
@@ -590,14 +618,15 @@ export class DiscoverComponent implements OnInit {
   readonly geo = inject(GeolocationService);
   private router = inject(Router);
   private theme = inject(ThemeService);
+  private translate = inject(TranslateService);
 
   sidebarRadius = signal(5);
 
   companyOptions = [
-    { value: 'solo', label: 'Один', icon: 'user' },
-    { value: 'couple', label: 'Пара', icon: 'hearts' },
-    { value: 'friends', label: 'Друзья', icon: 'users' },
-    { value: 'family', label: 'Семья', icon: 'balloon' },
+    { value: 'solo', labelKey: 'company.solo', icon: 'user' },
+    { value: 'couple', labelKey: 'company.couple', icon: 'hearts' },
+    { value: 'friends', labelKey: 'company.friends', icon: 'users' },
+    { value: 'family', labelKey: 'company.family', icon: 'balloon' },
   ];
 
   setCompany(value: string) {
@@ -629,17 +658,19 @@ export class DiscoverComponent implements OnInit {
   }
 
   greeting(): string {
+    if (this.feedMeta()?.fallback === 'tomorrow') return this.translate.instant('greeting.tomorrow');
     const hour = (new Date().getUTCHours() + 4) % 24; // Tbilisi
-    if (hour >= 6 && hour < 12) return 'Доброе утро. Куда лениво сходить?';
-    if (hour >= 12 && hour < 18) return 'Лениво? Сейчас найдём.';
-    if (hour >= 18 && hour < 23) return 'Куда выйдем вечером?';
-    return 'Не спится? Есть варианты.';
+    if (hour >= 6 && hour < 12) return this.translate.instant('greeting.morning');
+    if (hour >= 12 && hour < 18) return this.translate.instant('greeting.day');
+    if (hour >= 18 && hour < 23) return this.translate.instant('greeting.evening');
+    return this.translate.instant('greeting.night');
   }
 
   contextLine(): string {
-    const days = ['воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота'];
+    const dayKeys = ['day.sunday', 'day.monday', 'day.tuesday', 'day.wednesday', 'day.thursday', 'day.friday', 'day.saturday'];
     const now = new Date();
-    return `${days[now.getDay()]} · Тбилиси`;
+    const dayName = this.translate.instant(dayKeys[now.getDay()]);
+    return `${dayName} · Тбилиси`;
   }
 
   private filterSheet = viewChild(FilterSheetComponent);
@@ -668,23 +699,26 @@ export class DiscoverComponent implements OnInit {
   });
   readonly loading = signal(false);
   readonly loaded = signal(false);
+  readonly feedMeta = signal<DiscoverMeta | undefined>(undefined);
+  readonly forcedNow = signal(false);
   readonly activePreset = signal<string | null>(null);
   private currentFilters = signal<FilterState | null>(null);
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   presets = [
-    { key: 'chill', label: 'Прогулка', icon: 'trees' },
-    { key: 'food', label: 'Поесть', icon: 'tools-kitchen-2' },
-    { key: 'culture', label: 'Культура', icon: 'masks-theater' },
-    { key: 'active', label: 'Активно', icon: 'run' },
-    { key: 'family', label: 'С детьми', icon: 'balloon' },
-    { key: 'nightlife', label: 'Ночная жизнь', icon: 'moon' },
+    { key: 'chill', labelKey: 'preset.chill', icon: 'trees' },
+    { key: 'food', labelKey: 'preset.food', icon: 'tools-kitchen-2' },
+    { key: 'culture', labelKey: 'preset.culture', icon: 'masks-theater' },
+    { key: 'active', labelKey: 'preset.active', icon: 'run' },
+    { key: 'family', labelKey: 'preset.family', icon: 'balloon' },
+    { key: 'nightlife', labelKey: 'preset.nightlife', icon: 'moon' },
+    { key: 'gym', labelKey: 'preset.gym', icon: 'barbell' },
   ];
 
   typeFilters = [
-    { value: 'all' as const, label: 'Всё', icon: '' },
-    { value: 'place' as const, label: 'Места', icon: 'map-pin' },
-    { value: 'event' as const, label: 'События', icon: 'ticket' },
+    { value: 'all' as const, labelKey: 'type_filter.all', icon: '' },
+    { value: 'place' as const, labelKey: 'type_filter.place', icon: 'map-pin' },
+    { value: 'event' as const, labelKey: 'type_filter.event', icon: 'ticket' },
   ];
 
   private readonly MOOD_PRESETS: Record<string, { interests: Record<string, number>; company?: string; radiusM?: number }> = {
@@ -694,6 +728,7 @@ export class DiscoverComponent implements OnInit {
     culture: { interests: { culture: 1, food: 0.3 }, radiusM: 10000 },
     food: { interests: { food: 1 }, radiusM: 5000 },
     nightlife: { interests: { nightlife: 1, entertainment: 0.5 }, radiusM: 10000 },
+    gym: { interests: { gym: 1, sports: 0.5 }, radiusM: 10000 },
   };
 
   readonly activeFilterCount = computed(() => {
@@ -709,12 +744,26 @@ export class DiscoverComponent implements OnInit {
     return count;
   });
 
+  private geoVersion = 0;
+
+  constructor() {
+    // Re-fetch feed when GPS position updates (e.g. silent init resolves after first load)
+    effect(() => {
+      const v = this.geo.updated();
+      if (v > 0 && v !== this.geoVersion && this.loaded()) {
+        this.geoVersion = v;
+        this.loadFeed();
+      }
+    });
+  }
+
   ngOnInit() {
     if (!this.profileStore.onboardingCompleted()) {
-      this.router.navigate(['/discover/onboarding']);
+      const welcomeDone = localStorage.getItem('ld_welcome_done');
+      this.router.navigate([welcomeDone ? '/discover/onboarding' : '/discover/welcome']);
       return;
     }
-    // Auto-load feed on entry
+    this.geoVersion = this.geo.updated();
     this.loadFeed();
   }
 
@@ -756,12 +805,30 @@ export class DiscoverComponent implements OnInit {
     this.debounceTimer = setTimeout(() => this.loadFeed(), 300);
   }
 
+  async requestGps() {
+    await this.geo.requestPosition();
+  }
+
+  /** User taps "force now" on fallback banner */
+  forceNow() {
+    this.forcedNow.set(true);
+    this.loadFeed();
+  }
+
+  /** User taps "show tomorrow" from night empty state */
+  showTomorrow() {
+    this.forcedNow.set(false);
+    this.loadFeed();
+  }
+
   loadFeed() {
     this.loading.set(true);
+    const loaderStart = Date.now();
 
     const ctx = this.contextBar();
     const pos = this.geo.position();
-    const radiusM = ctx ? ctx.getRadiusM() : 5000;
+    const defaultRadius = pos.source === 'default' ? 3000 : 5000;
+    const radiusM = ctx ? ctx.getRadiusM() : defaultRadius;
     const timeWindow = ctx ? ctx.getTimeWindow() : this.defaultTimeWindow();
     const preset = this.activePreset();
     const f = this.currentFilters();
@@ -788,9 +855,11 @@ export class DiscoverComponent implements OnInit {
         },
         hiddenIds: this.profileStore.hiddenIds(),
         locale: this.profileStore.locale(),
+        forcedNow: this.forcedNow() || undefined,
       })
       .subscribe({
         next: (res) => {
+          this.feedMeta.set(res.meta);
           let filtered = res.cards;
 
           // Client-side quick filters
@@ -806,10 +875,20 @@ export class DiscoverComponent implements OnInit {
             );
           }
 
-          this.allCards.set(filtered);
-          this.visibleCount.set(15);
-          this.loading.set(false);
-          this.loaded.set(true);
+          const finish = () => {
+            this.allCards.set(filtered);
+            this.visibleCount.set(15);
+            this.loading.set(false);
+            this.loaded.set(true);
+          };
+
+          // Min 400ms display for feed loader (anti-flash)
+          const elapsed = Date.now() - loaderStart;
+          if (elapsed < 400) {
+            setTimeout(finish, 400 - elapsed);
+          } else {
+            finish();
+          }
         },
         error: () => {
           this.loading.set(false);
@@ -820,18 +899,14 @@ export class DiscoverComponent implements OnInit {
 
   onOpenDetail(card: RecommendationCard) {
     if (window.innerWidth >= 1024) {
-      // Desktop: open modal overlay
       this.modalCard.set(card);
-      history.pushState(null, '', `/detail/${card.type}/${card.id}`);
     } else {
-      // Mobile: navigate to full page
       this.router.navigate(['/detail', card.type, card.id]);
     }
   }
 
   closeModal() {
     this.modalCard.set(null);
-    history.pushState(null, '', '/discover');
   }
 
   onToggleSave(card: RecommendationCard) {

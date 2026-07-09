@@ -1,5 +1,5 @@
-import { Component } from '@angular/core';
-import { RouterModule } from '@angular/router';
+import { Component, computed, inject, signal } from '@angular/core';
+import { NavigationEnd, Router, RouterModule } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { ConsentBannerComponent } from '../components/consent-banner.component';
 import { LdIconComponent } from '../components/ld-icon.component';
@@ -10,15 +10,17 @@ import { LdIconComponent } from '../components/ld-icon.component';
   imports: [RouterModule, TranslatePipe, ConsentBannerComponent, LdIconComponent],
   template: `
     <div class="shell">
-      <!-- Desktop top nav (≥1024) -->
-      <header class="shell__topnav">
-        <span class="shell__logo ld-display">LaziGo</span>
-        <nav class="shell__topnav-tabs">
-          <a routerLink="/discover" routerLinkActive="topnav--active" class="topnav__link">Лента</a>
-          <a routerLink="/saved" routerLinkActive="topnav--active" class="topnav__link">Избранное</a>
-          <a routerLink="/settings" routerLinkActive="topnav--active" class="topnav__link">Профиль</a>
-        </nav>
-      </header>
+      <!-- Desktop top nav (≥1024) — hidden during onboarding -->
+      @if (showNav()) {
+        <header class="shell__topnav">
+          <span class="shell__logo ld-display">LaziGo</span>
+          <nav class="shell__topnav-tabs">
+            <a routerLink="/discover" routerLinkActive="topnav--active" class="topnav__link">{{ 'nav.discover' | translate }}</a>
+            <a routerLink="/saved" routerLinkActive="topnav--active" class="topnav__link">{{ 'nav.saved' | translate }}</a>
+            <a routerLink="/settings" routerLinkActive="topnav--active" class="topnav__link">{{ 'nav.settings' | translate }}</a>
+          </nav>
+        </header>
+      }
 
       <main class="shell__content">
         <ng-content />
@@ -26,21 +28,23 @@ import { LdIconComponent } from '../components/ld-icon.component';
 
       <app-consent-banner />
 
-      <!-- Mobile bottom nav (<1024) -->
-      <nav class="shell__nav">
-        <a routerLink="/discover" routerLinkActive="active" class="nav-item">
-          <ld-icon name="compass" [size]="22" />
-          <span class="nav-item__label">{{ 'nav.discover' | translate }}</span>
-        </a>
-        <a routerLink="/saved" routerLinkActive="active" class="nav-item">
-          <ld-icon name="heart" [size]="22" />
-          <span class="nav-item__label">{{ 'nav.saved' | translate }}</span>
-        </a>
-        <a routerLink="/settings" routerLinkActive="active" class="nav-item">
-          <ld-icon name="user" [size]="22" />
-          <span class="nav-item__label">{{ 'nav.settings' | translate }}</span>
-        </a>
-      </nav>
+      <!-- Mobile bottom nav (<1024) — hidden during onboarding -->
+      @if (showNav()) {
+        <nav class="shell__nav">
+          <a routerLink="/discover" routerLinkActive="active" class="nav-item">
+            <ld-icon name="compass" [size]="22" />
+            <span class="nav-item__label">{{ 'nav.discover' | translate }}</span>
+          </a>
+          <a routerLink="/saved" routerLinkActive="active" class="nav-item">
+            <ld-icon name="heart" [size]="22" />
+            <span class="nav-item__label">{{ 'nav.saved' | translate }}</span>
+          </a>
+          <a routerLink="/settings" routerLinkActive="active" class="nav-item">
+            <ld-icon name="user" [size]="22" />
+            <span class="nav-item__label">{{ 'nav.settings' | translate }}</span>
+          </a>
+        </nav>
+      }
     </div>
   `,
   styles: `
@@ -136,4 +140,18 @@ import { LdIconComponent } from '../components/ld-icon.component';
     }
   `,
 })
-export class AppShellComponent {}
+export class AppShellComponent {
+  private router = inject(Router);
+  private currentUrl = signal(this.router.url);
+
+  constructor() {
+    this.router.events.subscribe(e => {
+      if (e instanceof NavigationEnd) this.currentUrl.set(e.urlAfterRedirects);
+    });
+  }
+
+  readonly showNav = computed(() => {
+    const url = this.currentUrl();
+    return !url.includes('/welcome') && !url.includes('/onboarding');
+  });
+}

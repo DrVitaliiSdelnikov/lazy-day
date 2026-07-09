@@ -17,7 +17,7 @@ export const appConfig: ApplicationConfig = {
       enabled: !isDevMode(),
       registrationStrategy: 'registerWhenStable:30000',
     }),
-    provideTranslateService(),
+    provideTranslateService({ fallbackLang: 'ru' }),
     provideTranslateHttpLoader({ prefix: './assets/i18n/' }),
   ],
 };

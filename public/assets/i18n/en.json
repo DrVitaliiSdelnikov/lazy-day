@@ -2,61 +2,130 @@
   "nav": {
     "discover": "Discover",
     "saved": "Saved",
-    "settings": "Settings"
+    "settings": "Profile"
   },
   "discover": {
-    "title": "Lazy Day",
+    "title": "LaziGo",
     "find": "Find",
     "empty": "Nothing found. Try different interests or a wider radius.",
     "results": "results",
-    "presets": {
-      "hour_nearby": "Hour nearby",
-      "evening": "This evening",
-      "free": "Free"
-    }
+    "show_more": "Show more"
   },
   "onboarding": {
     "interests_title": "What are you into?",
-    "interests_subtitle": "Pick 1 to 8 categories",
-    "company_title": "Who are you with today?",
-    "location_title": "Where to search?",
-    "location_subtitle": "Allow location access or pick a district",
+    "interests_subtitle": "At least one — you can change it later",
+    "company_title": "Who's with you?",
+    "company_subtitle": "We'll find the right places",
+    "location_title": "Where are you?",
+    "location_subtitle": "We'll show what's nearby",
     "next": "Next",
+    "next_selected": "Next · selected {{count}}",
     "skip": "Skip",
-    "use_location": "Use my location",
-    "locating": "Locating...",
-    "or": "or pick a district"
+    "use_location": "Allow GPS",
+    "locating": "Locating…",
+    "pick_hint": "Pick at least one",
+    "with_pet": "I walk with a pet",
+    "coords_error": "Invalid coordinate format",
+    "or": "or"
+  },
+  "welcome": {
+    "title": "LaziGo",
+    "subtitle": "Where to go in Tbilisi —\nno overthinking",
+    "prop_tell": "Tell us what you like and who's with you",
+    "prop_ideas": "Get 15 nearby ideas — with reasons",
+    "prop_feed": "Events and places — in one feed",
+    "start": "Start · 30 seconds",
+    "skip": "Just show me the feed",
+    "trust": "No account · everything stored on device"
   },
   "detail": {
     "why_recommended": "Why this fits you",
     "address": "Address",
-    "time": "Time",
-    "price": "Price",
-    "verified": "Verified",
-    "source": "Source",
+    "route": "Route",
+    "on_map": "On map",
+    "show_on_map": "Show on map",
     "tickets": "Tickets",
-    "website": "Website",
-    "open_maps": "Open in Google Maps",
+    "tickets_from": "Tickets from",
     "save": "Save",
-    "saved": "Saved"
+    "saved": "Saved",
+    "hide": "Hide",
+    "share": "Share",
+    "unsave": "Remove from saved",
+    "min": "min",
+    "in_time": "In",
+    "duration": "lasts ~",
+    "event_badge": "Event",
+    "event_type": {
+      "music": "Concert",
+      "theater": "Theater",
+      "exhibition": "Exhibition",
+      "festival": "Festival",
+      "entertainment": "Event",
+      "workshop": "Workshop"
+    }
   },
   "saved": {
     "title": "Saved",
-    "empty": "Nothing saved yet. Tap ♡ on a card."
+    "empty_title": "Nothing yet",
+    "empty_text": "Tap the heart on a card — it'll appear here",
+    "to_feed": "To feed",
+    "empty": "Nothing saved yet. Tap ♡ on a card.",
+    "all": "All",
+    "places": "Places",
+    "events": "Events"
   },
   "settings": {
-    "title": "Settings",
+    "title": "Profile",
+    "trust": "Everything is stored on this device, no account needed",
     "language": "Language",
     "theme": "Theme",
-    "city": "City",
-    "interests": "Interests",
-    "company": "Company",
+    "interests": "My interests",
+    "company": "Usually I'm",
+    "with_pet": "I walk with a pet",
     "budget": "Budget",
     "any_budget": "any",
     "no_interests": "Not selected",
     "edit": "Edit",
     "done": "Done",
-    "reset": "Reset profile"
+    "reset": "Reset profile",
+    "privacy": "Privacy",
+    "about": "About · LaziGo v0.1"
+  },
+  "company": {
+    "solo": "Solo",
+    "couple": "Couple",
+    "couple_alt": "Together",
+    "friends": "Friends",
+    "friends_alt": "With friends",
+    "family": "Family",
+    "family_alt": "With family",
+    "any": "Any",
+    "with_pet": "With a pet"
+  },
+  "interest": {
+    "nature": "Nature",
+    "food": "Food",
+    "culture": "Culture",
+    "active": "Active",
+    "entertainment": "Entertainment",
+    "nightlife": "Nightlife",
+    "family": "Kids",
+    "spa": "Spa & baths",
+    "gym": "Fitness"
+  },
+  "preset": {
+    "chill": "Walk",
+    "food": "Eat",
+    "culture": "Culture",
+    "active": "Active",
+    "family": "Kids",
+    "nightlife": "Nightlife",
+    "gym": "Fitness"
+  },
+  "type_filter": {
+    "all": "All",
+    "place": "Places",
+    "event": "Events"
   },
   "context": {
     "location": "Where",
@@ -67,22 +136,75 @@
     "now": "Now",
     "evening": "Evening",
     "tomorrow": "Tomorrow",
-    "weekend": "Weekend"
+    "weekend": "Weekend",
+    "center": "Center",
+    "all_interests": "All",
+    "coords_label": "Or paste coordinates:",
+    "radius_label": "Radius: {{km}} km",
+    "my_location": "My location",
+    "locating": "Locating..."
   },
   "filters": {
     "title": "Filters",
     "open_now": "Open now",
     "free": "Free only",
-    "walk_20": "Under 20 min",
+    "walk_20": "Under 20 min walk",
     "outdoor": "Outdoor",
     "for_two": "For two",
     "budget": "Budget",
     "apply": "Apply",
     "reset": "Reset"
   },
+  "fallback": {
+    "tomorrow_banner": "Most places are closed now — showing tomorrow",
+    "force_now": "Show now anyway",
+    "city_sleeps": "The city is asleep. Nearest options — tomorrow",
+    "show_tomorrow": "Show tomorrow"
+  },
   "hide": {
     "far": "Too far",
-    "expensive": "Too pricey",
-    "not_mine": "Not for me"
+    "not_mine": "Not for me",
+    "been": "Been there"
+  },
+  "location": {
+    "my_location": "My location",
+    "center": "Tbilisi center",
+    "detect": "Detect",
+    "show_on_map": "Show on map"
+  },
+  "sidebar": {
+    "location": "Location",
+    "radius": "Radius",
+    "sections": "Sections",
+    "categories": "Categories",
+    "company": "Company",
+    "with_pet": "With a pet",
+    "reset_all": "Reset all",
+    "my_location": "My location",
+    "detect": "Detect",
+    "tbilisi_center": "Tbilisi center"
+  },
+  "greeting": {
+    "tomorrow": "Planning for tomorrow?",
+    "morning": "Good morning. Where to go today?",
+    "day": "Feeling lazy? We'll find something.",
+    "evening": "Where to head tonight?",
+    "night": "Can't sleep? There are options."
+  },
+  "day": {
+    "sunday": "Sunday",
+    "monday": "Monday",
+    "tuesday": "Tuesday",
+    "wednesday": "Wednesday",
+    "thursday": "Thursday",
+    "friday": "Friday",
+    "saturday": "Saturday"
+  },
+  "loader": {
+    "aria": "Finding places and events",
+    "caption": "Ideas incoming…"
+  },
+  "coords": {
+    "error": "Invalid format. Examples: 41°41'39.0\"N 45°00'33.9\"E  or  41.694, 45.009"
   }
 }

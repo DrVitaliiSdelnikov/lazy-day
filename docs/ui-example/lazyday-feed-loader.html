@@ -1,0 +1,228 @@
+<!--
+  LazyDay — лоадер ленты «пины сбегаются» (ld-feed-loader)
+  ═════════════════════════════════════════════════════════
+  Что это: блок-лоадер, который живёт ПРЯМО В СПИСКЕ карточек.
+  Большой пин дремлет в центре, маленькие сбегаются к нему вприпрыжку,
+  прижимаются, наклоняются подремать — и цикл повторяется.
+
+  Когда показывать (рекомендация):
+  • Перезапрос ленты после тапа по mood-пресету / смены фильтров —
+    вместо списка, на месте первых карточек.
+  • Первая загрузка страницы — оставить скелетоны карточек (6.11 спеки),
+    лоадер не нужен: скелетоны обещают форму контента.
+  • Минимальное время показа 400 мс (анти-мигание), убирать по приходу карточек.
+
+  Адаптив: одна разметка. Дальние бегуны (--far) скрыты на <1024px
+  и появляются на десктопе автоматически (media query ниже).
+
+  Angular: разметка → ld-feed-loader.component.html, стили → .scss.
+  Цвета берутся из тем (theme-day / theme-evening / theme-dark на <html>).
+-->
+
+<style>
+  /* ── цвета по темам ── */
+  .theme-day {
+    --ldf-bg: transparent;            /* блок лежит на --ld-bg ленты */
+    --ldf-center: #E8862D;  --ldf-center-face: #FFF9EF;
+    --ldf-r1: #6FA07C;      --ldf-r1-face: #E7F1E4;   /* фисташка — места */
+    --ldf-r2: #8A64C0;      --ldf-r2-face: #F0EAFA;   /* фиолет — события */
+    --ldf-r3: #F2A03D;      --ldf-r3-face: #FBEDDB;
+    --ldf-r4: #E05D5D;      --ldf-r4-face: #FCE7EA;
+    --ldf-z1: #E8862D;      --ldf-z2: #F2A03D;
+    --ldf-shadow: #E4D9C4;  --ldf-text: #7C7465;
+  }
+  .theme-evening {
+    --ldf-bg: transparent;
+    --ldf-center: #E3455C;  --ldf-center-face: #FFF3F4;
+    --ldf-r1: #6E52C6;      --ldf-r1-face: #ECE6FA;
+    --ldf-r2: #F2A03D;      --ldf-r2-face: #FBEAD3;
+    --ldf-r3: #9D85E0;      --ldf-r3-face: #ECE6FA;
+    --ldf-r4: #E8862D;      --ldf-r4-face: #FBEDDB;
+    --ldf-z1: #E3455C;      --ldf-z2: #6E52C6;
+    --ldf-shadow: #E0D2DE;  --ldf-text: #776F80;
+  }
+  .theme-dark {
+    --ldf-bg: transparent;
+    --ldf-center: #F27E8E;  --ldf-center-face: #2A1418;
+    --ldf-r1: #6FBF87;      --ldf-r1-face: #24382B;
+    --ldf-r2: #9D85E0;      --ldf-r2-face: #322A47;
+    --ldf-r3: #E3B25C;      --ldf-r3-face: #3D3222;
+    --ldf-r4: #E07070;      --ldf-r4-face: #3D2A31;
+    --ldf-z1: #F27E8E;      --ldf-z2: #9D85E0;
+    --ldf-shadow: #17151A;  --ldf-text: #9A929F;
+  }
+
+  /* ── каркас ── */
+  .ld-feed-loader { background: var(--ldf-bg); padding: 8px 0 12px; }
+  .ld-feed-loader__stage { position: relative; height: 112px; }
+  .ld-feed-loader__pin { position: absolute; left: 50%; bottom: 20px; transform-origin: 50% 100%; }
+  .ld-feed-loader__pin--center { width: 52px; margin-left: -26px; z-index: 2;
+                                 animation: ldf-breathe 3s ease-in-out infinite; }
+  .ld-feed-loader__pin--r      { width: 36px; margin-left: -18px; }
+  .ld-feed-loader__pin--far    { width: 30px; margin-left: -15px; display: none; }
+  .ld-feed-loader__z { position: absolute; opacity: 0; z-index: 3;
+                       animation: ldf-zfloat 2.8s ease-out infinite; }
+  .ld-feed-loader__z--1 { left: 57%; top: 4px; }
+  .ld-feed-loader__z--2 { left: 64%; top: -4px; animation-delay: 1.4s; }
+  .ld-feed-loader__shadow { position: absolute; left: 50%; bottom: 16px;
+                            transform: translateX(-50%);
+                            animation: ldf-shadow 3s ease-in-out infinite; }
+  .ld-feed-loader__cap { font-size: 13px; text-align: center; color: var(--ldf-text);
+                         margin: 8px 0 0; animation: ldf-cap 2.2s ease-in-out infinite; }
+
+  .ld-feed-loader__pin--run-l  { animation: ldf-run-l  4.4s ease-in-out infinite; }
+  .ld-feed-loader__pin--run-r  { animation: ldf-run-r  4.4s ease-in-out infinite; animation-delay: -2.2s; }
+  .ld-feed-loader__pin--run-l2 { animation: ldf-run-l2 4.4s ease-in-out infinite; animation-delay: -1.1s; }
+  .ld-feed-loader__pin--run-r2 { animation: ldf-run-r2 4.4s ease-in-out infinite; animation-delay: -3.3s; }
+
+  /* ── десктоп: шире сцена, дальние бегуны в строю ── */
+  @media (min-width: 1024px) {
+    .ld-feed-loader__stage { height: 122px; }
+    .ld-feed-loader__pin--center { width: 56px; margin-left: -28px; }
+    .ld-feed-loader__pin--r { width: 38px; margin-left: -19px; }
+    .ld-feed-loader__pin--far { display: block; }
+  }
+
+  /* ── кейфреймы (только transform/opacity — композитор) ── */
+  @keyframes ldf-breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.035); } }
+  @keyframes ldf-shadow  { 0%,100% { opacity: .5; } 50% { opacity: .32; } }
+  @keyframes ldf-cap     { 0%,100% { opacity: .45; } 50% { opacity: 1; } }
+  @keyframes ldf-zfloat {
+    0%   { opacity: 0; transform: translate(0,7px) scale(.7); }
+    26%  { opacity: 1; }
+    100% { opacity: 0; transform: translate(8px,-14px) scale(1.1); }
+  }
+  @keyframes ldf-run-l {
+    0%   { transform: translate(-115px,0); opacity: 0; }
+    5%   { opacity: 1; }
+    10%  { transform: translate(-96px,-13px); }
+    17%  { transform: translate(-78px,0); }
+    24%  { transform: translate(-62px,-11px); }
+    30%  { transform: translate(-48px,0); }
+    36%  { transform: translate(-38px,-7px); }
+    41%  { transform: translate(-31px,0) scale(1,1) rotate(0deg); }
+    45%  { transform: translate(-31px,0) scale(1.1,.88) rotate(0deg); }  /* squash при стыковке */
+    50%  { transform: translate(-31px,0) scale(1,1) rotate(0deg); }
+    58%, 84% { transform: translate(-31px,0) rotate(11deg); }            /* прислонился подремать */
+    92%  { transform: translate(-31px,6px) rotate(11deg); opacity: 0; }
+    100% { transform: translate(-115px,0); opacity: 0; }
+  }
+  @keyframes ldf-run-r {
+    0%   { transform: translate(115px,0); opacity: 0; }
+    5%   { opacity: 1; }
+    11%  { transform: translate(94px,-12px); }
+    18%  { transform: translate(75px,0); }
+    25%  { transform: translate(59px,-10px); }
+    31%  { transform: translate(46px,0); }
+    37%  { transform: translate(37px,-7px); }
+    42%  { transform: translate(31px,0) scale(1,1) rotate(0deg); }
+    46%  { transform: translate(31px,0) scale(1.1,.88) rotate(0deg); }
+    51%  { transform: translate(31px,0) scale(1,1) rotate(0deg); }
+    59%, 84% { transform: translate(31px,0) rotate(-11deg); }
+    92%  { transform: translate(31px,6px) rotate(-11deg); opacity: 0; }
+    100% { transform: translate(115px,0); opacity: 0; }
+  }
+  @keyframes ldf-run-l2 {
+    0%   { transform: translate(-195px,0); opacity: 0; }
+    6%   { opacity: 1; }
+    12%  { transform: translate(-166px,-11px); }
+    20%  { transform: translate(-138px,0); }
+    27%  { transform: translate(-112px,-10px); }
+    34%  { transform: translate(-90px,0); }
+    40%  { transform: translate(-72px,-6px); }
+    45%  { transform: translate(-62px,0) rotate(0deg); }
+    56%, 84% { transform: translate(-62px,0) rotate(8deg); }
+    92%  { transform: translate(-62px,6px) rotate(8deg); opacity: 0; }
+    100% { transform: translate(-195px,0); opacity: 0; }
+  }
+  @keyframes ldf-run-r2 {
+    0%   { transform: translate(195px,0); opacity: 0; }
+    6%   { opacity: 1; }
+    13%  { transform: translate(164px,-11px); }
+    21%  { transform: translate(135px,0); }
+    28%  { transform: translate(110px,-10px); }
+    35%  { transform: translate(88px,0); }
+    41%  { transform: translate(71px,-6px); }
+    46%  { transform: translate(62px,0) rotate(0deg); }
+    57%, 84% { transform: translate(62px,0) rotate(-8deg); }
+    92%  { transform: translate(62px,6px) rotate(-8deg); opacity: 0; }
+    100% { transform: translate(195px,0); opacity: 0; }
+  }
+
+  /* ── reduced motion: статичная кучка, одна z ── */
+  @media (prefers-reduced-motion: reduce) {
+    .ld-feed-loader__pin--center, .ld-feed-loader__z, .ld-feed-loader__shadow,
+    .ld-feed-loader__cap,
+    .ld-feed-loader__pin--run-l, .ld-feed-loader__pin--run-r,
+    .ld-feed-loader__pin--run-l2, .ld-feed-loader__pin--run-r2 { animation: none; }
+    .ld-feed-loader__z--1 { opacity: .9; }
+    .ld-feed-loader__pin--run-l  { transform: translate(-31px,0) rotate(11deg); opacity: 1; }
+    .ld-feed-loader__pin--run-r  { transform: translate(31px,0)  rotate(-11deg); opacity: 1; }
+    .ld-feed-loader__pin--run-l2 { transform: translate(-62px,0) rotate(8deg);  opacity: 1; }
+    .ld-feed-loader__pin--run-r2 { transform: translate(62px,0)  rotate(-8deg); opacity: 1; }
+  }
+</style>
+
+<!-- ─── разметка компонента ─── -->
+<div class="ld-feed-loader" role="status" aria-label="Подбираем места и события">
+  <div class="ld-feed-loader__stage">
+    <svg class="ld-feed-loader__shadow" width="260" height="16" viewBox="0 0 260 16" aria-hidden="true">
+      <ellipse cx="130" cy="8" rx="126" ry="7" fill="var(--ldf-shadow)"/>
+    </svg>
+
+    <svg class="ld-feed-loader__z ld-feed-loader__z--1" width="26" height="26" viewBox="0 0 40 40" aria-hidden="true">
+      <path d="M8 10 h 22 l -22 22 h 22" fill="none" stroke="var(--ldf-z1)" stroke-width="7"
+            stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <svg class="ld-feed-loader__z ld-feed-loader__z--2" width="18" height="18" viewBox="0 0 40 40" aria-hidden="true">
+      <path d="M8 10 h 22 l -22 22 h 22" fill="none" stroke="var(--ldf-z2)" stroke-width="6"
+            stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+
+    <!-- центр: дремлет -->
+    <div class="ld-feed-loader__pin ld-feed-loader__pin--center">
+      <svg viewBox="0 0 100 120" width="100%" aria-hidden="true">
+        <path d="M50 6 C26 6 8 26 8 50 C8 68 23 89 50 117 C77 89 92 68 92 50 C92 26 74 6 50 6 Z" fill="var(--ldf-center)"/>
+        <path d="M29 43 c 3 6 11 6 14 0" fill="none" stroke="var(--ldf-center-face)" stroke-width="7" stroke-linecap="round"/>
+        <path d="M55 43 c 3 6 11 6 14 0" fill="none" stroke="var(--ldf-center-face)" stroke-width="7" stroke-linecap="round"/>
+        <path d="M42 62 c 3 4 12 4 15 0" fill="none" stroke="var(--ldf-center-face)" stroke-width="6" stroke-linecap="round"/>
+      </svg>
+    </div>
+
+    <!-- ближние бегуны (мобилка + десктоп) -->
+    <div class="ld-feed-loader__pin ld-feed-loader__pin--r ld-feed-loader__pin--run-l">
+      <svg viewBox="0 0 100 120" width="100%" aria-hidden="true">
+        <path d="M50 6 C26 6 8 26 8 50 C8 68 23 89 50 117 C77 89 92 68 92 50 C92 26 74 6 50 6 Z" fill="var(--ldf-r1)"/>
+        <path d="M29 43 c 3 6 11 6 14 0" fill="none" stroke="var(--ldf-r1-face)" stroke-width="7" stroke-linecap="round"/>
+        <path d="M55 43 c 3 6 11 6 14 0" fill="none" stroke="var(--ldf-r1-face)" stroke-width="7" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="ld-feed-loader__pin ld-feed-loader__pin--r ld-feed-loader__pin--run-r">
+      <svg viewBox="0 0 100 120" width="100%" aria-hidden="true">
+        <path d="M50 6 C26 6 8 26 8 50 C8 68 23 89 50 117 C77 89 92 68 92 50 C92 26 74 6 50 6 Z" fill="var(--ldf-r2)"/>
+        <path d="M29 43 c 3 6 11 6 14 0" fill="none" stroke="var(--ldf-r2-face)" stroke-width="7" stroke-linecap="round"/>
+        <path d="M55 43 c 3 6 11 6 14 0" fill="none" stroke="var(--ldf-r2-face)" stroke-width="7" stroke-linecap="round"/>
+      </svg>
+    </div>
+
+    <!-- дальние бегуны (только ≥1024px) -->
+    <div class="ld-feed-loader__pin ld-feed-loader__pin--far ld-feed-loader__pin--run-l2">
+      <svg viewBox="0 0 100 120" width="100%" aria-hidden="true">
+        <path d="M50 6 C26 6 8 26 8 50 C8 68 23 89 50 117 C77 89 92 68 92 50 C92 26 74 6 50 6 Z" fill="var(--ldf-r3)"/>
+        <path d="M29 43 c 3 6 11 6 14 0" fill="none" stroke="var(--ldf-r3-face)" stroke-width="7" stroke-linecap="round"/>
+        <path d="M55 43 c 3 6 11 6 14 0" fill="none" stroke="var(--ldf-r3-face)" stroke-width="7" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="ld-feed-loader__pin ld-feed-loader__pin--far ld-feed-loader__pin--run-r2">
+      <svg viewBox="0 0 100 120" width="100%" aria-hidden="true">
+        <path d="M50 6 C26 6 8 26 8 50 C8 68 23 89 50 117 C77 89 92 68 92 50 C92 26 74 6 50 6 Z" fill="var(--ldf-r4)"/>
+        <path d="M29 43 c 3 6 11 6 14 0" fill="none" stroke="var(--ldf-r4-face)" stroke-width="7" stroke-linecap="round"/>
+        <path d="M55 43 c 3 6 11 6 14 0" fill="none" stroke="var(--ldf-r4-face)" stroke-width="7" stroke-linecap="round"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- локализуется; тексты можно ротировать: «Идеи сбегаются…» /
+       «Собираем лучшее рядом…» / вечером: «Зовём вечерние варианты…» -->
+  <p class="ld-feed-loader__cap">Идеи сбегаются…</p>
+</div>

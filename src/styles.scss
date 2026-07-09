@@ -269,6 +269,11 @@ html, body {
     color: var(--ld-on-primary-soft);
     border-color: transparent;
   }
+
+  &__clear {
+    margin-left: 2px;
+    opacity: 0.7;
+  }
 }
 
 // Evening: active chips get solid fill

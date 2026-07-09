@@ -49,7 +49,13 @@ export class ThemeService {
 
   private applyTheme() {
     const html = document.documentElement;
+    const theme = this.activeTheme();
     html.classList.remove('theme-day', 'theme-evening', 'theme-dark');
-    html.classList.add(this.activeTheme());
+    html.classList.add(theme);
+    const colors: Record<string, string> = {
+      'theme-day': '#FAF6ED', 'theme-evening': '#F7F1F4', 'theme-dark': '#211E24',
+    };
+    document.querySelector('meta[name="theme-color"]')
+      ?.setAttribute('content', colors[theme] || '#FAF6ED');
   }
 }

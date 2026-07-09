@@ -24,7 +24,7 @@ export class App implements OnInit {
   private profileStore = inject(ProfileStore);
 
   ngOnInit() {
-    this.translate.addLangs(['ru', 'en']);
+    this.translate.addLangs(['ru', 'en', 'ka']);
     this.translate.use(this.profileStore.locale());
     this.applyTheme(this.profileStore.theme());
   }

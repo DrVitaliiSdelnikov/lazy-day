@@ -33,7 +33,7 @@ import { LdIconComponent } from '../../../core/components/ld-icon.component';
           {{ card().type === 'event' ? eventLabel() : categoryLabel() }}
           · {{ formatDistance() }}
           @if (card().walkMinutes && card().type !== 'event') {
-            · {{ card().walkMinutes }} мин
+            · {{ card().walkMinutes }} {{ 'detail.min' | translate }}
           }
           @if (card().startsAt) {
             · <span class="card__event-time">{{ formatEventTime() }}</span>

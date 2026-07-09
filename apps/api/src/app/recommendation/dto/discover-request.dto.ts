@@ -70,4 +70,8 @@ export class DiscoverRequestDto {
 
   @IsEnum(['ru', 'en', 'ka'])
   locale!: string;
+
+  @IsOptional()
+  @IsBoolean()
+  forcedNow?: boolean;
 }

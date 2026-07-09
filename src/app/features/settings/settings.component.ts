@@ -7,6 +7,7 @@ import { ApiService } from '../../core/services/api.service';
 import { apiProviders } from '../../core/providers';
 import { CategoryNode, CompanyType, Locale } from '../../core/models';
 import { LdIconComponent } from '../../core/components/ld-icon.component';
+import { ThemeService, ThemeName } from '../../core/services/theme.service';
 
 @Component({
   selector: 'app-settings',
@@ -15,18 +16,18 @@ import { LdIconComponent } from '../../core/components/ld-icon.component';
   providers: [...apiProviders],
   template: `
     <div class="settings">
-      <h1 class="settings__title">Профиль</h1>
+      <h1 class="settings__title">{{ 'settings.title' | translate }}</h1>
       <p class="settings__trust">
         <ld-icon name="user" [size]="13" />
-        Всё хранится на этом устройстве, без аккаунта
+        {{ 'settings.trust' | translate }}
       </p>
 
       <!-- Interests -->
       <section class="settings__card">
         <div class="settings__card-header">
-          <h3 class="settings__label">Мои интересы</h3>
+          <h3 class="settings__label">{{ 'settings.interests' | translate }}</h3>
           <button class="ld-btn ld-btn--ghost" (click)="editingInterests.set(!editingInterests())">
-            {{ editingInterests() ? 'Готово' : 'Изменить' }}
+            {{ (editingInterests() ? 'settings.done' : 'settings.edit') | translate }}
           </button>
         </div>
         @if (editingInterests()) {
@@ -43,7 +44,7 @@ import { LdIconComponent } from '../../core/components/ld-icon.component';
               <span class="ld-badge ld-badge--primary">{{ getCategoryLabel(entry[0]) }}</span>
             }
             @if (interestEntries().length === 0) {
-              <p class="settings__muted">Не выбрано</p>
+              <p class="settings__muted">{{ 'settings.no_interests' | translate }}</p>
             }
           </div>
         }
@@ -51,21 +52,21 @@ import { LdIconComponent } from '../../core/components/ld-icon.component';
 
       <!-- Company + Pet -->
       <section class="settings__card">
-        <h3 class="settings__label">Обычно я</h3>
+        <h3 class="settings__label">{{ 'settings.company' | translate }}</h3>
         <div class="settings__company">
           @for (opt of companyOptions; track opt.value) {
             <button class="settings__company-btn"
               [class.settings__company-btn--active]="profileStore.company() === opt.value"
               (click)="onCompanyChange($any(opt.value))"
-              [attr.aria-label]="opt.label">
+              [attr.aria-label]="opt.labelKey | translate">
               <ld-icon [name]="opt.icon" [size]="18" />
-              <span class="settings__company-label">{{ opt.label }}</span>
+              <span class="settings__company-label">{{ opt.labelKey | translate }}</span>
             </button>
           }
         </div>
         <div class="settings__pet-row">
           <span class="settings__pet-text">
-            <ld-icon name="dog" [size]="16" /> Гуляю с питомцем
+            <ld-icon name="dog" [size]="16" /> {{ 'settings.with_pet' | translate }}
           </span>
           <button class="ld-toggle" [class.ld-toggle--on]="profileStore.hasPet()" aria-label="Pet toggle"
             (click)="profileStore.setHasPet(!profileStore.hasPet())"></button>
@@ -74,16 +75,18 @@ import { LdIconComponent } from '../../core/components/ld-icon.component';
 
       <!-- Theme + Language -->
       <section class="settings__card">
-        <h3 class="settings__label">Тема</h3>
+        <h3 class="settings__label">{{ 'settings.theme' | translate }}</h3>
         <div class="settings__segment">
           @for (t of themes; track t.value) {
             <button class="settings__seg"
               [class.settings__seg--active]="profileStore.theme() === t.value"
-              (click)="onThemeChange($any(t.value))">{{ t.label }}</button>
+              (click)="onThemeChange($any(t.value))">
+              <ld-icon [name]="t.icon" [size]="16" />
+            </button>
           }
         </div>
 
-        <h3 class="settings__label" style="margin-top: 16px">Язык</h3>
+        <h3 class="settings__label" style="margin-top: 16px">{{ 'settings.language' | translate }}</h3>
         <div class="settings__segment">
           @for (lang of languages; track lang.value) {
             <button class="settings__seg"
@@ -95,14 +98,14 @@ import { LdIconComponent } from '../../core/components/ld-icon.component';
 
       <!-- Links -->
       <section class="settings__card">
-        <a routerLink="/privacy" class="settings__link">Конфиденциальность</a>
-        <div class="settings__link settings__link--muted">О приложении · LaziGo v0.1</div>
+        <a routerLink="/privacy" class="settings__link">{{ 'settings.privacy' | translate }}</a>
+        <div class="settings__link settings__link--muted">{{ 'settings.about' | translate }}</div>
       </section>
 
       <!-- Reset -->
       <section class="settings__card">
         <button class="ld-btn ld-btn--ghost" style="color: var(--ld-danger); width: 100%; justify-content: flex-start"
-          (click)="onReset()">Сбросить профиль</button>
+          (click)="onReset()">{{ 'settings.reset' | translate }}</button>
       </section>
     </div>
   `,
@@ -272,6 +275,7 @@ export class SettingsComponent implements OnInit {
   private api = inject(ApiService);
   private router = inject(Router);
   private translate = inject(TranslateService);
+  private themeService = inject(ThemeService);
 
   categories = signal<CategoryNode[]>([]);
   editingInterests = signal(false);
@@ -284,16 +288,16 @@ export class SettingsComponent implements OnInit {
   ];
 
   themes = [
-    { value: 'auto', label: 'Авто' },
-    { value: 'light', label: '☀' },
-    { value: 'dark', label: '🌙' },
+    { value: 'auto', label: '', icon: 'refresh' },
+    { value: 'light', label: '', icon: 'sun' },
+    { value: 'dark', label: '', icon: 'moon' },
   ];
 
   companyOptions = [
-    { value: 'solo', label: 'Один', icon: 'user' },
-    { value: 'couple', label: 'Пара', icon: 'hearts' },
-    { value: 'friends', label: 'Друзья', icon: 'users' },
-    { value: 'family', label: 'Семья', icon: 'balloon' },
+    { value: 'solo', labelKey: 'company.solo', icon: 'user' },
+    { value: 'couple', labelKey: 'company.couple', icon: 'hearts' },
+    { value: 'friends', labelKey: 'company.friends', icon: 'users' },
+    { value: 'family', labelKey: 'company.family', icon: 'balloon' },
   ];
 
   ngOnInit() {
@@ -324,6 +328,8 @@ export class SettingsComponent implements OnInit {
 
   onThemeChange(theme: ThemeMode) {
     this.profileStore.setTheme(theme);
+    const map: Record<ThemeMode, ThemeName> = { auto: 'auto', light: 'day', dark: 'dark' };
+    this.themeService.setPreference(map[theme]);
   }
 
   onCompanyChange(company: CompanyType | null) {

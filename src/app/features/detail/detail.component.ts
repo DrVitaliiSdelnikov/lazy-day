@@ -1,6 +1,6 @@
 import { Component, inject, input, OnInit, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { ApiService } from '../../core/services/api.service';
 import { ProfileStore } from '../../core/stores/profile.store';
 import { apiProviders } from '../../core/providers';
@@ -18,18 +18,20 @@ import { LdIconComponent } from '../../core/components/ld-icon.component';
       <!-- Color header -->
       <div class="detail__header" [class.detail__header--event]="c.type === 'event'">
         <div class="detail__header-nav">
-          <button class="detail__icon-btn" (click)="goBack()" aria-label="Back">
-            <ld-icon name="arrow-left" [size]="16" />
-          </button>
-          <div class="detail__header-actions">
-            <button class="detail__icon-btn" aria-label="Share">
-              <ld-icon name="share-2" [size]="15" />
+          @if (!isModal()) {
+            <button class="detail__icon-btn" (click)="goBack()" [attr.aria-label]="'nav.discover' | translate">
+              <ld-icon name="arrow-left" [size]="16" />
             </button>
-            <button class="detail__icon-btn" [class.detail__icon-btn--heart]="isSaved()"
-              (click)="onToggleSave()" [attr.aria-label]="isSaved() ? 'Unsave' : 'Save'">
-              <ld-icon [name]="isSaved() ? 'heart-filled' : 'heart'" [size]="16" />
-            </button>
-          </div>
+            <div class="detail__header-actions">
+              <button class="detail__icon-btn" [attr.aria-label]="'detail.share' | translate">
+                <ld-icon name="share-2" [size]="15" />
+              </button>
+              <button class="detail__icon-btn" [class.detail__icon-btn--heart]="isSaved()"
+                (click)="onToggleSave()" [attr.aria-label]="(isSaved() ? 'detail.unsave' : 'detail.save') | translate">
+                <ld-icon [name]="isSaved() ? 'heart-filled' : 'heart'" [size]="16" />
+              </button>
+            </div>
+          }
         </div>
         <div class="detail__header-icon">
           <ld-icon [name]="categoryIcon(c)" [size]="38" />
@@ -39,13 +41,13 @@ import { LdIconComponent } from '../../core/components/ld-icon.component';
       <!-- Content -->
       <div class="detail__body">
         @if (c.type === 'event') {
-          <span class="ld-badge ld-badge--event" style="margin-bottom: 8px">Событие · {{ eventTypeLabel(c) }}</span>
+          <span class="ld-badge ld-badge--event" style="margin-bottom: 8px">{{ 'detail.event_badge' | translate }} · {{ eventTypeLabel(c) }}</span>
         }
 
         <h1 class="detail__title">{{ c.title }}</h1>
         <p class="detail__meta">
           {{ c.categoryLabel || c.category }} · {{ formatDistance(c.distanceM) }}
-          @if (c.walkMinutes) { · {{ c.walkMinutes }} мин }
+          @if (c.walkMinutes) { · {{ c.walkMinutes }} {{ 'detail.min' | translate }} }
           @if (c.rating) {
             · <ld-icon name="star-filled" [size]="12" class="detail__star" /> {{ c.rating }}
             @if (c.ratingCount) { ({{ formatRatingCount(c.ratingCount) }}) }
@@ -59,13 +61,13 @@ import { LdIconComponent } from '../../core/components/ld-icon.component';
               <div>
                 <p class="detail__date-title">{{ formatEventDateTime(c.startsAt) }}</p>
                 @if (c.endsAt) {
-                  <p class="detail__date-sub">длится ~{{ estimateDuration(c.startsAt, c.endsAt) }}</p>
+                  <p class="detail__date-sub">{{ 'detail.duration' | translate }}{{ estimateDuration(c.startsAt, c.endsAt) }}</p>
                 }
               </div>
               @if (minutesUntil(c.startsAt); as mins) {
                 @if (mins > 0 && mins <= 180) {
                   <span class="ld-badge" style="background: var(--ld-glow-soft, var(--ld-primary-soft)); color: var(--ld-on-glow-soft, var(--ld-on-primary-soft))">
-                    Через {{ formatCountdown(mins) }}
+                    {{ 'detail.in_time' | translate }} {{ formatCountdown(mins) }}
                   </span>
                 }
               }
@@ -88,7 +90,7 @@ import { LdIconComponent } from '../../core/components/ld-icon.component';
         <!-- Why this -->
         @if (c.explanations?.length) {
           <div class="detail__card">
-            <p class="detail__card-title">Почему это вам</p>
+            <p class="detail__card-title">{{ 'detail.why_recommended' | translate }}</p>
             @for (tag of c.explanations; track tag.type) {
               <p class="detail__why-line">
                 <ld-icon [name]="whyIcon(tag.type)" [size]="13" [class]="'detail__why-icon detail__why-icon--' + tag.type" />
@@ -99,39 +101,39 @@ import { LdIconComponent } from '../../core/components/ld-icon.component';
         }
 
         <!-- Address -->
-        @if (c.address) {
-          <div class="detail__card">
+        <div class="detail__card">
+          <div class="detail__address-row">
             <p class="detail__address">
-              <ld-icon name="map-pin" [size]="13" class="detail__addr-icon" /> {{ c.address }}
+              <ld-icon name="map-pin" [size]="13" class="detail__addr-icon" />
+              {{ c.address || c.venueName || ('detail.show_on_map' | translate) }}
             </p>
+            <button class="ld-btn ld-btn--ghost detail__map-link" (click)="openOnMap(c)">{{ 'detail.on_map' | translate }}</button>
           </div>
-        }
-
-        @if (c.type === 'event' && c.venueName) {
-          <div class="detail__card">
-            <p class="detail__address">
-              <ld-icon name="map-pin" [size]="13" class="detail__addr-icon" /> {{ c.venueName }}
-            </p>
-          </div>
-        }
+        </div>
 
         <!-- Event: price -->
         @if (c.priceLabel) {
           <div class="detail__card detail__price-row">
-            <span style="color: var(--ld-text-2); font-size: 12px">Билеты</span>
+            <span style="color: var(--ld-text-2); font-size: 12px">{{ 'detail.tickets' | translate }}</span>
             <span style="font-weight: 700; font-size: 12px">{{ c.priceLabel }}</span>
           </div>
         }
 
-        <!-- Actions (mobile) -->
+        <!-- Actions -->
         <div class="detail__actions">
-          <a class="ld-btn ld-btn--primary detail__action-main" [href]="venueMapUrl(c)" target="_blank" rel="noopener">
-            <ld-icon name="route" [size]="14" /> Маршрут
-          </a>
-          <button class="detail__icon-action" aria-label="Share">
+          <button class="ld-btn ld-btn--primary detail__action-main" (click)="openRoute(c)">
+            <ld-icon name="route" [size]="14" /> {{ 'detail.route' | translate }}
+          </button>
+          <button class="detail__taxi-btn" (click)="openYandexTaxi(c)" aria-label="Yandex Go">
+            <span class="detail__taxi-label">Яндекс</span>
+          </button>
+          <button class="detail__taxi-btn" (click)="openBolt(c)" aria-label="Bolt">
+            <span class="detail__taxi-label">Bolt</span>
+          </button>
+          <button class="detail__icon-action" [attr.aria-label]="'detail.share' | translate">
             <ld-icon name="share-2" [size]="15" />
           </button>
-          <button class="detail__icon-action detail__icon-action--danger" aria-label="Hide">
+          <button class="detail__icon-action detail__icon-action--danger" [attr.aria-label]="'detail.hide' | translate">
             <ld-icon name="eye-off" [size]="15" />
           </button>
         </div>
@@ -142,7 +144,7 @@ import { LdIconComponent } from '../../core/components/ld-icon.component';
         <div class="detail__sticky-cta">
           <a class="ld-btn ld-btn--primary detail__ticket-btn" [href]="c.ticketUrl || c.externalUrl" target="_blank" rel="noopener">
             <ld-icon name="ticket" [size]="15" />
-            Билеты{{ c.priceLabel ? ' от ' + c.priceLabel : '' }}
+            {{ 'detail.tickets_from' | translate }}{{ c.priceLabel ? ' ' + c.priceLabel : '' }}
             @if (c.source) { · {{ c.source }} }
           </a>
         </div>
@@ -260,6 +262,13 @@ import { LdIconComponent } from '../../core/components/ld-icon.component';
     .detail__why-icon--walk_time { color: var(--ld-primary); }
     .detail__why-icon--highly_rated { color: var(--ld-warn); }
 
+    .detail__address-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
     .detail__address {
       font-size: 12px;
       color: var(--ld-text-2);
@@ -267,9 +276,18 @@ import { LdIconComponent } from '../../core/components/ld-icon.component';
       display: flex;
       align-items: center;
       gap: 4px;
+      flex: 1;
+      min-width: 0;
     }
 
     .detail__addr-icon { color: var(--ld-primary); }
+
+    .detail__map-link {
+      font-size: 12px;
+      color: var(--ld-primary);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
 
     .detail__date-row {
       display: flex;
@@ -302,6 +320,30 @@ import { LdIconComponent } from '../../core/components/ld-icon.component';
 
     .detail__action-main {
       flex: 1;
+    }
+
+    .detail__taxi-btn {
+      height: 48px;
+      padding: 0 12px;
+      background: var(--ld-surface);
+      border: 1px solid var(--ld-border);
+      border-radius: 12px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--ld-text-2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    @media (min-width: 1024px) {
+      .detail__taxi-btn { display: none; }
+    }
+
+    .detail__taxi-label {
+      white-space: nowrap;
     }
 
     .detail__icon-action {
@@ -344,10 +386,12 @@ import { LdIconComponent } from '../../core/components/ld-icon.component';
 export class DetailComponent implements OnInit {
   type = input.required<string>();
   id = input.required<string>();
+  isModal = input(false);
 
   private api = inject(ApiService);
   private profileStore = inject(ProfileStore);
   private router = inject(Router);
+  private translate = inject(TranslateService);
 
   card = signal<RecommendationCard | null>(null);
   isSaved = signal(false);
@@ -372,11 +416,10 @@ export class DetailComponent implements OnInit {
   }
 
   eventTypeLabel(c: RecommendationCard): string {
-    const map: Record<string, string> = {
-      music: 'Концерт', theater: 'Театр', exhibition: 'Выставка',
-      festival: 'Фестиваль', entertainment: 'Событие', workshop: 'Мастер-класс',
-    };
-    return map[c.category] ?? 'Событие';
+    const key = `detail.event_type.${c.category}`;
+    const translated = this.translate.instant(key);
+    // If key not found, fall back to generic event label
+    return translated === key ? this.translate.instant('detail.event_badge') : translated;
   }
 
   whyIcon(type: string): string {
@@ -425,7 +468,8 @@ export class DetailComponent implements OnInit {
   }
 
   formatCountdown(mins: number): string {
-    if (mins < 60) return `${mins} мин`;
+    const minLabel = this.translate.instant('detail.min');
+    if (mins < 60) return `${mins} ${minLabel}`;
     const h = Math.floor(mins / 60);
     const m = mins % 60;
     return `${h}:${String(m).padStart(2, '0')}`;
@@ -433,16 +477,31 @@ export class DetailComponent implements OnInit {
 
   estimateDuration(startIso: string, endIso: string): string {
     const mins = Math.round((new Date(endIso).getTime() - new Date(startIso).getTime()) / 60000);
-    if (mins < 60) return `${mins} мин`;
+    const minLabel = this.translate.instant('detail.min');
+    if (mins < 60) return `${mins} ${minLabel}`;
     const h = Math.round(mins / 60);
     return `${h} ${h === 1 ? 'час' : h < 5 ? 'часа' : 'часов'}`;
   }
 
-  venueMapUrl(c: RecommendationCard): string {
-    if (c.type === 'event' && c.venueName) {
-      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.venueName + ' Tbilisi')}`;
-    }
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.title)}&center=${c.lat},${c.lng}`;
+  openRoute(c: RecommendationCard) {
+    let url = `https://www.google.com/maps/dir/?api=1&destination=${c.lat},${c.lng}`;
+    if (c.googlePlaceId) url += `&destination_place_id=${c.googlePlaceId}`;
+    if (c.distanceM && c.distanceM < 2500) url += '&travelmode=walking';
+    window.open(url, '_blank');
+  }
+
+  openOnMap(c: RecommendationCard) {
+    let url = `https://www.google.com/maps/search/?api=1&query=${c.lat},${c.lng}`;
+    if (c.googlePlaceId) url += `&query_place_id=${c.googlePlaceId}`;
+    window.open(url, '_blank');
+  }
+
+  openYandexTaxi(c: RecommendationCard) {
+    window.location.href = `yandextaxi://route?end-lat=${c.lat}&end-lon=${c.lng}`;
+  }
+
+  openBolt(c: RecommendationCard) {
+    window.location.href = `bolt://ride?destination_lat=${c.lat}&destination_lng=${c.lng}`;
   }
 
   onToggleSave() {

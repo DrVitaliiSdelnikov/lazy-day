@@ -32,7 +32,7 @@ const INTEREST_SYNONYMS: Record<string, string[]> = {
   nightlife: ['nightlife', 'bar', 'club'],
   culture: ['culture', 'museum', 'gallery', 'theater'],
   gym: ['gym', 'wellness', 'sports'],
-  sports: ['gym', 'sports', 'climbing', 'karting', 'paintball', 'trampoline', 'bowling'],
+  sports: ['sports', 'climbing', 'karting', 'paintball', 'trampoline', 'bowling'],
   shopping: ['shopping', 'mall'],
   entertainment: ['entertainment', 'cinema', 'club', 'bowling', 'escape_room', 'gaming', 'arcade', 'water_park'],
   family: ['family', 'playground', 'park', 'trampoline', 'water_park', 'arcade'],
@@ -94,6 +94,7 @@ interface CandidateRow {
   opening_hours?: Record<string, unknown>;
   photos?: string[];
   website?: string;
+  google_place_id?: string;
   // event-specific
   starts_at?: string;
   ends_at?: string;
@@ -255,10 +256,87 @@ export class RecommendationService {
 
     // Sort + diversity
     scored.sort((a, b) => b.score - a.score);
-    const diversified = this.applyDiversity(scored);
+    let diversified = this.applyDiversity(scored);
+
+    // Step 9: TIME FALLBACK
+    // If few results at night (21:00-06:00 Tbilisi) and not forced "now",
+    // re-run pipeline with tomorrow's timeWindow
+    let meta: { fallback?: 'tomorrow' | 'exhausted'; originalCount?: number } | undefined;
+    const tbilisiHour = (new Date().getUTCHours() + 4) % 24;
+    const isNightHours = tbilisiHour >= 21 || tbilisiHour < 6;
+
+    if (
+      diversified.length < MIN_RELEVANT_RESULTS &&
+      isNightHours &&
+      !dto.forcedNow
+    ) {
+      const originalCount = diversified.length;
+      this.logger.log(`Night fallback: only ${originalCount} results at ${tbilisiHour}:00 Tbilisi, trying tomorrow`);
+
+      // Build tomorrow's time window (tomorrow 08:00 - 23:00 local)
+      const now = new Date();
+      const tomorrowStart = new Date(now);
+      tomorrowStart.setUTCDate(tomorrowStart.getUTCDate() + 1);
+      tomorrowStart.setUTCHours(4, 0, 0, 0); // 08:00 Tbilisi = 04:00 UTC
+      const tomorrowEnd = new Date(tomorrowStart);
+      tomorrowEnd.setUTCHours(19, 0, 0, 0); // 23:00 Tbilisi = 19:00 UTC
+
+      const tomorrowDto = {
+        ...dto,
+        timeWindow: { from: tomorrowStart.toISOString(), to: tomorrowEnd.toISOString() },
+      };
+
+      // Re-fetch and re-score with tomorrow's time window
+      const [places, events] = await Promise.all([
+        this.fetchPlaces(dto.lat, dto.lng, radiusM),
+        this.fetchEvents(dto.lat, dto.lng, radiusM, tomorrowDto.timeWindow),
+      ]);
+
+      let candidates: CandidateRow[] = [...places, ...events];
+      candidates = candidates.filter((c) => {
+        if (hiddenIds.includes(c.id)) return false;
+        if (dto.profile.budgetMax != null) {
+          if (c.price_min != null && c.price_min > dto.profile.budgetMax) return false;
+          if (c.price_level != null && c.price_level > this.budgetToLevel(dto.profile.budgetMax)) return false;
+        }
+        return true;
+      });
+
+      let tomorrowScored = candidates.map((c) =>
+        this.scoreCandidate(c, tomorrowDto, radiusM, expandedWeights),
+      );
+
+      if (hasStrictInterests) {
+        tomorrowScored = tomorrowScored.filter((c) => c.hasStrictMatch);
+      } else if (hasInterests) {
+        tomorrowScored = tomorrowScored.filter((c) => c.primaryTags.length > 0);
+      }
+
+      // Availability filter for tomorrow midpoint
+      const tomorrowMid = new Date((tomorrowStart.getTime() + tomorrowEnd.getTime()) / 2);
+      tomorrowScored = tomorrowScored.filter((c) => {
+        if (c.type === 'event') return true;
+        const status = checkOpenStatus(c.opening_hours, tomorrowMid);
+        return status !== 'closed';
+      });
+
+      tomorrowScored.sort((a, b) => b.score - a.score);
+      diversified = this.applyDiversity(tomorrowScored);
+
+      if (diversified.length >= 3) {
+        meta = { fallback: 'tomorrow', originalCount };
+      } else {
+        meta = { fallback: 'exhausted', originalCount };
+      }
+
+      this.logger.log(`Night fallback result: ${diversified.length} tomorrow cards (fallback=${meta.fallback})`);
+    }
 
     // Build response cards
-    const timeMid = new Date((new Date(dto.timeWindow.from).getTime() + new Date(dto.timeWindow.to).getTime()) / 2);
+    const isTomorrowFallback = meta?.fallback === 'tomorrow';
+    const timeMid = isTomorrowFallback
+      ? new Date(new Date().setUTCDate(new Date().getUTCDate() + 1))  // tomorrow noon-ish
+      : new Date((new Date(dto.timeWindow.from).getTime() + new Date(dto.timeWindow.to).getTime()) / 2);
 
     const cards = diversified.slice(0, 60).map((c) => {
       const openStatus = c.type === 'place'
@@ -269,6 +347,15 @@ export class RecommendationService {
       const title = dto.locale === 'en' ? (c.title_en ?? c.title)
         : dto.locale === 'ka' ? (c.title_ka ?? c.title)
         : c.title;
+
+      // For tomorrow fallback: show tomorrow's opening time instead of current status
+      let displayOpenStatus: string | undefined;
+      if (isTomorrowFallback && c.type === 'place') {
+        const tomorrowLabel = this.getTomorrowOpenLabel(c.opening_hours, dto.locale);
+        displayOpenStatus = tomorrowLabel ?? getOpenLabel(openStatus ?? 'unknown', dto.locale);
+      } else {
+        displayOpenStatus = getOpenLabel(openStatus ?? 'unknown', dto.locale);
+      }
 
       return {
         id: c.id,
@@ -286,13 +373,14 @@ export class RecommendationService {
         ratingCount: c.google_rating_count ?? c.rating_count,
         primaryTags: c.primaryTags.length > 0 ? c.primaryTags : undefined,
         secondaryTags: c.secondaryTags.length > 0 ? c.secondaryTags : undefined,
-        openStatus: getOpenLabel(openStatus ?? 'unknown', dto.locale),
+        openStatus: displayOpenStatus,
         startsAt: c.starts_at,
         endsAt: c.ends_at,
         venueName: c.venue_name,
         ticketUrl: c.ticket_url,
         priceLabel: this.formatPrice(c),
         photoUrl: c.photos?.[0],
+        googlePlaceId: c.google_place_id,
       };
     });
 
@@ -302,7 +390,7 @@ export class RecommendationService {
       `Discover: ${scored.length} relevant → ${cards.length} cards (radius=${radiusM}m${radiusM !== baseRadiusM ? ', expanded' : ''})`,
     );
 
-    return { sessionId, cards, hasMore: diversified.length > 60 };
+    return { sessionId, cards, hasMore: diversified.length > 60, meta };
   }
 
   async more(sessionId: string) {
@@ -485,7 +573,7 @@ export class RecommendationService {
         ) AS distance_m,
         v.address, p.rating, p.rating_count, p.indoor, p.price_level,
         p.quality_score, p.status, p.attributes, p.google_types, p.google_rating,
-        p.google_rating_count, p.opening_hours, p.photos, v.website
+        p.google_rating_count, p.opening_hours, p.photos, v.website, v.google_place_id
       FROM places p
       JOIN venues v ON p.venue_id = v.id
       WHERE p.status = 'active'
@@ -553,11 +641,27 @@ export class RecommendationService {
     if (c.opening_hours) {
       const mid = new Date((new Date(timeWindow.from).getTime() + new Date(timeWindow.to).getTime()) / 2);
       const status = checkOpenStatus(c.opening_hours, mid);
-      if (status === 'closed') return 0.0; // hard zero — will be filtered if interests are set
-      if (status === 'open') return 1.0;
+      if (status === 'closed') return 0.0;
+      if (status === 'open') {
+        // 24/7 night boost: bars and late-night spots get +0.05 between 23:00-06:00
+        const tbilisiHour = (mid.getUTCHours() + 4) % 24;
+        if ((tbilisiHour >= 23 || tbilisiHour < 6) && this.is24h(c.opening_hours)) {
+          return 1.05; // small boost over regular open places
+        }
+        return 1.0;
+      }
     }
 
     return 0.8; // unknown hours — neutral
+  }
+
+  /** Check if opening_hours indicate a 24/7 venue. */
+  private is24h(hours: Record<string, unknown>): boolean {
+    const raw = hours['raw'] as string | undefined;
+    if (raw && (raw.includes('24/7') || raw.includes('00:00-24:00'))) return true;
+    const periods = hours['periods'] as Array<{ open?: { hour: number }; close?: { hour: number } }> | undefined;
+    if (periods?.length === 1 && periods[0].open?.hour === 0 && !periods[0].close) return true;
+    return false;
   }
 
   private applyDiversity(
@@ -681,6 +785,32 @@ export class RecommendationService {
     if (budgetMax <= 30) return 2;
     if (budgetMax <= 60) return 3;
     return 4;
+  }
+
+  /** For tomorrow fallback: resolve opening time label like "Завтра с 10:00". */
+  private getTomorrowOpenLabel(hours: Record<string, unknown> | undefined, locale: string): string | null {
+    if (!hours) return null;
+    // Try to get tomorrow's opening hour from structured periods
+    const periods = hours['periods'] as Array<{
+      open?: { day: number; hour: number; minute: number };
+    }> | undefined;
+    if (periods?.length) {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const dayOfWeek = tomorrow.getDay(); // 0=Sun
+      const match = periods.find(p => p.open?.day === dayOfWeek);
+      if (match?.open) {
+        const h = String(match.open.hour).padStart(2, '0');
+        const m = String(match.open.minute).padStart(2, '0');
+        const time = `${h}:${m}`;
+        if (locale === 'en') return `Tomorrow at ${time}`;
+        if (locale === 'ka') return `ხვალ ${time}-ზე`;
+        return `Завтра с ${time}`;
+      }
+    }
+    if (locale === 'en') return 'Tomorrow';
+    if (locale === 'ka') return 'ხვალ';
+    return 'Завтра';
   }
 
   private formatPrice(c: CandidateRow): string | undefined {

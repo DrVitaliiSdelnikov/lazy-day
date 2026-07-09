@@ -1,0 +1,136 @@
+<!--
+  LazyDay — сплеш-лоадер «дремлющий пин»
+  ═══════════════════════════════════════
+  Как подключить (Angular):
+  1. Содержимое <app-root>...</app-root> показывается до bootstrap и
+     автоматически удаляется Angular'ом при рендере корневого компонента.
+     Вставьте разметку .ld-splash ВНУТРЬ <app-root> в src/index.html.
+  2. Блоки <style> и <script> положите в <head> (стили критические, инлайн —
+     никаких внешних запросов: сплеш обязан работать до загрузки бандла).
+  3. Шрифт Unbounded к моменту сплеша ещё не загружен — стек падает в
+     system-ui, это ок: словоформа заменится после загрузки приложения.
+
+  Темизация: крошечный скрипт ниже вешает класс на <html> ДО отрисовки:
+  сохранённая тема из localStorage('ld-theme') → иначе по часам (18:00–05:59
+  = вечер). Тот же класс потом использует приложение — сплеш и первый экран
+  совпадут по цвету, без «мигания» темы.
+-->
+
+<script>
+  (function () {
+    try {
+      var t = localStorage.getItem('ld-theme'); // 'day' | 'evening' | 'dark' | 'auto' | null
+      var h = new Date().getHours();
+      var auto = (h >= 18 || h < 6) ? 'theme-evening' : 'theme-day';
+      document.documentElement.className +=
+        ' ' + (t === 'dark' ? 'theme-dark' : t === 'day' ? 'theme-day'
+             : t === 'evening' ? 'theme-evening' : auto);
+    } catch (e) { document.documentElement.className += ' theme-day'; }
+  })();
+</script>
+
+<style>
+  /* ── токены сплеша (подмножество основной палитры) ── */
+  .theme-day      { --lds-bg:#FAF6ED; --lds-pin:#E8862D; --lds-face:#FFF9EF; --lds-cheek:#F2A874;
+                    --lds-z1:#E8862D; --lds-z2:#F2A03D; --lds-shadow:#E4D9C4; --lds-text:#7C7465; }
+  .theme-evening  { --lds-bg:#F7F1F4; --lds-pin:#E3455C; --lds-face:#FFF3F4; --lds-cheek:#EE8A99;
+                    --lds-z1:#E3455C; --lds-z2:#6E52C6; --lds-shadow:#E0D2DE; --lds-text:#776F80; }
+  .theme-dark     { --lds-bg:#211E24; --lds-pin:#F27E8E; --lds-face:#2A1418; --lds-cheek:#E56A7B;
+                    --lds-z1:#F27E8E; --lds-z2:#9D85E0; --lds-shadow:#17151A; --lds-text:#9A929F; }
+
+  .ld-splash {
+    position: fixed; inset: 0; z-index: 9999;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: var(--lds-bg);
+    font-family: 'Unbounded', system-ui, -apple-system, sans-serif;
+  }
+  .ld-splash__pin    { transform-origin: 50% 86%; animation: ld-rock 3.4s ease-in-out infinite; }
+  .ld-splash__shadow { transform-origin: 50% 50%; animation: ld-breath-shadow 3.4s ease-in-out infinite; }
+  .ld-splash__z      { opacity: 0; animation: ld-z-float 2.8s ease-out infinite; }
+  .ld-splash__z--2   { animation-delay: .95s; }
+  .ld-splash__z--3   { animation-delay: 1.9s; }
+  .ld-splash__name   { font-size: 18px; font-weight: 500; color: var(--lds-pin); margin: 16px 0 4px; }
+  .ld-splash__hint   { font-family: system-ui, sans-serif; font-size: 13px; color: var(--lds-text);
+                       margin: 0; animation: ld-hint-pulse 2.2s ease-in-out infinite; }
+
+  @keyframes ld-rock {
+    0%, 100% { transform: rotate(-16deg) scale(1); }
+    50%      { transform: rotate(-10.5deg) scale(1.025); }
+  }
+  @keyframes ld-breath-shadow {
+    0%, 100% { transform: scaleX(1);    opacity: .5;  }
+    50%      { transform: scaleX(.86);  opacity: .34; }
+  }
+  @keyframes ld-z-float {
+    0%   { opacity: 0; transform: translate(0, 8px)    scale(.75); }
+    28%  { opacity: 1; }
+    100% { opacity: 0; transform: translate(9px,-16px) scale(1.12); }
+  }
+  @keyframes ld-hint-pulse { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ld-splash__pin, .ld-splash__shadow, .ld-splash__z, .ld-splash__hint { animation: none; }
+    .ld-splash__z { opacity: .9; }
+  }
+</style>
+
+<!-- ─── внутрь <app-root> ─── -->
+<div class="ld-splash" role="status" aria-label="LazyDay загружается">
+  <svg viewBox="0 0 300 300" width="200" height="200" aria-hidden="true">
+    <ellipse class="ld-splash__shadow" cx="150" cy="262" rx="58" ry="10" fill="var(--lds-shadow)"/>
+    <g class="ld-splash__z">
+      <path d="M212 66 h 30 l -30 32 h 30" fill="none" stroke="var(--lds-z1)" stroke-width="11"
+            stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <g class="ld-splash__z ld-splash__z--2">
+      <path d="M244 40 h 21 l -21 22 h 21" fill="none" stroke="var(--lds-z2)" stroke-width="8"
+            stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <g class="ld-splash__z ld-splash__z--3">
+      <path d="M222 100 h 17 l -17 18 h 17" fill="none" stroke="var(--lds-z2)" stroke-width="7"
+            stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <g class="ld-splash__pin">
+      <path d="M150 58 C 108 58 78 90 78 130 C 78 159 102 193 150 252 C 198 193 222 159 222 130
+               C 222 90 192 58 150 58 Z" fill="var(--lds-pin)"/>
+      <path d="M118 122 c 5 8 15 8 20 0" fill="none" stroke="var(--lds-face)" stroke-width="8" stroke-linecap="round"/>
+      <path d="M162 122 c 5 8 15 8 20 0" fill="none" stroke="var(--lds-face)" stroke-width="8" stroke-linecap="round"/>
+      <path d="M139 151 c 5 6 17 6 22 0" fill="none" stroke="var(--lds-face)" stroke-width="7" stroke-linecap="round"/>
+      <circle cx="112" cy="142" r="8" fill="var(--lds-cheek)"/>
+      <circle cx="188" cy="142" r="8" fill="var(--lds-cheek)"/>
+    </g>
+  </svg>
+  <p class="ld-splash__name">LazyDay</p>
+  <p class="ld-splash__hint">Просыпаемся…</p>
+</div>
+
+<!--
+  ─── БОНУС: мини-лоадер для lazy-роутов и долгих запросов ───
+  Тот же пин 48 px без текста и теней. Используйте в компоненте-заглушке
+  роута или рядом со скелетонами, когда ответ API дольше ~800 мс
+  (раньше показывать не надо — скелетоны справляются сами).
+-->
+<style>
+  .ld-loader { width: 48px; height: 48px; display: inline-block; }
+  .ld-loader svg { transform-origin: 50% 86%; animation: ld-rock 2.6s ease-in-out infinite; }
+  @media (prefers-reduced-motion: reduce) { .ld-loader svg { animation: none; } }
+</style>
+<span class="ld-loader" role="status" aria-label="Загрузка">
+  <svg viewBox="0 0 300 300" width="48" height="48" aria-hidden="true">
+    <path d="M150 58 C 108 58 78 90 78 130 C 78 159 102 193 150 252 C 198 193 222 159 222 130
+             C 222 90 192 58 150 58 Z" fill="var(--lds-pin, #E8862D)"/>
+    <path d="M118 122 c 5 8 15 8 20 0" fill="none" stroke="var(--lds-face, #FFF9EF)" stroke-width="8" stroke-linecap="round"/>
+    <path d="M162 122 c 5 8 15 8 20 0" fill="none" stroke="var(--lds-face, #FFF9EF)" stroke-width="8" stroke-linecap="round"/>
+    <path d="M139 151 c 5 6 17 6 22 0" fill="none" stroke="var(--lds-face, #FFF9EF)" stroke-width="7" stroke-linecap="round"/>
+  </svg>
+</span>
+
+<!--
+  Тексты подсказки (локализуются, ротация по времени суток как у greeting):
+  день:  «Просыпаемся…» / «Ищем, где полениться…»
+  вечер: «Куда выйдем вечером…»
+  Меняются статически при рендере сплеша — анимировать смену не нужно.
+
+  Производительность: анимируются только transform и opacity (композитор,
+  без layout/paint), SVG ~1.5 KB инлайн — сплеш виден с первым же байтом HTML.
+-->
