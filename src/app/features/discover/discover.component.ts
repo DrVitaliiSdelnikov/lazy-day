@@ -16,6 +16,7 @@ import { FilterSheetComponent, FilterState } from './filter-sheet/filter-sheet.c
 import { FeedLoaderComponent } from './feed-loader/feed-loader.component';
 import { FeedTuneBlockComponent } from './feed-tune-block/feed-tune-block.component';
 import { InteractionService } from '../../core/services/interaction.service';
+import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
 
 @Component({
   selector: 'app-discover',
@@ -29,6 +30,7 @@ import { InteractionService } from '../../core/services/interaction.service';
     DetailComponent,
     FeedLoaderComponent,
     FeedTuneBlockComponent,
+    DecideForMeComponent,
   ],
   providers: [...apiProviders],
   template: `
@@ -131,6 +133,10 @@ import { InteractionService } from '../../core/services/interaction.service';
             </button>
           }
         </div>
+        <button class="discover__decide-btn" (click)="openDecide()"
+          [disabled]="loading() || cards().length === 0">
+          <ld-icon name="compass" [size]="15" />
+        </button>
         <button class="discover__filter-btn" (click)="openFilters()" aria-label="Filters">
           &#9776;
           @if (activeFilterCount() > 0) {
@@ -241,6 +247,11 @@ import { InteractionService } from '../../core/services/interaction.service';
         <span>{{ 'hide.hidden' | translate }}</span>
         <button class="discover__undo-btn" (click)="undoHide()">{{ 'hide.undo' | translate }}</button>
       </div>
+    }
+
+    <!-- Decide for me overlay -->
+    @if (decideOpen() && decideCards().length > 0) {
+      <app-decide-for-me [cards]="decideCards()" (close)="decideOpen.set(false)" />
     }
   `,
   styles: `
@@ -596,6 +607,24 @@ import { InteractionService } from '../../core/services/interaction.service';
       }
     }
 
+    .discover__decide-btn {
+      width: 40px;
+      min-height: 36px;
+      background: var(--ld-primary);
+      color: var(--ld-bg);
+      border: none;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      padding: 0;
+      transition: opacity 150ms;
+
+      &:disabled { opacity: 0.4; cursor: default; }
+    }
+
     .discover__fallback-banner {
       display: flex;
       align-items: center;
@@ -763,6 +792,11 @@ export class DiscoverComponent implements OnInit {
   readonly forcedNow = signal(false);
   readonly activePreset = signal<string | null>(null);
   readonly undoableHide = signal<{ card: RecommendationCard; index: number; timer: ReturnType<typeof setTimeout> } | null>(null);
+  readonly decideOpen = signal(false);
+  readonly decideCards = computed(() => {
+    // Top cards that have rating + openStatus (guard rails for trust)
+    return this.cards().filter(c => c.rating && c.explanations?.length > 0).slice(0, 4);
+  });
   readonly tuneBlockDismissed = signal(localStorage.getItem('ld_tune_interests') === 'done' || localStorage.getItem('ld_tune_interests') === 'dismissed');
   readonly showTuneBlock = computed(() =>
     !this.profileStore.hasInterests()
@@ -884,6 +918,13 @@ export class DiscoverComponent implements OnInit {
   onTuneDismissed() {
     localStorage.setItem('ld_tune_interests', 'dismissed');
     this.tuneBlockDismissed.set(true);
+  }
+
+  openDecide() {
+    if (this.decideCards().length > 0) {
+      this.decideOpen.set(true);
+      this.interactions.track({ eventType: 'decide_open', targetType: 'feed', targetId: this.decideCards()[0]?.id });
+    }
   }
 
   async requestGps() {

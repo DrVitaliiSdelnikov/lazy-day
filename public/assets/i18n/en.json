@@ -161,6 +161,13 @@
     "city_sleeps": "The city is asleep. Nearest options — tomorrow",
     "show_tomorrow": "Show tomorrow"
   },
+  "decide": {
+    "button": "Decide for me",
+    "tonight": "Tonight — here",
+    "another": "Another one",
+    "no_more": "Show the feed",
+    "why": "Why here"
+  },
   "share": {
     "copied": "Link copied"
   },
