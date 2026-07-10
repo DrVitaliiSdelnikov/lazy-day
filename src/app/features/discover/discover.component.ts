@@ -67,21 +67,6 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
           </div>
         </div>
         <div class="sidebar__section">
-          <p class="sidebar__label">{{ 'sidebar.categories' | translate }}</p>
-          <div class="sidebar__chips">
-            @for (p of presets; track p.key) {
-              <button class="ld-chip"
-                [class.ld-chip--active]="activePreset() === p.key"
-                (click)="applyPreset(p.key)">
-                {{ p.labelKey | translate }}
-                @if (activePreset() === p.key) {
-                  <ld-icon name="x" [size]="11" class="ld-chip__clear" />
-                }
-              </button>
-            }
-          </div>
-        </div>
-        <div class="sidebar__section">
           <p class="sidebar__label">{{ 'sidebar.company' | translate }}</p>
           <div class="sidebar__company">
             @for (opt of companyOptions; track opt.value) {
@@ -399,7 +384,6 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
 
     @media (min-width: 1024px) {
       .discover { padding-bottom: 0; }
-      .discover__presets { display: none; }
     }
 
     .discover__header {
