@@ -23,22 +23,26 @@ export class HealthController {
 
   @Post('migrate')
   async migrate() {
-    await this.dataSource.query(`CREATE TABLE IF NOT EXISTS _migrations (name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ DEFAULT NOW())`);
-    const { rows: applied } = await this.dataSource.query('SELECT name FROM _migrations');
-    const appliedSet = new Set(applied.map((r: any) => r.name));
-    const results: string[] = [];
-    for (const m of MIGRATIONS) {
-      if (appliedSet.has(m.name)) { results.push(`skip: ${m.name}`); continue; }
-      try {
-        await this.dataSource.query(m.sql);
-        await this.dataSource.query('INSERT INTO _migrations (name) VALUES ($1)', [m.name]);
-        results.push(`applied: ${m.name}`);
-      } catch (e: any) {
-        results.push(`error: ${m.name}: ${e.message}`);
-        break;
+    try {
+      await this.dataSource.query(`CREATE TABLE IF NOT EXISTS _migrations (name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ DEFAULT NOW())`);
+      const applied = await this.dataSource.query('SELECT name FROM _migrations');
+      const appliedSet = new Set(applied.map((r: any) => r.name));
+      const results: string[] = [];
+      for (const m of MIGRATIONS) {
+        if (appliedSet.has(m.name)) { results.push(`skip: ${m.name}`); continue; }
+        try {
+          await this.dataSource.query(m.sql);
+          await this.dataSource.query('INSERT INTO _migrations (name) VALUES ($1)', [m.name]);
+          results.push(`applied: ${m.name}`);
+        } catch (e: any) {
+          results.push(`error: ${m.name}: ${e.message}`);
+          break;
+        }
       }
+      return { results };
+    } catch (e: any) {
+      return { error: e.message, stack: e.stack?.split('\n').slice(0, 3) };
     }
-    return { results };
   }
 
   @Get()
