@@ -562,31 +562,30 @@ export class RecommendationService {
   // ---------------------------------------------------------------------------
 
   private async fetchPlaces(lat: number, lng: number, radiusM: number): Promise<CandidateRow[]> {
+    // Haversine distance in meters — no PostGIS dependency
     const rows = await this.dataSource.query(
       `SELECT
         p.id, 'place' AS type, v.name AS title, v.name_en AS title_en, v.name_ka AS title_ka,
         p.category, p.tags,
         v.lat, v.lng,
-        ST_Distance(
-          ST_MakePoint(v.lng, v.lat)::geography,
-          ST_MakePoint($2, $1)::geography
-        ) AS distance_m,
+        (6371000 * acos(
+          cos(radians($1)) * cos(radians(v.lat)) *
+          cos(radians(v.lng) - radians($2)) +
+          sin(radians($1)) * sin(radians(v.lat))
+        )) AS distance_m,
         v.address, p.rating, p.rating_count, p.indoor, p.price_level,
         p.quality_score, p.status, p.attributes, p.google_types, p.google_rating,
         p.google_rating_count, p.opening_hours, p.photos, v.website, v.google_place_id
       FROM places p
       JOIN venues v ON p.venue_id = v.id
       WHERE p.status = 'active'
-        AND ST_DWithin(
-          ST_MakePoint(v.lng, v.lat)::geography,
-          ST_MakePoint($2, $1)::geography,
-          $3
-        )
+        AND v.lat BETWEEN $1 - ($3::float / 111000) AND $1 + ($3::float / 111000)
+        AND v.lng BETWEEN $2 - ($3::float / (111000 * cos(radians($1)))) AND $2 + ($3::float / (111000 * cos(radians($1))))
       ORDER BY distance_m
       LIMIT $4`,
       [lat, lng, radiusM, radiusM > 5000 ? 1000 : 500],
     );
-    return rows;
+    return rows.filter((r: any) => r.distance_m <= radiusM);
   }
 
   private async fetchEvents(
@@ -599,10 +598,11 @@ export class RecommendationService {
       `SELECT
         e.id, 'event' AS type, e.title, e.category, e.tags,
         v.lat, v.lng,
-        ST_Distance(
-          ST_MakePoint(v.lng, v.lat)::geography,
-          ST_MakePoint($2, $1)::geography
-        ) AS distance_m,
+        (6371000 * acos(
+          cos(radians($1)) * cos(radians(v.lat)) *
+          cos(radians(v.lng) - radians($2)) +
+          sin(radians($1)) * sin(radians(v.lat))
+        )) AS distance_m,
         v.address, v.name AS venue_name,
         e.starts_at, e.ends_at, e.ticket_url,
         e.price_min, e.price_max, e.quality_score
@@ -610,16 +610,13 @@ export class RecommendationService {
       JOIN venues v ON e.venue_id = v.id
       WHERE e.status = 'scheduled'
         AND e.starts_at BETWEEN $4 AND $5
-        AND ST_DWithin(
-          ST_MakePoint(v.lng, v.lat)::geography,
-          ST_MakePoint($2, $1)::geography,
-          $3
-        )
+        AND v.lat BETWEEN $1 - ($3::float / 111000) AND $1 + ($3::float / 111000)
+        AND v.lng BETWEEN $2 - ($3::float / (111000 * cos(radians($1)))) AND $2 + ($3::float / (111000 * cos(radians($1))))
       ORDER BY e.starts_at
       LIMIT 100`,
       [lat, lng, radiusM, timeWindow.from, timeWindow.to],
     );
-    return rows;
+    return rows.filter((r: any) => r.distance_m <= radiusM);
   }
 
   // ---------------------------------------------------------------------------
