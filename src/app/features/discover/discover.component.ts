@@ -103,6 +103,18 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
               (click)="togglePet()"></button>
           </div>
         </div>
+        <div class="sidebar__section">
+          <p class="sidebar__label">{{ 'sidebar.time' | translate }}</p>
+          <div class="sidebar__segments">
+            @for (t of timeOptions; track t.value) {
+              <button class="sidebar__seg"
+                [class.sidebar__seg--active]="sidebarTime() === t.value"
+                (click)="setSidebarTime(t.value)">
+                {{ t.labelKey | translate }}
+              </button>
+            }
+          </div>
+        </div>
         <button class="ld-btn ld-btn--ghost" style="color: var(--ld-primary); font-size: 12px; margin-top: 8px"
           (click)="resetSidebar()">{{ 'sidebar.reset_all' | translate }}</button>
       </aside>
@@ -277,9 +289,10 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
         border-right: 1px solid var(--ld-border);
         padding: 16px;
         background: var(--ld-surface);
+        align-self: flex-start;
         position: sticky;
         top: 0;
-        height: calc(100vh - 52px);
+        max-height: calc(100vh - 52px);
         overflow-y: auto;
       }
       .discover__main { flex: 1; min-width: 0; }
@@ -711,6 +724,14 @@ export class DiscoverComponent implements OnInit {
   private interactions = inject(InteractionService);
 
   sidebarRadius = signal(5);
+  sidebarTime = signal('now');
+
+  timeOptions = [
+    { value: 'now', labelKey: 'context.now' },
+    { value: 'evening', labelKey: 'context.evening' },
+    { value: 'tomorrow', labelKey: 'context.tomorrow' },
+    { value: 'weekend', labelKey: 'context.weekend' },
+  ];
 
   companyOptions = [
     { value: 'solo', labelKey: 'company.solo', icon: 'user' },
@@ -744,6 +765,7 @@ export class DiscoverComponent implements OnInit {
     this.activePreset.set(null);
     this.activeTypeFilter.set('all');
     this.sidebarRadius.set(5);
+    this.sidebarTime.set('now');
     this.loadFeed();
   }
 
@@ -932,6 +954,11 @@ export class DiscoverComponent implements OnInit {
     }
   }
 
+  setSidebarTime(value: string) {
+    this.sidebarTime.set(value);
+    this.onContextChanged();
+  }
+
   async requestGps() {
     await this.geo.requestPosition();
   }
@@ -955,8 +982,9 @@ export class DiscoverComponent implements OnInit {
     const ctx = this.contextBar();
     const pos = this.geo.position();
     const defaultRadius = pos.source === 'default' ? 3000 : 5000;
-    const radiusM = ctx ? ctx.getRadiusM() : defaultRadius;
-    const timeWindow = ctx ? ctx.getTimeWindow() : this.defaultTimeWindow();
+    const isDesktop = window.innerWidth >= 1024;
+    const radiusM = isDesktop ? this.sidebarRadius() * 1000 : (ctx ? ctx.getRadiusM() : defaultRadius);
+    const timeWindow = isDesktop ? this.getTimeWindowForValue(this.sidebarTime()) : (ctx ? ctx.getTimeWindow() : this.defaultTimeWindow());
     const preset = this.activePreset();
     const f = this.currentFilters();
 
@@ -1078,5 +1106,42 @@ export class DiscoverComponent implements OnInit {
   private defaultTimeWindow() {
     const now = new Date();
     return { from: now.toISOString(), to: new Date(now.getTime() + 6 * 3600000).toISOString() };
+  }
+
+  private getTimeWindowForValue(value: string): { from: string; to: string } {
+    const now = new Date();
+
+    if (value === 'evening') {
+      const from = new Date(now);
+      if (now.getHours() < 18) from.setHours(18, 0, 0, 0);
+      const to = new Date(from);
+      to.setHours(23, 59, 59, 0);
+      if (to < now) { from.setDate(from.getDate() + 1); from.setHours(18, 0, 0, 0); to.setDate(to.getDate() + 1); }
+      return { from: from.toISOString(), to: to.toISOString() };
+    }
+
+    if (value === 'tomorrow') {
+      const from = new Date(now);
+      from.setDate(from.getDate() + 1);
+      from.setHours(8, 0, 0, 0);
+      const to = new Date(from);
+      to.setHours(23, 59, 59, 0);
+      return { from: from.toISOString(), to: to.toISOString() };
+    }
+
+    if (value === 'weekend') {
+      const dayOfWeek = now.getDay();
+      const from = new Date(now);
+      if (dayOfWeek === 6) from.setHours(Math.max(from.getHours(), 8), 0, 0, 0);
+      else if (dayOfWeek === 0) from.setHours(Math.max(from.getHours(), 8), 0, 0, 0);
+      else { from.setDate(from.getDate() + (6 - dayOfWeek)); from.setHours(8, 0, 0, 0); }
+      const to = new Date(from);
+      if (from.getDay() === 6) to.setDate(to.getDate() + 1);
+      to.setHours(23, 59, 59, 0);
+      return { from: from.toISOString(), to: to.toISOString() };
+    }
+
+    // 'now' — next 6 hours
+    return this.defaultTimeWindow();
   }
 }
