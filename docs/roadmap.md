@@ -49,35 +49,45 @@ Single source of truth for what we do, what we decide, and when.
 
 | # | Task | Effort | Blocks deploy? |
 |---|---|---|---|
-| 28 | **Domain** — buy lazigo.app, configure DNS | 30 min | Yes |
-| 29 | **Privacy policy page** — static /privacy route, what we collect, how, why | 1-2 hours | Yes (legal) |
-| 30 | **Consent banner** — opt-in for personalization tracking, localStorage flag | 1-2 hours | Yes (GDPR) |
-| 31 | **Analytics script** — Plausible or Umami (no consent needed for cookie-free) | 30 min | No but important |
-| 32 | **Webmaster verification** — Google Search Console + Yandex.Webmaster meta tags | 30 min | No but important |
-| 33 | ~~OG image~~ — 1200×630 branded (дремлющий пин) | ✅ done | |
-| 34 | **Deploy** — Cloudflare Pages (frontend) + Hetzner VPS (API + DB + Docker) | 2-3 hours | — |
+| 28 | ~~Domain — lazigo.app, Cloudflare DNS~~ | ✅ done | |
+| 29 | ~~Privacy policy — /privacy~~ | ✅ done | |
+| 30 | ~~Consent banner~~ | ✅ done | |
+| 31 | ~~Analytics — Yandex.Metrika + Google Search Console~~ | ✅ done | |
+| 32 | ~~Webmaster — Google + sitemap submitted~~ | ✅ done | |
+| 33 | ~~OG image — 1200×630 branded~~ | ✅ done | |
+| 34 | ~~Deploy — Cloudflare Pages + Railway (API + PostgreSQL)~~ | ✅ done | |
 
-### 🤔 DECIDE (before or at deploy)
+### ✅ DECIDED
 
-| Question | Options | Impact |
-|---|---|---|
-| **Domain name** | lazigo.app ($14/yr) · lazyday.ge (local) · lazyday.today (semantic) | All URLs, SSL, branding |
-| **Analytics tool** | Plausible (€9/mo cloud) · Umami (free self-hosted on VPS) | Cost vs simplicity |
-| **Consent scope** | Personalization only · All tracking · Split (analytics separate from behavioral) | GDPR compliance |
-| **API subdomain** | api.lazigo.app (clean) · lazigo.app/v1 (simpler, no CORS) | Architecture |
-| **SSR before deploy?** | No (MVP static) · Yes (detail pages for JSON-LD) | SEO vs speed to market |
+| Question | Decision |
+|---|---|
+| **Domain** | lazigo.app |
+| **Analytics** | Yandex.Metrika (free, webvisor, session replay) |
+| **API hosting** | Railway (lazy-day-production.up.railway.app) |
+| **Frontend hosting** | Cloudflare Pages (lazigo.app) |
+| **Database** | Railway PostgreSQL (no PostGIS — Haversine formula instead) |
+| **SSR** | No (MVP static) — week 1: OG middleware for shared links |
 
 ---
 
 ## Post-Deploy Checklist (verify on real device)
 
+**Deployed: July 10, 2026** — lazigo.app live
+
 | # | What | Status |
 |---|---|---|
-| 1 | Taxi deeplinks: Bolt (`bolt://ride`) + Yandex Go (`yandextaxi://route`) — test on phone with apps installed | pending |
-| 2 | Taxi fallback: verify behavior when app not installed (add App Store/Play Store redirect?) | pending |
-| 3 | GPS permission flow on mobile Safari + Chrome | pending |
-| 4 | PWA install prompt + splash screen | pending |
-| 5 | Night fallback (test at 23:00+ Tbilisi time) | pending |
+| 1 | Taxi deeplinks: Bolt + Yandex Go on phone with apps | pending |
+| 2 | GPS permission flow on mobile Safari + Chrome | pending |
+| 3 | PWA install prompt + splash screen | pending |
+| 4 | Night fallback (test at 23:00+ Tbilisi) | pending |
+| 5 | Share → Telegram/WhatsApp preview card | pending |
+| 6 | Onboarding flow end-to-end on phone | pending |
+| 7 | Theme switching (day/evening/dark) | pending |
+| 8 | Language switching (ru/en/ka) | pending |
+| 9 | "Decide for me" on phone | pending |
+| 10 | Google enrichment on prod (add SERPAPI_KEY to Railway) | pending |
+| 11 | Confirm Google Search Console verification | pending |
+| 12 | Yandex.Metrika receiving data | pending |
 
 ---
 
@@ -288,14 +298,28 @@ CREATE TABLE user_preference_aggregates (
 
 ---
 
+## Production Architecture
+
+```
+lazigo.app (Cloudflare Pages, free)
+  └── Angular 21 PWA, static files, CDN global
+
+lazy-day-production.up.railway.app (Railway, ~$5/mo)
+  ├── NestJS 11 API (Node.js)
+  └── PostgreSQL (Railway addon, no PostGIS — Haversine)
+
+Data: 3,164 venues + events (daily cron)
+Analytics: Yandex.Metrika (free) + interaction_events table
+```
+
 ## Cost Projection
 
-| Scale | VPS | SerpApi | Google | Analytics | Total/mo |
+| Scale | Railway | SerpApi | Google | Analytics | Total/mo |
 |---|---|---|---|---|---|
-| MVP (1 city) | $10 | $0 | $0 (done) | $0-9 | **$10-19** |
-| v1 (1 city, SSR) | $10 | $0 | $0 | $9 | **$19** |
-| 5 cities | $15 | $50 | ~$10 | $9 | **$84** |
-| 20 cities | $20 | $50 | ~$20 | $9 | **$99** |
+| **MVP (current)** | **$5** | $0 | $0 (done) | $0 | **$5** |
+| v1 (1 city, SSR) | $5 | $0 | $0 | $0 | **$5** |
+| 5 cities | $10 | $50 | ~$10 | $0 | **$70** |
+| 20 cities | $20 | $50 | ~$20 | $0 | **$90** |
 
 ---
 
