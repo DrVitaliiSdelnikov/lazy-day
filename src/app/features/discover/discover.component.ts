@@ -589,6 +589,7 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
       display: grid;
       grid-template-columns: 1fr;
       gap: 0;
+      overflow: hidden;
     }
 
     @media (min-width: 640px) {

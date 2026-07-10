@@ -212,6 +212,8 @@ import { InteractionService } from '../../core/services/interaction.service';
       font-size: 19px;
       font-weight: 700;
       margin: 0 0 3px;
+      word-break: break-word;
+      overflow-wrap: break-word;
     }
 
     .detail__meta {

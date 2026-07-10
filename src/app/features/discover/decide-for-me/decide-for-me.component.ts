@@ -155,6 +155,8 @@ import { SavedStore } from '../../../core/stores/saved.store';
       color: var(--ld-text);
       margin: 0 0 6px;
       line-height: 1.3;
+      word-break: break-word;
+      overflow-wrap: break-word;
     }
 
     .dfm__meta {

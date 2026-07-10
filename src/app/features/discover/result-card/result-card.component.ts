@@ -70,7 +70,7 @@ import { LdIconComponent } from '../../../core/components/ld-icon.component';
     </article>
   `,
   styles: `
-    :host { display: block; }
+    :host { display: block; overflow: hidden; max-width: 100%; }
 
     .card {
       cursor: pointer;
@@ -111,9 +111,12 @@ import { LdIconComponent } from '../../../core/components/ld-icon.component';
       font-weight: 700;
       line-height: 1.3;
       color: var(--ld-text);
+      margin: 0;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      min-width: 0;
+      flex: 1;
     }
 
     .card__hide-btn {
