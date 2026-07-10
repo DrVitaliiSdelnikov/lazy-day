@@ -397,6 +397,11 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
       padding-bottom: 80px;
     }
 
+    @media (min-width: 1024px) {
+      .discover { padding-bottom: 0; }
+      .discover__presets { display: none; }
+    }
+
     .discover__header {
       padding: 10px var(--ld-space-lg) 4px;
     }
