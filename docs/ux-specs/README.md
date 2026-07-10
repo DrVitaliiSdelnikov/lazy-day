@@ -32,6 +32,8 @@ implementation guide with scope, data model, component changes, and edge cases.
 | [UX-8 Stale-while-revalidate](ux-8-swr-entry.md) | pending | 3-4 hours |
 | [UX-4 phase 2](ux-4-hide-improvements.md) | pending | 2-3 hours |
 | [UX-1 phase 2](ux-1-progressive-onboarding.md) | pending | 3-4 hours |
+| [UX-22 Chain deprioritization](ux-22-chain-deprioritization.md) | ✅ done (basic) | 4-5 hours |
+| [UX-23 Session refinement](ux-23-session-refinement.md) | pending | 1-1.5 days |
 
 ## Polish (ongoing)
 

@@ -100,6 +100,7 @@ Single source of truth for what we do, what we decide, and when.
 | # | Task | Effort | Spec |
 |---|---|---|---|
 | 34 | ⚠️ **UX-20: Detail SSR preview** — dynamic OG tags for shared links (Cloudflare Worker or API middleware) | 3-4 hours | [spec](ux-specs/ux-20-detail-ssr-preview.md) |
+| 34b | **UX-23: Session refinement** — IntersectionObserver scroll tracking, sub-tag extraction from primaryTags, inline "Narrow it down" block at card 9, client-side filtering. No API change. | 1-1.5 days | [spec](ux-specs/ux-23-session-refinement.md) |
 **Killer features** (full analysis: [killer-features.md](research/killer-features.md))
 
 | # | Task | Effort | Spec |
