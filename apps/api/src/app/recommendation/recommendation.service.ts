@@ -95,6 +95,8 @@ interface CandidateRow {
   photos?: string[];
   website?: string;
   google_place_id?: string;
+  is_chain?: boolean;
+  chain_key?: string;
   // event-specific
   starts_at?: string;
   ends_at?: string;
@@ -381,6 +383,7 @@ export class RecommendationService {
         priceLabel: this.formatPrice(c),
         photoUrl: c.photos?.[0],
         googlePlaceId: c.google_place_id,
+        isChain: c.is_chain || false,
       };
     });
 
@@ -539,12 +542,19 @@ export class RecommendationService {
     const quality = Number(c.quality_score) || 0.5;
     const source = 0.6;
 
-    const score =
+    const CHAIN_SCORE_MULTIPLIER = 0.85;
+
+    let score =
       WEIGHTS.interestMatch * interestScore +
       WEIGHTS.distanceDecay * distance +
       WEIGHTS.timeFit * time +
       WEIGHTS.cardQuality * quality +
       WEIGHTS.sourceConfidence * source;
+
+    // Chain penalty: lower discovery value, applied on final score
+    if (c.is_chain && c.type === 'place') {
+      score *= CHAIN_SCORE_MULTIPLIER;
+    }
 
     return {
       ...c,
@@ -575,7 +585,8 @@ export class RecommendationService {
         )) AS distance_m,
         v.address, p.rating, p.rating_count, p.indoor, p.price_level,
         p.quality_score, p.status, p.attributes, p.google_types, p.google_rating,
-        p.google_rating_count, p.opening_hours, p.photos, v.website, v.google_place_id
+        p.google_rating_count, p.opening_hours, p.photos, v.website, v.google_place_id,
+        p.is_chain, p.chain_key
       FROM places p
       JOIN venues v ON p.venue_id = v.id
       WHERE p.status = 'active'

@@ -110,6 +110,10 @@ export class OsmImportService {
     // Detect closed/defunct venues from OSM tags
     const status = this.detectStatus(tags);
 
+    // Detect chain venues from OSM brand tags
+    const isChain = !!(tags['brand:wikidata'] || tags['brand']);
+    const chainKey = tags['brand']?.toLowerCase().replace(/[^a-z0-9]/g, '_') || undefined;
+
     const osmId = `${el.type}/${el.id}`;
     const contentHash = createHash('md5')
       .update(JSON.stringify({ name, lat, lon, tags }))
@@ -200,6 +204,8 @@ export class OsmImportService {
         existingPlace.tags = mapped.tags;
         existingPlace.indoor = mapped.indoor;
         existingPlace.status = status;
+        existingPlace.isChain = isChain;
+        if (chainKey) existingPlace.chainKey = chainKey;
         existingPlace.openingHours = tags['opening_hours']
           ? { raw: tags['opening_hours'] }
           : undefined;
@@ -213,6 +219,8 @@ export class OsmImportService {
           tags: mapped.tags,
           indoor: mapped.indoor,
           status,
+          isChain,
+          chainKey,
           openingHours: tags['opening_hours']
             ? { raw: tags['opening_hours'] }
             : undefined,

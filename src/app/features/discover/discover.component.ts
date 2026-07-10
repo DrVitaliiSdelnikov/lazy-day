@@ -795,16 +795,12 @@ export class DiscoverComponent implements OnInit {
   readonly undoableHide = signal<{ card: RecommendationCard; index: number; timer: ReturnType<typeof setTimeout> } | null>(null);
   readonly decideOpen = signal(false);
   readonly decideCards = computed(() => {
-    // Prefer non-chain cards with explanations — chains kill the magic of "decide for me"
-    const dominated = this.cards().filter(c =>
-      c.explanations?.length > 0 && !this.isChainVenue(c)
-    );
-    if (dominated.length >= 2) return dominated.slice(0, 4);
-    // Fallback: any non-chain
-    const nonChain = this.cards().filter(c => !this.isChainVenue(c));
+    const all = this.cards();
+    const ideal = all.filter(c => !c.isChain && (c.explanations?.length ?? 0) > 0);
+    if (ideal.length >= 2) return ideal.slice(0, 4);
+    const nonChain = all.filter(c => !c.isChain);
     if (nonChain.length >= 2) return nonChain.slice(0, 4);
-    // Last resort: anything
-    return this.cards().slice(0, 4);
+    return all.slice(0, 4); // at night, chain is better than nothing
   });
   readonly tuneBlockDismissed = signal(localStorage.getItem('ld_tune_interests') === 'done' || localStorage.getItem('ld_tune_interests') === 'dismissed');
   readonly showTuneBlock = computed(() =>
@@ -927,18 +923,6 @@ export class DiscoverComponent implements OnInit {
   onTuneDismissed() {
     localStorage.setItem('ld_tune_interests', 'dismissed');
     this.tuneBlockDismissed.set(true);
-  }
-
-  private readonly CHAIN_KEYWORDS = [
-    'mcdonald', 'kfc', 'burger king', 'wendy', 'subway', 'domino',
-    'papa john', 'dunkin', 'starbucks', 'costa coffee',
-    'wolt market', 'glovo', 'carrefour', 'spar', 'goodwill',
-    'bank of georgia', 'tbc bank', 'liberty bank',
-  ];
-
-  private isChainVenue(card: RecommendationCard): boolean {
-    const name = card.title?.toLowerCase() || '';
-    return this.CHAIN_KEYWORDS.some(chain => name.includes(chain));
   }
 
   openDecide() {

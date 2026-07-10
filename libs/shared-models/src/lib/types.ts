@@ -39,6 +39,7 @@ export interface RecommendationCard {
   primaryTags?: string[];
   secondaryTags?: string[];
   googlePlaceId?: string;
+  isChain?: boolean;
   source: string;
 }
 
