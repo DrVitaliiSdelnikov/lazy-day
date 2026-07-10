@@ -126,7 +126,7 @@ import { InteractionService } from '../../core/services/interaction.service';
             <ld-icon name="route" [size]="14" /> {{ 'detail.route' | translate }}
           </button>
           <button class="detail__taxi-btn" (click)="openYandexTaxi(c)" aria-label="Yandex Go">
-            <span class="detail__taxi-label">Такси</span>
+            <span class="detail__taxi-label">Yandex Go</span>
           </button>
           <button class="detail__icon-action" (click)="shareCard(c)" [attr.aria-label]="'detail.share' | translate">
             <ld-icon name="share-2" [size]="15" />
