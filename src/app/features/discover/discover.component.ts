@@ -795,8 +795,9 @@ export class DiscoverComponent implements OnInit {
   readonly undoableHide = signal<{ card: RecommendationCard; index: number; timer: ReturnType<typeof setTimeout> } | null>(null);
   readonly decideOpen = signal(false);
   readonly decideCards = computed(() => {
-    // Top cards that have rating + openStatus (guard rails for trust)
-    return this.cards().filter(c => c.rating && c.explanations?.length > 0).slice(0, 4);
+    // Top cards with explanations preferred, fallback to any cards
+    const withExplanations = this.cards().filter(c => c.explanations?.length > 0);
+    return (withExplanations.length >= 2 ? withExplanations : this.cards()).slice(0, 4);
   });
   readonly tuneBlockDismissed = signal(localStorage.getItem('ld_tune_interests') === 'done' || localStorage.getItem('ld_tune_interests') === 'dismissed');
   readonly showTuneBlock = computed(() =>
