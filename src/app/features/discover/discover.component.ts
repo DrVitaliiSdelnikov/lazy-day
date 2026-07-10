@@ -14,6 +14,7 @@ import { DetailComponent } from '../detail/detail.component';
 import { ContextBarComponent } from './context-bar/context-bar.component';
 import { FilterSheetComponent, FilterState } from './filter-sheet/filter-sheet.component';
 import { FeedLoaderComponent } from './feed-loader/feed-loader.component';
+import { FeedTuneBlockComponent } from './feed-tune-block/feed-tune-block.component';
 
 @Component({
   selector: 'app-discover',
@@ -26,6 +27,7 @@ import { FeedLoaderComponent } from './feed-loader/feed-loader.component';
     LdIconComponent,
     DetailComponent,
     FeedLoaderComponent,
+    FeedTuneBlockComponent,
   ],
   providers: [...apiProviders],
   template: `
@@ -169,7 +171,12 @@ import { FeedLoaderComponent } from './feed-loader/feed-loader.component';
       <!-- Card list -->
       @if (!loading() && cards().length > 0) {
         <section class="discover__results">
-          @for (card of cards(); track card.id) {
+          @for (card of cards(); track card.id; let i = $index) {
+            @if (i === 5 && showTuneBlock()) {
+              <app-feed-tune-block
+                (applied)="onTuneApplied($event)"
+                (dismissed)="onTuneDismissed()" />
+            }
             <app-result-card
               [card]="card"
               [isSaved]="savedStore.isSaved(card.id)"
@@ -177,6 +184,11 @@ import { FeedLoaderComponent } from './feed-loader/feed-loader.component';
               (toggleSave)="onToggleSave(card)"
               (hideCard)="onHideCard(card)"
             />
+          }
+          @if (cards().length < 6 && showTuneBlock()) {
+            <app-feed-tune-block
+              (applied)="onTuneApplied($event)"
+              (dismissed)="onTuneDismissed()" />
           }
         </section>
       }
@@ -219,6 +231,14 @@ import { FeedLoaderComponent } from './feed-loader/feed-loader.component';
         <button class="discover__modal-close" (click)="closeModal()" aria-label="Close">
           <ld-icon name="x" [size]="14" />
         </button>
+      </div>
+    }
+
+    <!-- Undo hide toast -->
+    @if (undoableHide()) {
+      <div class="discover__undo-toast">
+        <span>{{ 'hide.hidden' | translate }}</span>
+        <button class="discover__undo-btn" (click)="undoHide()">{{ 'hide.undo' | translate }}</button>
       </div>
     }
   `,
@@ -594,6 +614,44 @@ import { FeedLoaderComponent } from './feed-loader/feed-loader.component';
       color: var(--ld-primary);
     }
 
+    .discover__undo-toast {
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--ld-text);
+      color: var(--ld-bg);
+      padding: 12px 20px;
+      border-radius: 14px;
+      font-size: 13px;
+      z-index: 600;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+      animation: undo-in 200ms ease-out;
+    }
+
+    @media (min-width: 1024px) {
+      .discover__undo-toast { bottom: 32px; }
+    }
+
+    .discover__undo-btn {
+      background: none;
+      border: none;
+      color: var(--ld-primary);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    @keyframes undo-in {
+      from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+      to { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+
     .discover__empty {
       text-align: center;
       padding: var(--ld-space-xl);
@@ -702,6 +760,14 @@ export class DiscoverComponent implements OnInit {
   readonly feedMeta = signal<DiscoverMeta | undefined>(undefined);
   readonly forcedNow = signal(false);
   readonly activePreset = signal<string | null>(null);
+  readonly undoableHide = signal<{ card: RecommendationCard; index: number; timer: ReturnType<typeof setTimeout> } | null>(null);
+  readonly tuneBlockDismissed = signal(localStorage.getItem('ld_tune_interests') === 'done' || localStorage.getItem('ld_tune_interests') === 'dismissed');
+  readonly showTuneBlock = computed(() =>
+    !this.profileStore.hasInterests()
+    && !this.tuneBlockDismissed()
+    && !this.feedMeta()?.fallback
+    && this.cards().length >= 1
+  );
   private currentFilters = signal<FilterState | null>(null);
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -803,6 +869,19 @@ export class DiscoverComponent implements OnInit {
     // Debounce: user might tap multiple chips quickly
     if (this.debounceTimer) clearTimeout(this.debounceTimer);
     this.debounceTimer = setTimeout(() => this.loadFeed(), 300);
+  }
+
+  onTuneApplied(interests: Record<string, number>) {
+    this.profileStore.setInterests(interests);
+    localStorage.setItem('ld_tune_interests', 'done');
+    this.tuneBlockDismissed.set(true);
+    this.loadFeed();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  onTuneDismissed() {
+    localStorage.setItem('ld_tune_interests', 'dismissed');
+    this.tuneBlockDismissed.set(true);
   }
 
   async requestGps() {
@@ -914,8 +993,30 @@ export class DiscoverComponent implements OnInit {
   }
 
   onHideCard(card: RecommendationCard) {
+    // Clear previous undo timer
+    const prev = this.undoableHide();
+    if (prev) clearTimeout(prev.timer);
+
+    const index = this.allCards().findIndex(c => c.id === card.id);
     this.profileStore.addHidden(card.id);
     this.allCards.update((cards) => cards.filter((c) => c.id !== card.id));
+
+    const timer = setTimeout(() => this.undoableHide.set(null), 6000);
+    this.undoableHide.set({ card, index, timer });
+  }
+
+  undoHide() {
+    const u = this.undoableHide();
+    if (!u) return;
+    clearTimeout(u.timer);
+    this.profileStore.removeHidden(u.card.id);
+    this.allCards.update(cards => {
+      const copy = [...cards];
+      const pos = Math.min(u.index, copy.length);
+      copy.splice(pos, 0, u.card);
+      return copy;
+    });
+    this.undoableHide.set(null);
   }
 
   private defaultTimeWindow() {

@@ -19,6 +19,10 @@ import { LdIconComponent } from '../../../core/components/ld-icon.component';
           @if (card().type === 'event') {
             <ld-icon name="ticket" [size]="18" class="card__ticket-icon" />
           }
+          <button class="card__hide-btn" (click)="onHideClick($event)"
+            [attr.aria-label]="'detail.hide' | translate">
+            <ld-icon name="eye-off" [size]="15" />
+          </button>
           <button
             class="card__heart"
             [class.card__heart--saved]="isSaved()"
@@ -110,6 +114,26 @@ import { LdIconComponent } from '../../../core/components/ld-icon.component';
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+
+    .card__hide-btn {
+      display: none;
+      background: none;
+      border: none;
+      color: var(--ld-text-3);
+      cursor: pointer;
+      padding: 2px;
+      min-width: 32px;
+      min-height: 32px;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 150ms;
+    }
+
+    @media (min-width: 1024px) {
+      .card__hide-btn { display: flex; }
+      .card:hover .card__hide-btn { opacity: 1; }
     }
 
     .card__heart {
@@ -252,6 +276,11 @@ export class ResultCardComponent {
   onSaveClick(event: Event) {
     event.stopPropagation();
     this.toggleSave.emit();
+  }
+
+  onHideClick(event: Event) {
+    event.stopPropagation();
+    this.hideCard.emit();
   }
 
   onHide(reason: string) {

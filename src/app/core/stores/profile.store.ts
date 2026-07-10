@@ -114,6 +114,11 @@ export class ProfileStore {
     this.patch({ hiddenIds });
   }
 
+  removeHidden(id: string) {
+    const hiddenIds = this.state().hiddenIds.filter((h) => h !== id);
+    this.patch({ hiddenIds });
+  }
+
   toggleSaved(id: string) {
     const savedIds = this.state().savedIds.includes(id)
       ? this.state().savedIds.filter((s) => s !== id)

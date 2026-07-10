@@ -27,28 +27,35 @@ Single source of truth for what we do, what we decide, and when.
 
 | # | Task | Effort | Spec |
 |---|---|---|---|
-| 11 | **UX-2: Location without GPS** — city center default, location sheet, Google Maps URL parsing, preset chips | 1.5-2 days | [ux-2](ux-specs/ux-2-location-fallback.md) |
-| 12 | **UX-3: Night fallback** — tomorrow pipeline step 9, fallback banner, 24/7 boost, greeting override | 1 day | [ux-3](ux-specs/ux-3-night-fallback.md) |
-| 13 | **UX-16: Access model** — membership hard-filter (gyms out of feed), classification migration | 0.5-1 day | [ux-16](ux-specs/ux-16-access-model.md) |
-| 14 | **UX-1: Ghost-path tune-block** — interests tune-block at position 6 in feed, dismiss logic | 1 day | [ux-1](ux-specs/ux-1-progressive-onboarding.md) |
-| 15 | **UX-4: Hide undo toast** — 6s undo, desktop hover icon, detail "Скрыть" | 0.5 day | [ux-4](ux-specs/ux-4-hide-improvements.md) |
-| 16 | **UX-15: Route navigation** — Google Maps dir link, walking mode <2.5km, "На карте" | 1-2 hours | [ux-15](ux-specs/ux-15-route-navigation.md) |
-| 17 | **UX-13: Linear onboarding** — hide tab bar during welcome/onboarding | 1-2 hours | [ux-13](ux-specs/ux-13-linear-onboarding.md) |
-| 18 | **UX-6: Preset reset** — × on active mood chip | 15 min | [ux-6](ux-specs/ux-6-preset-reset.md) |
-| 19 | **UX-12: Theme-color meta** — status bar matches theme from first frame | 5 min | [ux-12](ux-specs/ux-12-theme-color.md) |
+| 11 | ~~UX-3: Night fallback~~ | ✅ done | |
+| 12 | ~~UX-16: Gym category~~ | ✅ done | |
+| 13 | ~~UX-1: Ghost-path tune-block~~ | ✅ done | |
+| 14 | ~~UX-4: Hide undo toast~~ | ✅ done | |
+| 15 | ~~UX-15: Route navigation + taxi~~ | ✅ done | |
+| 16 | ~~UX-13: Linear onboarding~~ | ✅ done | |
+| 17 | ~~UX-6: Preset reset ×~~ | ✅ done | |
+| 18 | ~~UX-12: Theme-color meta~~ | ✅ done | |
+| 19 | ~~i18n: Full ru/en/ka~~ | ✅ done | |
+| 20 | ~~Theme switching fix~~ | ✅ done | |
+| 21 | ~~Location: GPS auto-init + default center~~ | ✅ done | |
+| 22 | ⚠️ **UX-17: Share** — navigator.share + clipboard fallback. Distribution channel, not a feature | 2-3 hours | [spec](ux-specs/ux-17-share.md) |
+| 23 | ⚠️ **UX-18: Interaction tracking** — migration 013, beacon API, event buffer. Without it no kill/scale data | 2 hours | [spec](ux-specs/ux-18-interaction-tracking.md) |
+| 24 | ⚠️ **UX-19: Event source monitoring** — Telegram alert if 0 events from source in 48h | 1-2 hours | [spec](ux-specs/ux-19-event-monitoring.md) |
+| 25 | ⭐ **K1: "Decide for me"** — full-screen top-1 card, Route/Another/Share. Killer feature MVP | 1-2 days | [spec](research/killer-features.md) |
+| 26 | ~~OG fix — LaziGo title + og-image.png~~ | ✅ done | |
+| 27 | **UX-2: Location sheet** — full location picker (presets, Google Maps URL parsing) | 1.5-2 days | [spec](ux-specs/ux-2-location-fallback.md) |
 
 **Infrastructure**
 
 | # | Task | Effort | Blocks deploy? |
 |---|---|---|---|
-| 20 | **Domain** — buy lazigo.app, configure DNS | 30 min | Yes |
-| 21 | **Privacy policy page** — static /privacy route, what we collect, how, why | 1-2 hours | Yes (legal) |
-| 22 | **Consent banner** — opt-in for personalization tracking, localStorage flag | 1-2 hours | Yes (GDPR) |
-| 23 | **Interaction schema migration** — interaction_events + venue_interaction_stats + user_preference_aggregates | 2 hours | Should (foundation) |
-| 24 | **Analytics script** — Plausible or Umami (no consent needed for cookie-free) | 30 min | No but important |
-| 25 | **Webmaster verification** — Google Search Console + Yandex.Webmaster meta tags | 30 min | No but important |
-| 26 | **OG image** — 1200×630 branded image for social sharing preview | 1 hour | No but visible |
-| 27 | **Deploy** — Cloudflare Pages (frontend) + Hetzner VPS (API + DB + Docker) | 2-3 hours | — |
+| 28 | **Domain** — buy lazigo.app, configure DNS | 30 min | Yes |
+| 29 | **Privacy policy page** — static /privacy route, what we collect, how, why | 1-2 hours | Yes (legal) |
+| 30 | **Consent banner** — opt-in for personalization tracking, localStorage flag | 1-2 hours | Yes (GDPR) |
+| 31 | **Analytics script** — Plausible or Umami (no consent needed for cookie-free) | 30 min | No but important |
+| 32 | **Webmaster verification** — Google Search Console + Yandex.Webmaster meta tags | 30 min | No but important |
+| 33 | ~~OG image~~ — 1200×630 branded (дремлющий пин) | ✅ done | |
+| 34 | **Deploy** — Cloudflare Pages (frontend) + Hetzner VPS (API + DB + Docker) | 2-3 hours | — |
 
 ### 🤔 DECIDE (before or at deploy)
 
@@ -82,24 +89,43 @@ Single source of truth for what we do, what we decide, and when.
 
 | # | Task | Effort | Spec |
 |---|---|---|---|
-| 28 | **UX-14: Feedback + Telegram** — bottom sheet, 4 categories, telegram forwarding | 0.5-1 day | [ux-14](ux-specs/ux-14-feedback.md) |
-| 29 | **UX-5: Daily rotation** — date-seeded tie-breaker, new event boost | 2-3 hours | [ux-5](ux-specs/ux-5-daily-rotation.md) |
-| 30 | **UX-7: Scroll restore** — cache feed + scroll position on detail navigation | 3-4 hours | [ux-7](ux-specs/ux-7-scroll-restore.md) |
-| 31 | **UX-8: Stale-while-revalidate** — instant cached feed + silent background refresh | 3-4 hours | [ux-8](ux-specs/ux-8-swr-entry.md) |
-| 32 | **UX-4 phase 2** — reason chips in undo toast + interaction API | 2-3 hours | [ux-4](ux-specs/ux-4-hide-improvements.md) |
-| 33 | **UX-1 phase 2** — session cooldown + company tune-block | 3-4 hours | [ux-1](ux-specs/ux-1-progressive-onboarding.md) |
+| 34 | ⚠️ **UX-20: Detail SSR preview** — dynamic OG tags for shared links (Cloudflare Worker or API middleware) | 3-4 hours | [spec](ux-specs/ux-20-detail-ssr-preview.md) |
+**Killer features** (full analysis: [killer-features.md](research/killer-features.md))
+
+| # | Task | Effort | Spec |
+|---|---|---|---|
+| 35 | ⭐ **K7: Evening digest bot** — Telegram bot, 17:30 Fri: "Tonight for you: X, Y, Z". Same pipeline on cron | 1 day | [spec](research/killer-features.md) |
+| 36 | ⭐ **K2-lite: "Decide together"** — share link with top-10, both heart, first overlap = match. No real-time sync | 1-2 days | [spec](research/killer-features.md) |
+
+**UX week 1** (full specs: `docs/ux-specs/`)
+
+| # | Task | Effort | Spec |
+|---|---|---|---|
+| 37 | ⚠️ **UX-20: Detail SSR preview** — dynamic OG tags for shared links (Cloudflare Worker or API middleware) | 3-4 hours | [spec](ux-specs/ux-20-detail-ssr-preview.md) |
+| 38 | **UX-21: Tourist vs Local** — one onboarding question, scoring modifier | 1-2 hours | [spec](ux-specs/ux-21-tourist-signal.md) |
+| 39 | **UX-14: Feedback + Telegram** — bottom sheet, 4 categories, telegram forwarding | 0.5-1 day | [spec](ux-specs/ux-14-feedback.md) |
+| 40 | **UX-5: Daily rotation** — date-seeded tie-breaker, new event boost | 2-3 hours | [spec](ux-specs/ux-5-daily-rotation.md) |
+| 41 | **UX-7: Scroll restore** — cache feed + scroll position on detail navigation | 3-4 hours | [spec](ux-specs/ux-7-scroll-restore.md) |
+| 42 | **UX-8: Stale-while-revalidate** — instant cached feed + silent background refresh | 3-4 hours | [spec](ux-specs/ux-8-swr-entry.md) |
+| 43 | **UX-4 phase 2** — reason chips in undo toast + interaction API | 2-3 hours | [spec](ux-specs/ux-4-hide-improvements.md) |
+| 44 | **UX-1 phase 2** — session cooldown + company tune-block | 3-4 hours | [spec](ux-specs/ux-1-progressive-onboarding.md) |
+
+**Killer features month 2**
+
+| # | Task | Effort | Spec |
+|---|---|---|---|
+| 45 | ⭐ **K4: Telegram Mini App** — PWA inside Telegram, K2 links native. Only if K7 bot shows engagement | 2-3 days | [spec](research/killer-features.md) |
 
 **Infrastructure**
 
 | # | Task | Effort | Impact |
 |---|---|---|---|
-| 34 | **Share button** — native share on cards + detail page | 2 hours | Virality (word of mouth) |
-| 35 | **Behavioral tracking verify** — clicks, saves, hides going to interaction_events | 1 hour | Data foundation |
-| 36 | **Dwell time tracking** — timer on detail page → interaction | 1 hour | Signal quality |
-| 37 | **Google Search Console** — submit sitemap, monitor indexing | 30 min | SEO visibility |
-| 38 | **Yandex.Metrica** (with consent) — session replay for UX insights | 1 hour | UX debugging |
-| 39 | **Error monitoring** — Sentry free tier or LogRocket | 1 hour | Stability |
-| 40 | **Uptime monitoring** — UptimeRobot free | 15 min | Reliability |
+| 46 | **Behavioral tracking verify** — clicks, saves, hides going to interaction_events | 1 hour | Data foundation |
+| 47 | **Dwell time tracking** — timer on detail page → interaction | 1 hour | Signal quality |
+| 48 | **Google Search Console** — submit sitemap, monitor indexing | 30 min | SEO visibility |
+| 49 | **Yandex.Metrica** (with consent) — session replay for UX insights | 1 hour | UX debugging |
+| 50 | **Error monitoring** — Sentry free tier or LogRocket | 1 hour | Stability |
+| 51 | **Uptime monitoring** — UptimeRobot free | 15 min | Reliability |
 
 **Polish** (ongoing)
 
@@ -122,10 +148,23 @@ Single source of truth for what we do, what we decide, and when.
 |---|---|---|
 | Daily active users | 50+ | Analytics |
 | Cards CTR (click / impression) | >5% | interaction_events |
+| **Top-3 CTR** | **≥ 25%** | interaction_events (card_position 0-2) |
+| **Route rate** (route / card_click) | **≥ 15%** | interaction_events |
 | Save rate | >3% of impressions | interaction_events |
 | Hide rate | <10% (high = bad recs) | interaction_events |
-| Day 1 return rate | >15% | Analytics |
+| D1 return rate | >15% | Analytics |
+| **D7 return rate** | **≥ 10%** | Analytics |
 | Pages indexed by Google | >1 | Search Console |
+| Share rate | baseline TBD | interaction_events |
+
+### 🎯 KILL / SCALE CRITERIA (evaluate at deploy + 2 months)
+
+| Signal | Threshold | Decision |
+|---|---|---|
+| D7 return ≥ 10% AND top-3 CTR ≥ 25% | Both met | **Scale**: invest in v1 features |
+| D7 return ≥ 10% BUT top-3 CTR < 25% | Retention ok, relevance weak | **Iterate**: improve scoring, add tourist mode |
+| D7 return < 10% AND top-3 CTR ≥ 25% | Good recs but no habit | **Pivot**: double down on evening anchor, push notifications |
+| D7 return < 10% AND top-3 CTR < 25% | Neither works | **Freeze**: preserve as portfolio piece, stop investment |
 
 ---
 
@@ -135,15 +174,17 @@ Single source of truth for what we do, what we decide, and when.
 
 | # | Task | Effort | Impact |
 |---|---|---|---|
-| 26 | **SSR for detail pages** — event JSON-LD + venue LocalBusiness for Google rich results | 2-3 days | SEO (event carousel) |
-| 27 | **"Been here" button** — visited mark, count on card | 1 day | Proprietary data |
-| 28 | **Collections** — create, save to, share via URL with OG preview | 3-4 days | Virality |
-| 29 | **Search/autocomplete** — find venues/events by name | 2-3 days | Usability |
-| 30 | **user_preference_aggregates** — nightly job from interaction_events | 1 day | Re-ranking foundation |
-| 31 | **Shadow A/B test** — score with behavioral vs without, compare CTR | 2 days | Validation |
-| 32 | **Content pages** — "Weekend in Tbilisi", "Top parks" auto-generated from data | 2-3 days | SEO organic traffic |
-| 33 | **Dynamic sitemap** — server-generated from events + venue categories | 1 day | SEO coverage |
-| 34 | **TKT.ge parser** (Puppeteer) — only if Google Events gap >30% | 3-4 days | Event depth |
+| 26 | ⚠️ **Data dedup & cross-verification** — formalize OSM↔Google matcher (scoring, zones, match_features), validate current 1,755 merges, LLM gray-zone arbiter. Foundation for Yandex/Apple. [Full spec](research/data-dedup-cross-verification.md) | 3-5 days | Data quality (critical) |
+| 27 | ⚠️ **Yandex Organizations adapter** — fetch by bbox tiles, blocking→scoring→zones pipeline, closure cross-verification (2-provider voting). Depends on #26. | 2-3 days | Closure detection, coverage |
+| 28 | **SSR for detail pages** — event JSON-LD + venue LocalBusiness for Google rich results | 2-3 days | SEO (event carousel) |
+| 29 | **"Been here" button** — visited mark, count on card | 1 day | Proprietary data |
+| 30 | **Collections** — create, save to, share via URL with OG preview | 3-4 days | Virality |
+| 31 | **Search/autocomplete** — find venues/events by name | 2-3 days | Usability |
+| 32 | **user_preference_aggregates** — nightly job from interaction_events | 1 day | Re-ranking foundation |
+| 33 | **Shadow A/B test** — score with behavioral vs without, compare CTR | 2 days | Validation |
+| 34 | **Content pages** — "Weekend in Tbilisi", "Top parks" auto-generated from data | 2-3 days | SEO organic traffic |
+| 35 | **Dynamic sitemap** — server-generated from events + venue categories | 1 day | SEO coverage |
+| 36 | **TKT.ge parser** (Puppeteer) — only if Google Events gap >30% | 3-4 days | Event depth |
 
 ### 🤔 DECIDE
 
@@ -163,15 +204,14 @@ Single source of truth for what we do, what we decide, and when.
 
 | # | Task | Impact |
 |---|---|---|
-| 35 | **Behavioral re-ranking** — from accumulated user_preference_aggregates | High |
-| 36 | **Gamification** — exploration badges, streaks, neighborhood progress | Medium |
-| 37 | **Journey planner** — "coffee → park → dinner" multi-stop | High perceived value |
-| 38 | **Weather-aware** — OpenWeatherMap → "rainy → indoor places boosted" | Medium |
-| 39 | **Push notifications** — "3 events by your interests tonight" | Re-engagement |
-| 40 | **City expansion** — Batumi, Kutaisi via CityConfig (no new code for Tier 1) | Scale |
-| 41 | **Local curator network** — trusted locals create curated collections | Deep moat |
-| 42 | **Micro-tips + moderation** — 140 chars, profanity filter, report button | Community content |
-| 43 | **Photo upload** — one photo per tip, moderation queue | Rich content |
+| 52 | ⭐ **K5: Locals' choice badge** — behavioral signal: places saved by ≥5-session users → badge | Data moat |
+| 53 | ⭐ **K3: Lazy Evening (journey)** — "coffee → park → dinner" auto-composed with dwell-time data | High perceived value |
+| 54 | ⭐ **K2-full: Real-time match** — upgrade K2-lite to swipe + SSE sync (if K2-lite metrics pass) | Virality |
+| 55 | **Behavioral re-ranking** — from accumulated user_preference_aggregates | High |
+| 56 | **Weather-aware** — OpenWeatherMap → "rainy → indoor places boosted" | Medium |
+| 57 | **City expansion** — Batumi, Kutaisi via CityConfig (no new code for Tier 1) | Scale |
+| 58 | **Local curator network** — trusted locals create curated collections | Deep moat |
+| 59 | **Micro-tips + moderation** — 140 chars, profanity filter, report button | Community content |
 
 ### 🤔 DECIDE (later)
 
@@ -187,11 +227,14 @@ Single source of truth for what we do, what we decide, and when.
 ## Competitive Moat Timeline
 
 ```
-Now (pre-deploy):  Intelligence advantage (scoring, explanations, context)
-Month 1-3:         Behavioral data (save/hide/click from real users)
-Month 3-6:         Community data (tips, collections, badges — network effect)
-Month 6-12:        Re-ranking + gamification + curator network
-Month 12+:         Multi-city + sustainable moat
+MVP:       "Decide for me" — one-tap answer (K1), share as distribution
+Month 1:   Behavioral data + evening digest bot (K7) → retention
+Month 2:   "Decide together" (K2-lite) → viral loop, Telegram Mini App (K4)
+Month 3-6: Locals' choice (K5) + cross-verified closures → trust moat
+Month 6-12: Lazy Evening (K3) + re-ranking + city expansion
+Month 12+: Multi-city + curator network = sustainable moat
+
+Product narrative: decide → match → assemble
 ```
 
 ---

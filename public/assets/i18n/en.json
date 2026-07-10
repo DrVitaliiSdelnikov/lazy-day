@@ -161,7 +161,15 @@
     "city_sleeps": "The city is asleep. Nearest options — tomorrow",
     "show_tomorrow": "Show tomorrow"
   },
+  "tune": {
+    "title": "Your feed will get smarter",
+    "subtitle": "Pick 2–3 interests — we'll rebuild instantly",
+    "apply": "Show",
+    "dismiss": "Later"
+  },
   "hide": {
+    "hidden": "Hidden",
+    "undo": "Undo",
     "far": "Too far",
     "not_mine": "Not for me",
     "been": "Been there"
