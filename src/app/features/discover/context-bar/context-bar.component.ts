@@ -55,18 +55,6 @@ type PanelType = 'location' | 'company' | 'interests' | 'time' | null;
             </button>
           </div>
           <div class="panel-section">
-            <label class="panel-label">{{ 'context.coords_label' | translate }}</label>
-            <div class="panel-coords-row">
-              <input class="panel-coords-input"
-                placeholder="41°41'39.0&quot;N 45°00'33.9&quot;E  или  41.694, 45.009"
-                #coordsInput />
-              <button class="panel-coords-btn" (click)="applyCoords(coordsInput.value)">OK</button>
-            </div>
-            @if (coordsError()) {
-              <span class="panel-coords-error">{{ coordsError() }}</span>
-            }
-          </div>
-          <div class="panel-section">
             <label class="panel-label">{{ radiusLabel() }}</label>
             <input type="range" class="ld-slider"
               [ngModel]="radiusKm()" (ngModelChange)="onRadiusChange($event)"

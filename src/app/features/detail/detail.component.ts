@@ -1,4 +1,4 @@
-import { Component, inject, input, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, input, OnInit, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { ApiService } from '../../core/services/api.service';
@@ -7,6 +7,7 @@ import { apiProviders } from '../../core/providers';
 import { RecommendationCard } from '../../core/models';
 import { LdIconComponent } from '../../core/components/ld-icon.component';
 import { InteractionService } from '../../core/services/interaction.service';
+import { GeolocationService } from '../../core/services/geolocation.service';
 
 @Component({
   selector: 'app-detail',
@@ -122,10 +123,12 @@ import { InteractionService } from '../../core/services/interaction.service';
 
         <!-- Actions -->
         <div class="detail__actions">
-          <button class="ld-btn ld-btn--primary detail__action-main" (click)="openRoute(c)">
+          <button class="ld-btn ld-btn--primary detail__action-main" (click)="openRoute(c)"
+            [disabled]="!hasGps()">
             <ld-icon name="route" [size]="14" /> {{ 'detail.route' | translate }}
           </button>
-          <button class="detail__taxi-btn" (click)="openYandexTaxi(c)" aria-label="Yandex Go">
+          <button class="detail__taxi-btn" (click)="openYandexTaxi(c)" aria-label="Yandex Go"
+            [disabled]="!hasGps()">
             <span class="detail__taxi-label">Yandex Go</span>
           </button>
           <button class="detail__icon-action" (click)="shareCard(c)" [attr.aria-label]="'detail.share' | translate">
@@ -135,6 +138,11 @@ import { InteractionService } from '../../core/services/interaction.service';
             <ld-icon name="eye-off" [size]="15" />
           </button>
         </div>
+        @if (!hasGps()) {
+          <p class="detail__geo-hint">
+            <ld-icon name="map-pin" [size]="12" /> {{ 'location.enable_gps' | translate }}
+          </p>
+        }
       </div>
 
       <!-- Event: sticky ticket CTA -->
@@ -326,6 +334,15 @@ import { InteractionService } from '../../core/services/interaction.service';
       flex: 1;
     }
 
+    .detail__geo-hint {
+      font-size: 11px;
+      color: var(--ld-text-3);
+      margin: 8px 0 0;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
     .detail__taxi-btn {
       height: 48px;
       padding: 0 12px;
@@ -420,6 +437,8 @@ export class DetailComponent implements OnInit {
   private router = inject(Router);
   private translate = inject(TranslateService);
   private interactions = inject(InteractionService);
+  readonly geo = inject(GeolocationService);
+  readonly hasGps = computed(() => this.geo.position().source === 'gps');
 
   card = signal<RecommendationCard | null>(null);
   isSaved = signal(false);

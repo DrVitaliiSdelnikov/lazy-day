@@ -188,7 +188,8 @@
     "my_location": "My location",
     "center": "Tbilisi center",
     "detect": "Detect",
-    "show_on_map": "Show on map"
+    "show_on_map": "Show on map",
+    "enable_gps": "Enable location for route and taxi"
   },
   "sidebar": {
     "location": "Location",

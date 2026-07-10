@@ -97,16 +97,9 @@ import { LdIconComponent } from '../../../core/components/ld-icon.component';
           {{ (geoLoading() ? 'onboarding.locating' : 'onboarding.use_location') | translate }}
         </button>
 
-        <p class="ob__or">{{ 'onboarding.or' | translate }}</p>
-
-        <div class="ob__coords-row">
-          <input class="ld-input" placeholder="41.694, 45.009" #coordsInput />
-          <button class="ld-btn ld-btn--secondary" style="min-width: 50px"
-            (click)="applyCoords(coordsInput.value)">OK</button>
-        </div>
-        @if (coordsError()) {
-          <p class="ob__error">{{ coordsError() }}</p>
-        }
+        <button class="ld-btn ld-btn--ghost ob__skip" (click)="skip()">
+          {{ 'onboarding.skip' | translate }}
+        </button>
       }
     </div>
   `,

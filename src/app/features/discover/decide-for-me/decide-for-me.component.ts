@@ -3,6 +3,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { RecommendationCard } from '../../../core/models';
 import { LdIconComponent } from '../../../core/components/ld-icon.component';
 import { InteractionService } from '../../../core/services/interaction.service';
+import { GeolocationService } from '../../../core/services/geolocation.service';
 import { SavedStore } from '../../../core/stores/saved.store';
 
 @Component({
@@ -52,7 +53,7 @@ import { SavedStore } from '../../../core/stores/saved.store';
 
           <!-- Actions -->
           <div class="dfm__actions">
-            <button class="ld-btn ld-btn--primary dfm__route" (click)="onRoute()">
+            <button class="ld-btn ld-btn--primary dfm__route" (click)="onRoute()" [disabled]="!hasGps()">
               <ld-icon name="route" [size]="14" /> {{ 'detail.route' | translate }}
             </button>
             <button class="dfm__icon-btn" (click)="onShare()" [attr.aria-label]="'detail.share' | translate">
@@ -237,6 +238,8 @@ export class DecideForMeComponent {
 
   private savedStore = inject(SavedStore);
   private interactions = inject(InteractionService);
+  private geo = inject(GeolocationService);
+  readonly hasGps = computed(() => this.geo.position().source === 'gps');
 
   readonly attempt = signal(0);
   readonly maxAttempts = 3;
