@@ -93,7 +93,7 @@ import { Component } from '@angular/core';
     .privacy__back {
       background: none;
       border: none;
-      color: var(--ld-text-secondary);
+      color: var(--ld-text-2);
       cursor: pointer;
       padding: 8px 0;
       font-size: 14px;
@@ -101,7 +101,7 @@ import { Component } from '@angular/core';
     }
 
     .privacy__updated {
-      color: var(--ld-text-secondary);
+      color: var(--ld-text-2);
       font-size: 13px;
       margin-bottom: var(--ld-space-xl);
     }
