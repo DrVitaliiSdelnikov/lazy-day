@@ -6,6 +6,7 @@ import { ProfileStore } from '../../core/stores/profile.store';
 import { apiProviders } from '../../core/providers';
 import { RecommendationCard } from '../../core/models';
 import { LdIconComponent } from '../../core/components/ld-icon.component';
+import { InteractionService } from '../../core/services/interaction.service';
 
 @Component({
   selector: 'app-detail',
@@ -23,7 +24,7 @@ import { LdIconComponent } from '../../core/components/ld-icon.component';
               <ld-icon name="arrow-left" [size]="16" />
             </button>
             <div class="detail__header-actions">
-              <button class="detail__icon-btn" [attr.aria-label]="'detail.share' | translate">
+              <button class="detail__icon-btn" (click)="shareCard(c)" [attr.aria-label]="'detail.share' | translate">
                 <ld-icon name="share-2" [size]="15" />
               </button>
               <button class="detail__icon-btn" [class.detail__icon-btn--heart]="isSaved()"
@@ -130,7 +131,7 @@ import { LdIconComponent } from '../../core/components/ld-icon.component';
           <button class="detail__taxi-btn" (click)="openBolt(c)" aria-label="Bolt">
             <span class="detail__taxi-label">Bolt</span>
           </button>
-          <button class="detail__icon-action" [attr.aria-label]="'detail.share' | translate">
+          <button class="detail__icon-action" (click)="shareCard(c)" [attr.aria-label]="'detail.share' | translate">
             <ld-icon name="share-2" [size]="15" />
           </button>
           <button class="detail__icon-action detail__icon-action--danger" [attr.aria-label]="'detail.hide' | translate">
@@ -150,6 +151,10 @@ import { LdIconComponent } from '../../core/components/ld-icon.component';
         </div>
       }
     </div>
+
+    @if (shareToast()) {
+      <div class="detail__share-toast">{{ 'share.copied' | translate }}</div>
+    }
     }
   `,
   styles: `
@@ -381,6 +386,29 @@ import { LdIconComponent } from '../../core/components/ld-icon.component';
       .detail__body { padding-bottom: 24px; }
       .detail__sticky-cta { position: static; border: none; padding: 0 16px 16px; }
     }
+
+    .detail__share-toast {
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--ld-text);
+      color: var(--ld-bg);
+      padding: 10px 20px;
+      border-radius: 12px;
+      font-size: 13px;
+      z-index: 600;
+      animation: share-toast-in 200ms ease-out;
+    }
+
+    @media (min-width: 1024px) {
+      .detail__share-toast { bottom: 32px; }
+    }
+
+    @keyframes share-toast-in {
+      from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+      to { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
   `,
 })
 export class DetailComponent implements OnInit {
@@ -392,9 +420,11 @@ export class DetailComponent implements OnInit {
   private profileStore = inject(ProfileStore);
   private router = inject(Router);
   private translate = inject(TranslateService);
+  private interactions = inject(InteractionService);
 
   card = signal<RecommendationCard | null>(null);
   isSaved = signal(false);
+  shareToast = signal(false);
 
   ngOnInit() {
     this.api.getCard(this.type(), this.id()).subscribe((c) => {
@@ -483,7 +513,26 @@ export class DetailComponent implements OnInit {
     return `${h} ${h === 1 ? 'час' : h < 5 ? 'часа' : 'часов'}`;
   }
 
+  async shareCard(c: RecommendationCard) {
+    this.interactions.trackShare(c.type, c.id);
+    const url = `https://lazigo.app/detail/${c.type}/${c.id}`;
+    const text = `${c.title} — ${c.categoryLabel || c.category}`;
+
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'LaziGo', text, url });
+      } else {
+        await navigator.clipboard.writeText(`${text}\n${url}`);
+        this.shareToast.set(true);
+        setTimeout(() => this.shareToast.set(false), 2500);
+      }
+    } catch {
+      // User cancelled share dialog — ignore
+    }
+  }
+
   openRoute(c: RecommendationCard) {
+    this.interactions.trackRoute(c.type, c.id);
     let url = `https://www.google.com/maps/dir/?api=1&destination=${c.lat},${c.lng}`;
     if (c.googlePlaceId) url += `&destination_place_id=${c.googlePlaceId}`;
     if (c.distanceM && c.distanceM < 2500) url += '&travelmode=walking';
@@ -497,10 +546,12 @@ export class DetailComponent implements OnInit {
   }
 
   openYandexTaxi(c: RecommendationCard) {
+    this.interactions.trackTaxi(c.type, c.id, 'yandex');
     window.location.href = `yandextaxi://route?end-lat=${c.lat}&end-lon=${c.lng}`;
   }
 
   openBolt(c: RecommendationCard) {
+    this.interactions.trackTaxi(c.type, c.id, 'bolt');
     window.location.href = `bolt://ride?destination_lat=${c.lat}&destination_lng=${c.lng}`;
   }
 

@@ -1,0 +1,96 @@
+import { Injectable, isDevMode } from '@angular/core';
+
+export interface TrackEvent {
+  eventType: string;
+  targetType: string;
+  targetId?: string;
+  cardPosition?: number;
+  context?: Record<string, unknown>;
+}
+
+@Injectable({ providedIn: 'root' })
+export class InteractionService {
+  private buffer: TrackEvent[] = [];
+  private readonly sessionId = crypto.randomUUID();
+  private readonly deviceId = this.getOrCreateDeviceId();
+  private flushTimer: ReturnType<typeof setInterval>;
+
+  constructor() {
+    // Flush on page hide (mobile: tab switch, app background)
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') this.flush();
+    });
+    // Periodic flush every 30s
+    this.flushTimer = setInterval(() => this.flush(), 30000);
+  }
+
+  track(event: TrackEvent) {
+    this.buffer.push(event);
+    if (this.buffer.length >= 10) this.flush();
+  }
+
+  /** Track card impression (debounced — only if visible >500ms) */
+  trackImpression(targetType: string, targetId: string, cardPosition: number) {
+    this.track({ eventType: 'impression', targetType, targetId, cardPosition });
+  }
+
+  trackClick(targetType: string, targetId: string, cardPosition: number) {
+    this.track({ eventType: 'card_click', targetType, targetId, cardPosition });
+  }
+
+  trackRoute(targetType: string, targetId: string) {
+    this.track({ eventType: 'route', targetType, targetId });
+  }
+
+  trackShare(targetType: string, targetId: string) {
+    this.track({ eventType: 'share', targetType, targetId });
+  }
+
+  trackSave(targetType: string, targetId: string) {
+    this.track({ eventType: 'save', targetType, targetId });
+  }
+
+  trackHide(targetType: string, targetId: string, reason?: string) {
+    this.track({ eventType: 'hide', targetType, targetId, context: reason ? { reason } : undefined });
+  }
+
+  trackTaxi(targetType: string, targetId: string, provider: string) {
+    this.track({ eventType: 'taxi', targetType, targetId, context: { provider } });
+  }
+
+  private flush() {
+    if (!this.buffer.length) return;
+    const events = [...this.buffer];
+    this.buffer = [];
+
+    const body = JSON.stringify({ sessionId: this.sessionId, events });
+
+    if (isDevMode()) {
+      console.log(`[Track] Flushing ${events.length} events`, events.map(e => e.eventType));
+    }
+
+    // sendBeacon is fire-and-forget, works even when page is closing
+    const url = '/v1/interactions/batch';
+    const sent = navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }));
+
+    if (!sent) {
+      // Fallback: fetch with keepalive
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-device-id': this.deviceId },
+        body,
+        keepalive: true,
+      }).catch(() => {});
+    }
+  }
+
+  private getOrCreateDeviceId(): string {
+    const key = 'ld_device_id';
+    let id = localStorage.getItem(key);
+    if (!id) {
+      id = crypto.randomUUID();
+      localStorage.setItem(key, id);
+    }
+    return id;
+  }
+}

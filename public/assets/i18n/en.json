@@ -161,6 +161,9 @@
     "city_sleeps": "The city is asleep. Nearest options — tomorrow",
     "show_tomorrow": "Show tomorrow"
   },
+  "share": {
+    "copied": "Link copied"
+  },
   "tune": {
     "title": "Your feed will get smarter",
     "subtitle": "Pick 2–3 interests — we'll rebuild instantly",

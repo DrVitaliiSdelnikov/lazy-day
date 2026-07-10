@@ -15,6 +15,7 @@ import { ContextBarComponent } from './context-bar/context-bar.component';
 import { FilterSheetComponent, FilterState } from './filter-sheet/filter-sheet.component';
 import { FeedLoaderComponent } from './feed-loader/feed-loader.component';
 import { FeedTuneBlockComponent } from './feed-tune-block/feed-tune-block.component';
+import { InteractionService } from '../../core/services/interaction.service';
 
 @Component({
   selector: 'app-discover',
@@ -677,6 +678,7 @@ export class DiscoverComponent implements OnInit {
   private router = inject(Router);
   private theme = inject(ThemeService);
   private translate = inject(TranslateService);
+  private interactions = inject(InteractionService);
 
   sidebarRadius = signal(5);
 
@@ -959,6 +961,9 @@ export class DiscoverComponent implements OnInit {
             this.visibleCount.set(15);
             this.loading.set(false);
             this.loaded.set(true);
+            // Track impressions for visible cards
+            filtered.slice(0, 15).forEach((c, i) =>
+              this.interactions.trackImpression(c.type, c.id, i));
           };
 
           // Min 400ms display for feed loader (anti-flash)
@@ -977,6 +982,8 @@ export class DiscoverComponent implements OnInit {
   }
 
   onOpenDetail(card: RecommendationCard) {
+    const pos = this.cards().findIndex(c => c.id === card.id);
+    this.interactions.trackClick(card.type, card.id, pos);
     if (window.innerWidth >= 1024) {
       this.modalCard.set(card);
     } else {
@@ -990,9 +997,12 @@ export class DiscoverComponent implements OnInit {
 
   onToggleSave(card: RecommendationCard) {
     this.savedStore.toggle(card);
+    this.interactions.trackSave(card.type, card.id);
   }
 
   onHideCard(card: RecommendationCard) {
+    this.interactions.trackHide(card.type, card.id);
+
     // Clear previous undo timer
     const prev = this.undoableHide();
     if (prev) clearTimeout(prev.timer);
