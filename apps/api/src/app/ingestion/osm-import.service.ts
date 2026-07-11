@@ -8,6 +8,47 @@ import { SourceRef } from '../database/entities/source-ref.entity';
 import { mapOsmCategory } from './osm-category-map';
 import { createHash } from 'crypto';
 
+/** Known chain venues in Tbilisi — name substring match (lowercased, no apostrophes) */
+const KNOWN_CHAINS: { match: string; key: string }[] = [
+  // Fast food
+  { match: 'mcdonalds', key: 'mcdonalds' },
+  { match: 'მაკდონალდ', key: 'mcdonalds' },
+  { match: 'kfc', key: 'kfc' },
+  { match: 'wendys', key: 'wendys' },
+  { match: 'ვენდის', key: 'wendys' },
+  { match: 'subway', key: 'subway' },
+  { match: 'საბვეი', key: 'subway' },
+  { match: 'dunkin', key: 'dunkin' },
+  { match: 'დანკინ', key: 'dunkin' },
+  { match: 'burger king', key: 'burger_king' },
+  { match: 'dominos', key: 'dominos' },
+  { match: 'papa johns', key: 'papa_johns' },
+  // Coffee
+  { match: 'starbucks', key: 'starbucks' },
+  { match: 'სტარბაქს', key: 'starbucks' },
+  { match: 'costa coffee', key: 'costa_coffee' },
+  { match: 'coffeesta', key: 'coffeesta' },
+  { match: 'entrée', key: 'entree' },
+  { match: 'entree', key: 'entree' },
+  // Local chains
+  { match: 'psp', key: 'psp' },
+  { match: 'libre', key: 'libre' },
+  { match: 'purpur', key: 'purpur' },
+  // Pharmacy
+  { match: 'aversi', key: 'aversi' },
+  { match: 'ავერსი', key: 'aversi' },
+  { match: 'gpc', key: 'gpc' },
+  // Grocery (shouldn't be in feed but flag anyway)
+  { match: 'carrefour', key: 'carrefour' },
+  { match: 'spar', key: 'spar' },
+  { match: 'nikora', key: 'nikora' },
+  { match: 'ნიკორა', key: 'nikora' },
+  { match: 'ori nabiji', key: 'ori_nabiji' },
+  { match: 'goodwill', key: 'goodwill' },
+  { match: 'agrohub', key: 'agrohub' },
+  { match: 'fresco', key: 'fresco' },
+];
+
 const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
 
 // Tbilisi bbox expanded: [41.62, 44.65, 41.82, 45.05]
@@ -110,9 +151,14 @@ export class OsmImportService {
     // Detect closed/defunct venues from OSM tags
     const status = this.detectStatus(tags);
 
-    // Detect chain venues from OSM brand tags
-    const isChain = !!(tags['brand:wikidata'] || tags['brand']);
-    const chainKey = tags['brand']?.toLowerCase().replace(/[^a-z0-9]/g, '_') || undefined;
+    // Detect chain venues: OSM brand tags + known chain list
+    const brandChain = !!(tags['brand:wikidata'] || tags['brand']);
+    const nameNorm = name.toLowerCase().replace(/[''`]/g, '');
+    const knownChain = KNOWN_CHAINS.find(c => nameNorm.includes(c.match));
+    const isChain = brandChain || !!knownChain;
+    const chainKey = knownChain?.key
+      || tags['brand']?.toLowerCase().replace(/[^a-z0-9]/g, '_')
+      || undefined;
 
     const osmId = `${el.type}/${el.id}`;
     const contentHash = createHash('md5')

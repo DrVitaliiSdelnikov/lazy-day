@@ -256,8 +256,9 @@ export class RecommendationService {
       this.logger.log(`Adaptive fill: only ${scored.length} relevant results, expanding radius to ${radiusM}m`);
     }
 
-    // Sort + diversity
+    // Sort + daily rotation (tie-breaker for similar scores, top-3 untouched)
     scored.sort((a, b) => b.score - a.score);
+    this.applyDailyRotation(scored);
     let diversified = this.applyDiversity(scored);
 
     // Step 9: TIME FALLBACK
@@ -670,6 +671,36 @@ export class RecommendationService {
     const periods = hours['periods'] as Array<{ open?: { hour: number }; close?: { hour: number } }> | undefined;
     if (periods?.length === 1 && periods[0].open?.hour === 0 && !periods[0].close) return true;
     return false;
+  }
+
+  /**
+   * Daily rotation: shuffle cards with similar scores (|Δ| < 0.05)
+   * using date-based seed. Top-3 untouched (trust in quality).
+   * Prevents "same feed every day" = "app is dead".
+   */
+  private applyDailyRotation(scored: ScoredCandidate[]) {
+    if (scored.length <= 3) return;
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const seed = this.simpleHash(today);
+
+    // Only shuffle positions 3+ where score diff < 0.05
+    for (let i = 3; i < scored.length - 1; i++) {
+      if (Math.abs(scored[i].score - scored[i + 1].score) < 0.05) {
+        // Deterministic swap based on seed + position
+        if ((this.simpleHash(seed + scored[i].id) % 3) === 0) {
+          [scored[i], scored[i + 1]] = [scored[i + 1], scored[i]];
+        }
+      }
+    }
+  }
+
+  private simpleHash(s: string | number): number {
+    const str = String(s);
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
+    }
+    return Math.abs(hash);
   }
 
   private applyDiversity(
