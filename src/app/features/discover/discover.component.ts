@@ -784,6 +784,8 @@ export class DiscoverComponent implements OnInit {
   readonly allCards = signal<RecommendationCard[]>([]);
   readonly activeTypeFilter = signal<'all' | 'place' | 'event'>('all');
   readonly visibleCount = signal(15);
+  private navigatedToDetail = false;
+  private cachedScrollY = 0;
   readonly cards = computed(() => {
     const type = this.activeTypeFilter();
     const filtered = type === 'all'
@@ -882,6 +884,26 @@ export class DiscoverComponent implements OnInit {
       return;
     }
     this.geoVersion = this.geo.updated();
+
+    // #41: Restore from cache on back-navigation from detail
+    const cache = this.loadFeedCache();
+    if (cache && this.navigatedToDetail) {
+      this.allCards.set(cache.cards);
+      this.loaded.set(true);
+      this.navigatedToDetail = false;
+      requestAnimationFrame(() => window.scrollTo(0, cache.scrollY));
+      return;
+    }
+
+    // #42: SWR — show cached feed instantly if context similar
+    if (cache && !this.isContextChanged(cache)) {
+      this.allCards.set(cache.cards);
+      this.loaded.set(true);
+      // Silent revalidate in background
+      this.silentRevalidate();
+      return;
+    }
+
     this.loadFeed();
   }
 
@@ -1027,6 +1049,9 @@ export class DiscoverComponent implements OnInit {
             // Track impressions for visible cards
             filtered.slice(0, 15).forEach((c, i) =>
               this.interactions.trackImpression(c.type, c.id, i));
+            // Cache for scroll restore + SWR
+            this.cachedScrollY = 0;
+            this.saveFeedCache();
           };
 
           // Min 400ms display for feed loader (anti-flash)
@@ -1051,6 +1076,10 @@ export class DiscoverComponent implements OnInit {
       this.modalCard.set(card);
       history.replaceState({ modal: true }, '', `/detail/${card.type}/${card.id}`);
     } else {
+      // Save scroll + cards before navigating (for restore on back)
+      this.cachedScrollY = window.scrollY;
+      this.navigatedToDetail = true;
+      this.saveFeedCache();
       this.router.navigate(['/detail', card.type, card.id]);
     }
   }
@@ -1134,5 +1163,81 @@ export class DiscoverComponent implements OnInit {
 
     // 'now' — next 6 hours
     return this.defaultTimeWindow();
+  }
+
+  // ── Feed cache (#41 scroll restore + #42 SWR) ──
+
+  private readonly FEED_CACHE_KEY = 'ld_feed_cache';
+
+  private saveFeedCache() {
+    const pos = this.geo.position();
+    const cache = {
+      cards: this.allCards(),
+      scrollY: this.cachedScrollY,
+      timestamp: Date.now(),
+      lat: pos.lat,
+      lng: pos.lng,
+      preset: this.activePreset(),
+    };
+    try {
+      sessionStorage.setItem(this.FEED_CACHE_KEY, JSON.stringify(cache));
+    } catch { /* quota exceeded — ignore */ }
+  }
+
+  private loadFeedCache(): { cards: RecommendationCard[]; scrollY: number; timestamp: number; lat: number; lng: number; preset: string | null } | null {
+    try {
+      const raw = sessionStorage.getItem(this.FEED_CACHE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  }
+
+  private isContextChanged(cache: { timestamp: number; lat: number; lng: number; preset: string | null }): boolean {
+    const pos = this.geo.position();
+    const elapsed = Date.now() - cache.timestamp;
+
+    // >6 hours → stale
+    if (elapsed > 6 * 3600000) return true;
+    // Different preset
+    if (cache.preset !== this.activePreset()) return true;
+    // Moved >500m
+    const dLat = Math.abs(pos.lat - cache.lat);
+    const dLng = Math.abs(pos.lng - cache.lng);
+    if (dLat > 0.0045 || dLng > 0.006) return true; // ~500m
+
+    return false;
+  }
+
+  private silentRevalidate() {
+    const ctx = this.contextBar();
+    const pos = this.geo.position();
+    const isDesktop = window.innerWidth >= 1024;
+    const defaultRadius = pos.source === 'default' ? 3000 : 5000;
+    const radiusM = isDesktop ? this.sidebarRadius() * 1000 : (ctx ? ctx.getRadiusM() : defaultRadius);
+    const timeWindow = isDesktop ? this.getTimeWindowForValue(this.sidebarTime()) : (ctx ? ctx.getTimeWindow() : this.defaultTimeWindow());
+    const preset = this.activePreset();
+    const mood = preset ? this.MOOD_PRESETS[preset] : null;
+    const interests = mood?.interests ?? this.profileStore.interests();
+    const company = (mood?.company ?? this.profileStore.company() ?? undefined) as any;
+
+    this.api
+      .discover({
+        lat: pos.lat, lng: pos.lng,
+        radiusM: mood?.radiusM ?? radiusM,
+        timeWindow,
+        profile: { interests, company, hasPet: this.profileStore.hasPet() || undefined },
+        hiddenIds: this.profileStore.hiddenIds(),
+        locale: this.profileStore.locale(),
+      })
+      .subscribe({
+        next: (res) => {
+          const oldIds = this.allCards().map(c => c.id).join(',');
+          const newIds = res.cards.map(c => c.id).join(',');
+          if (oldIds !== newIds) {
+            this.allCards.set(res.cards);
+            this.feedMeta.set(res.meta);
+          }
+          this.saveFeedCache();
+        },
+      });
   }
 }
