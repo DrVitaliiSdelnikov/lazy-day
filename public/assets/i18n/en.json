@@ -25,6 +25,10 @@
     "locating": "Locating…",
     "pick_hint": "Pick at least one",
     "with_pet": "I walk with a pet",
+    "local_question": "You're in Tbilisi…",
+    "local_tourist": "First time",
+    "local_visitor": "Been before",
+    "local_local": "I live here",
     "coords_error": "Invalid coordinate format",
     "or": "or"
   },

@@ -25,6 +25,10 @@
     "locating": "Определяю…",
     "pick_hint": "Выберите хотя бы одно",
     "with_pet": "Гуляю с питомцем",
+    "local_question": "Вы в Тбилиси…",
+    "local_tourist": "Впервые",
+    "local_visitor": "Бывал раньше",
+    "local_local": "Живу здесь",
     "coords_error": "Неверный формат координат",
     "or": "или"
   },

@@ -18,6 +18,8 @@ function loadFromStorage(): Partial<ProfileState> {
   }
 }
 
+export type LocalLevel = 'tourist' | 'visitor' | 'local';
+
 interface ProfileState {
   deviceId: string;
   interests: Record<string, number>;
@@ -27,6 +29,7 @@ interface ProfileState {
   locale: Locale;
   theme: ThemeMode;
   city: string;
+  localLevel: LocalLevel;
   onboardingCompleted: boolean;
   hiddenIds: string[];
   savedIds: string[];
@@ -41,6 +44,7 @@ const defaults: ProfileState = {
   locale: 'ru',
   theme: 'auto',
   city: 'tbilisi',
+  localLevel: 'local' as LocalLevel,
   onboardingCompleted: false,
   hiddenIds: [],
   savedIds: [],
@@ -62,7 +66,12 @@ export class ProfileStore {
   readonly onboardingCompleted = computed(() => this.state().onboardingCompleted);
   readonly hiddenIds = computed(() => this.state().hiddenIds);
   readonly savedIds = computed(() => this.state().savedIds);
+  readonly localLevel = computed(() => this.state().localLevel);
   readonly hasInterests = computed(() => Object.keys(this.state().interests).length > 0);
+
+  setLocalLevel(level: LocalLevel) {
+    this.patch({ localLevel: level });
+  }
 
   setInterests(interests: Record<string, number>) {
     this.patch({ interests });

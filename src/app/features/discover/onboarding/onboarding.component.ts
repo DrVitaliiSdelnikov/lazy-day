@@ -46,6 +46,15 @@ import { LdIconComponent } from '../../../core/components/ld-icon.component';
           }
         </div>
 
+        <!-- Tourist / Local -->
+        <p class="ob__subtitle" style="margin-top: 16px">{{ 'onboarding.local_question' | translate }}</p>
+        <div class="ob__local-options">
+          @for (opt of localOptions; track opt.value) {
+            <button class="ld-chip" [class.ld-chip--active]="selectedLocal() === opt.value"
+              (click)="selectedLocal.set(opt.value)">{{ opt.labelKey | translate }}</button>
+          }
+        </div>
+
         <div class="ob__footer">
           @if (selectedInterests().size === 0) {
             <p class="ob__hint">{{ 'onboarding.pick_hint' | translate }}</p>
@@ -201,6 +210,13 @@ import { LdIconComponent } from '../../../core/components/ld-icon.component';
       color: var(--ld-primary);
     }
 
+    .ob__local-options {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
     .ob__footer {
       padding: 12px 0 16px;
       background: var(--ld-bg);
@@ -294,6 +310,13 @@ export class OnboardingComponent implements OnInit {
   selectedInterests = signal(new Set<string>());
   selectedCompany = signal<CompanyType | null>(null);
   selectedPet = signal(false);
+  selectedLocal = signal<string>('local');
+
+  localOptions = [
+    { value: 'tourist', labelKey: 'onboarding.local_tourist' },
+    { value: 'visitor', labelKey: 'onboarding.local_visitor' },
+    { value: 'local', labelKey: 'onboarding.local_local' },
+  ];
   geoLoading = signal(false);
   coordsError = signal<string | null>(null);
 
@@ -368,6 +391,7 @@ export class OnboardingComponent implements OnInit {
       this.profileStore.setCompany(this.selectedCompany());
     }
     this.profileStore.setHasPet(this.selectedPet());
+    this.profileStore.setLocalLevel(this.selectedLocal() as any);
     this.profileStore.completeOnboarding();
     this.router.navigate(['/discover']);
   }
