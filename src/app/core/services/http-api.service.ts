@@ -26,9 +26,10 @@ export class HttpApiService extends ApiService {
     );
   }
 
-  getCard(type: string, id: string): Observable<RecommendationCard> {
+  getCard(type: string, id: string, lat?: number, lng?: number): Observable<RecommendationCard> {
+    const params = (lat != null && lng != null) ? `?lat=${lat}&lng=${lng}` : '';
     return this.http.get<RecommendationCard>(
-      `${this.baseUrl}/cards/${type}/${id}`,
+      `${this.baseUrl}/cards/${type}/${id}${params}`,
     );
   }
 

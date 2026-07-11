@@ -10,6 +10,6 @@ import {
 @Injectable()
 export abstract class ApiService {
   abstract discover(request: DiscoverRequest): Observable<DiscoverResponse>;
-  abstract getCard(type: string, id: string): Observable<RecommendationCard>;
+  abstract getCard(type: string, id: string, lat?: number, lng?: number): Observable<RecommendationCard>;
   abstract getCategories(): Observable<CategoryNode[]>;
 }

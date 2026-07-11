@@ -11,14 +11,14 @@ export class CardsService {
     @InjectRepository(Event) private readonly eventRepo: Repository<Event>,
   ) {}
 
-  async getCard(type: string, id: string) {
+  async getCard(type: string, id: string, userLat?: number, userLng?: number) {
     if (type === 'place') {
       const place = await this.placeRepo.findOne({
         where: { id },
         relations: { venue: true },
       });
       if (!place) throw new NotFoundException(`Place ${id} not found`);
-      return this.mapPlace(place);
+      return this.mapPlace(place, userLat, userLng);
     }
 
     if (type === 'event') {
@@ -27,23 +27,35 @@ export class CardsService {
         relations: { venue: true },
       });
       if (!event) throw new NotFoundException(`Event ${id} not found`);
-      return this.mapEvent(event);
+      return this.mapEvent(event, userLat, userLng);
     }
 
     throw new NotFoundException(`Unknown card type: ${type}`);
   }
 
-  private mapPlace(p: Place) {
+  private haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+    const R = 6371000;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  private mapPlace(p: Place, userLat?: number, userLng?: number) {
     const v = p.venue;
+    const vLat = v?.lat ?? 0;
+    const vLng = v?.lng ?? 0;
+    const distanceM = (userLat != null && userLng != null) ? Math.round(this.haversineDistance(userLat, userLng, vLat, vLng)) : 0;
+    const walkMinutes = distanceM > 0 ? Math.round((distanceM / 80) * 1.3) : 0;
     return {
       id: p.id,
       type: 'place' as const,
       title: v?.name ?? '',
       category: p.category,
-      lat: v?.lat ?? 0,
-      lng: v?.lng ?? 0,
-      distanceM: 0,
-      walkMinutes: 0,
+      lat: vLat,
+      lng: vLng,
+      distanceM,
+      walkMinutes,
       explanations: [],
       source: 'canonical',
       address: v?.address,
@@ -57,17 +69,21 @@ export class CardsService {
     };
   }
 
-  private mapEvent(e: Event) {
+  private mapEvent(e: Event, userLat?: number, userLng?: number) {
     const v = e.venue;
+    const vLat = v?.lat ?? 0;
+    const vLng = v?.lng ?? 0;
+    const distanceM = (userLat != null && userLng != null) ? Math.round(this.haversineDistance(userLat, userLng, vLat, vLng)) : 0;
+    const walkMinutes = distanceM > 0 ? Math.round((distanceM / 80) * 1.3) : 0;
     return {
       id: e.id,
       type: 'event' as const,
       title: e.title,
       category: e.category,
-      lat: v?.lat ?? 0,
-      lng: v?.lng ?? 0,
-      distanceM: 0,
-      walkMinutes: 0,
+      lat: vLat,
+      lng: vLng,
+      distanceM,
+      walkMinutes,
       explanations: [],
       source: 'canonical',
       startsAt: e.startsAt?.toISOString(),

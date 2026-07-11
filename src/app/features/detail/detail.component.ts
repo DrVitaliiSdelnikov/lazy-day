@@ -431,6 +431,7 @@ export class DetailComponent implements OnInit {
   type = input.required<string>();
   id = input.required<string>();
   isModal = input(false);
+  preloadedCard = input<RecommendationCard | null>(null);
 
   private api = inject(ApiService);
   private profileStore = inject(ProfileStore);
@@ -445,7 +446,14 @@ export class DetailComponent implements OnInit {
   shareToast = signal(false);
 
   ngOnInit() {
-    this.api.getCard(this.type(), this.id()).subscribe((c) => {
+    const preloaded = this.preloadedCard();
+    if (preloaded) {
+      this.card.set(preloaded);
+      this.isSaved.set(this.profileStore.isSaved(preloaded.id));
+      return;
+    }
+    const pos = this.geo.position();
+    this.api.getCard(this.type(), this.id(), pos.lat, pos.lng).subscribe((c) => {
       this.card.set(c);
       this.isSaved.set(this.profileStore.isSaved(c.id));
     });

@@ -79,7 +79,7 @@ export class MockApiService extends ApiService {
     );
   }
 
-  getCard(type: string, id: string): Observable<RecommendationCard> {
+  getCard(type: string, id: string, lat?: number, lng?: number): Observable<RecommendationCard> {
     return this.loadCards().pipe(
       map((cards) => {
         const card = cards.find((c) => c.id === id && c.type === type);

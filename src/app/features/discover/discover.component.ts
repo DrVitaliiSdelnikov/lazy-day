@@ -231,7 +231,7 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
     @if (modalCard()) {
       <div class="discover__modal-backdrop" (click)="closeModal()"></div>
       <div class="discover__modal">
-        <app-detail [type]="modalCard()!.type" [id]="modalCard()!.id" [isModal]="true" />
+        <app-detail [type]="modalCard()!.type" [id]="modalCard()!.id" [isModal]="true" [preloadedCard]="modalCard()!" />
         <button class="discover__modal-close" (click)="closeModal()" aria-label="Close">
           <ld-icon name="x" [size]="14" />
         </button>
