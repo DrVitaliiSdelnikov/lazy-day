@@ -1,181 +1,151 @@
-# LaziGo — Post-Deploy Review (July 11, 2026)
+# LaziGo — Post-Deploy Review
 
-Critical review of production state. Three red flags, five reinforcements,
-three new insights.
+Дата: 2026-07-11 (деплой: 2026-07-10)
+Статус-источник: project-status от 2026-07-11.
+Формат: 🔴 блокеры → 🟡 усиления → 💡 стратегия → 📅 пересобранный план недели.
 
 ---
 
-## 🔴 RED FLAGS (fix this week)
+## Executive summary
 
-### 1. `POST /v1/health/migrate` — open door to DB
+Продукт в проде за $5/мес с работающим K1 — сильная позиция. Три вещи требуют
+немедленного внимания: **открытый migrate-эндпоинт** (безопасность),
+**отсутствие consent/privacy при живой Метрике** (юридический долг из
+собственного pre-deploy списка) и **детальная без URL** (ломает share-петлю —
+основу дистрибуции). Ниже — каждый пункт с конкретным фиксом, критерием
+приёмки и оценкой.
 
-Public endpoint that runs DDL on production. Anyone can trigger schema changes.
+---
 
-**Fix**: Add secret header check from env var.
+## 🔴 Блокеры (эта неделя, суммарно ~1.5 дня)
+
+### R1. `POST /v1/health/migrate` — открытая дверь в базу
+
+**Риск.** Публичный эндпоинт, исполняющий DDL на проде. Сканеры находят
+Railway-домены за часы; повторный вызов миграций в неудачный момент =
+частично применённая схема или лок таблиц под трафиком. Health-неймспейс
+обычно исключён из внимания — это худшее место для такой ручки.
+
+**Фикс (по возрастанию правильности):**
+1. *Минимум сегодня, 15 мин:* секрет из env в заголовке:
+
 ```typescript
 @Post('migrate')
-async migrate(@Headers('x-admin-key') key: string) {
-  if (key !== process.env['ADMIN_SECRET']) {
-    throw new ForbiddenException();
+migrate(@Headers('x-migrate-token') token: string) {
+  if (!process.env.MIGRATE_TOKEN || token !== process.env.MIGRATE_TOKEN) {
+    throw new UnauthorizedException();
   }
-  // ... existing logic
+  return this.runMigrations();
 }
 ```
-**Effort**: 15 minutes.
-**Status**: 🔴 NOT FIXED
 
-### 2. Consent + Privacy not enforced
+2. *Правильно, на этой неделе:* убрать эндпоинт; миграции — шагом деплоя
+   Railway (`railway run npm run migrate` в release command / deploy hook).
 
-Yandex.Metrika with session replay is NOT cookie-free. It sets cookies
-and tracks PII (session replays capture form inputs, scroll, clicks).
-Audience includes EU tourists/expats — GDPR applies to them regardless
-of server location.
+**Приёмка:** curl без токена → 401; `/v1/admin/ingestion/*` тоже защитить.
 
-**Current state**:
-- Privacy page exists at `/privacy` ✅
-- Consent banner component exists (`ConsentBannerComponent`) — but NOT verified as working
-- Yandex.Metrika loads unconditionally in `index.html` — should be gated by consent
+**Status:** 🔴 NOT FIXED
 
-**Fix**:
-1. Verify consent banner actually shows and saves preference to localStorage
-2. Gate Yandex.Metrika loading behind consent flag
-3. Gate `interaction_events` tracking behind consent (`consent_state` field exists but always 'pending')
+### R2. Consent + Privacy Policy — юридический долг при живой Метрике
 
-**Effort**: 2-3 hours.
-**Status**: 🔴 NOT FIXED
+**Риск.** Яндекс.Метрика с вебвизором — session replay, точно не cookie-free.
+`interaction_events` имеет `consent_state DEFAULT 'pending'` — поле есть,
+механики нет. Аудитория — туристы/релоканты из ЕС: GDPR применим.
 
-### 3. Share links broken on desktop (no URL for detail modal)
+**Фикс (1 день):**
+1. `/privacy` существует ✅ — проверить актуальность текста
+2. Consent-баннер: одна строка снизу, не модалка. Accept → Метрика грузится,
+   `consent_state='granted'`. Decline → Метрику НЕ грузить (условный скрипт),
+   interaction_events анонимно или не писать
+3. Вебвизор Метрики — выключить до баннера
 
-We deliberately removed `history.pushState` for modal detail to prevent
-URL-based reload issues. But this breaks share:
-- Desktop modal has no URL → Share button copies `lazigo.app/detail/place/{id}`
-  but user's browser shows `lazigo.app/discover`
-- OG preview (UX-20) can't render dynamic tags without a real URL
-- K2-lite share links need working detail URLs
+**Приёмка:** инкогнито → 0 запросов к mc.yandex.ru до Accept; consent_state пишется.
 
-**Fix**: Restore URL update for modal, but use `replaceState` (not pushState)
-so browser back button doesn't break:
-```typescript
-onOpenDetail(card) {
-  if (desktop) {
-    this.modalCard.set(card);
-    history.replaceState({ modal: true }, '', `/detail/${card.type}/${card.id}`);
-  }
-}
-closeModal() {
-  this.modalCard.set(null);
-  history.replaceState(null, '', '/discover');
-}
-```
-**Effort**: 30 minutes.
-**Status**: 🔴 NOT FIXED
+**Status:** 🔴 NOT FIXED
+
+### R3. Детальная без URL — надломленная share-петля
+
+**Риск.** Модалка не меняет URL → share на десктопе шарит правильную ссылку
+но OG preview не работает, K2-lite без превью теряет половину конверсии.
+
+**Фикс (3-4 часа):** `history.replaceState` при открытии/закрытии модалки.
+Прямой заход по URL → полноэкранная детальная (уже работает).
+
+**Приёмка:** F5 на модалке → детальная открыта; share → правильный URL.
+
+**Status:** 🔴 NOT FIXED
 
 ---
 
-## 🟡 REINFORCE (this week or next)
+## 🟡 Усиления (неделя 1-2)
 
-### 4. Chain detection: 6 detected out of likely 50+
+### A1. Chain detection: 6/50+ = недодетекция
 
-OSM `brand:wikidata` coverage in Georgia is poor. Only Starbucks, Wendy's,
-Subway, Dunkin' detected. McDonald's has multiple locations but may not have
-`brand:wikidata` on all OSM nodes.
+OSM `brand:wikidata` в Грузии слабый. Добавить известный список +
+эвристика `chain_key ≥ 4` с исключением генериков.
 
-**Fix**: Add known chain list to OSM import (supplement brand:wikidata).
-Add `chain_key` frequency heuristic (≥4 same key = chain, with generic name
-exclusion list).
+**Приёмка:** chains ≥60-80; доля сетей в топ-10 «Поесть» <10%.
 
-**Validation**: Check top-10 for 20 test queries — count chains. Target <10%.
-**Status**: 🟡 PARTIALLY DONE (spec exists, basic detection implemented)
+### A2. Гейт глубины событий перед K7
 
-### 5. ~55 events too thin for K7 digest
+~55 событий. Проверить: ≥3 вечерних в ≥2 категориях в ≥70% дней.
+Если нет → TKT.ge парсер первый, K7 после.
 
-Evening digest "3 events tonight for you" needs ≥3 events most evenings.
-With 55 total events, many evenings will have 0-1.
+### A3. 43% без часов — удар по «не проверяй»
 
-**Gate**: Before building K7 bot, run SQL:
-```sql
-SELECT DATE(starts_at AT TIME ZONE 'Asia/Tbilisi') as d,
-       COUNT(*) as cnt
-FROM events
-WHERE status = 'scheduled' AND starts_at > NOW()
-GROUP BY d ORDER BY d;
-```
-If <70% of evenings have ≥3 events → add TKT.ge parser first.
-**Status**: 🟡 NOT CHECKED
+Буст +0.03 quality для мест с часами. Точечная волна Google-обогащения
+для top-20 мест из recommendation_logs.
 
-### 6. 43% venues without opening hours
+### A4. Мониторинг потерян
 
-Places with unknown hours pass availability filter as `unknown` — user sees
-them but can't trust "is it open?".
+UptimeRobot (free) + Sentry free tier. 30 минут суммарно.
+Переиспользовать Telegram-бота для error alerts.
 
-**Fix** (two parts):
-1. Scoring boost for places with known hours (+0.03 quality component)
-2. Targeted Google re-enrichment: only places that appear in top recommendation
-   results (log via recommendation_logs). Hundreds, not thousands → cheap.
+### A5. Haversine bbox — проверить EXPLAIN
 
-**Status**: 🟡 NOT DONE
-
-### 7. No error monitoring or uptime tracking
-
-Railway crash or API error → no notification. With few users, silent death.
-
-**Fix**: UptimeRobot free (15 min) + Sentry free tier (30 min).
-**Status**: 🟡 NOT DONE
-
-### 8. Haversine bbox pre-filter
-
-Haversine without PostGIS is fine, but verify bbox index filter runs BEFORE
-the math. Without it, every query scans all 3,164 venues.
-
-**Current code**: ✅ Already has bbox pre-filter:
-```sql
-WHERE v.lat BETWEEN $1 - ($3::float / 111000) AND $1 + ($3::float / 111000)
-  AND v.lng BETWEEN $2 - ($3::float / (111000 * cos(radians($1)))) AND ...
-```
-With B-tree indexes on `lat` and `lng`. ✅ Verified in code.
+Bbox pre-filter есть в коде ✅. Но нужен `EXPLAIN ANALYZE` для уверенности.
 
 ---
 
-## 💡 NEW INSIGHTS
+## 💡 Стратегия
 
-### 9. Kill/scale metrics: can we actually compute them?
+### S1. Kill/scale — измерялку сделать сейчас
 
-Need to verify:
-- `card_position` is written in impression events → ✅ yes (trackImpression passes position)
-- `device_id_hash` is stable across sessions → ✅ yes (localStorage `ld_device_id`)
-- D7 requires first-visit date → ❌ NOT tracked. Need to add `first_seen_at` to
-  device tracking or compute from MIN(occurred_at) in interaction_events.
+Написать SQL для D7 и top-3 CTR, положить в cheatsheet.
+Проверить: card_position реально пишется; device_id_hash стабилен.
 
-**Action**: Write one SQL per metric and add to cheatsheet.
+### S2. Tourist vs Local — ось метрик, не поле скоринга
 
-### 10. Tourist vs Local (UX-21) — segment all metrics
+Сегментировать ВСЕ метрики по tourist/local. Разные паттерны →
+разные решения Scale/Iterate/Pivot.
 
-The one onboarding question isn't just for scoring. ALL metrics should be
-viewed by segment:
-- Tourist D7 will be near zero (they leave the city)
-- Local D7 is the real retention metric
-- Tourist CTR on "culture" vs local CTR on "food" — different products
+### S3. Known debts в статус-доке
 
-**Action**: Add `localLevel` to interaction_events context when implemented.
-
-### 11. Known debts section in project-status.md
-
-Status doc without debts will lie to us in a month.
+Добавлено ✅ (consent, chains, часы, мониторинг, URL детальной).
 
 ---
 
-## REVISED WEEK 1 PRIORITY ORDER
+## 📅 Пересобранный план недели 1
 
-| Day | Task | Why first |
+| День | Что | Из |
 |---|---|---|
-| Day 1 | 🔴 Migrate security + consent/privacy + monitoring | Legal + security debt |
-| Day 1 | 🔴 Detail URL fix (replaceState) | Unblocks share + OG + K2 |
-| Day 2 | #34 SSR preview (dynamic OG tags) | Share distribution needs preview |
-| Day 2 | #39 Feedback + Telegram | User channel before features |
-| Day 3 | #40 Daily rotation | "App feels alive" |
-| Day 3 | #41-42 Scroll restore + SWR | UX polish |
-| Day 4 | Event depth check → K7 or TKT.ge parser | Gate before bot |
-| Day 5 | K2-lite (if events sufficient) or chain detection improvement | Growth |
+| 1 | R1 migrate за токен + admin защита · A4 мониторинг · S1 проверка card_position | безопасность+измерялка |
+| 2 | R2 privacy + consent-баннер + вебвизор off | юридический долг |
+| 3 | R3 URL детальной → №34 dynamic OG | share-петля |
+| 4 | A1 сети (список+эвристика) · №40 ротация ленты | качество выдачи |
+| 5 | №39 фидбек+Telegram · №38 tourist/local | сигналы |
+| 6-7 | №41 scroll restore · №42 SWR · A2-гейт → K7 vs TKT | UX-долг + гейт |
 
-**K7 and K2-lite gated by**: event depth (K7) and working share links (K2).
-Don't build distribution features on broken pipes.
+K2-lite — начало недели 2, после R3+№34.
+
+## Приёмка недели (чек-лист)
+
+- [ ] migrate недоступен без секрета
+- [ ] admin/ingestion/* защищён
+- [ ] Метрика не грузится до Accept; /privacy живая; вебвизор off
+- [ ] F5 на детальной работает; share шарит URL с OG-превью
+- [ ] chains ≥60; сетей в топ-10 «Поесть» <10%; в Decide — ноль
+- [ ] UptimeRobot + Sentry/exception-алерты
+- [ ] D7 и top-3 CTR считаются одним SQL из cheatsheet
+- [ ] card_position и tourist/local в interaction_events
+- [ ] решение по K7 принято по SQL-гейту
