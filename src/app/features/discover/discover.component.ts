@@ -590,7 +590,7 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
     .discover__results {
       display: grid;
       grid-template-columns: 1fr;
-      gap: 0;
+      gap: 15px;
       overflow: hidden;
     }
 

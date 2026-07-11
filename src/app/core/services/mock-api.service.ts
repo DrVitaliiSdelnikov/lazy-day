@@ -93,6 +93,11 @@ export class MockApiService extends ApiService {
     return this.http.get<CategoryNode[]>('./assets/mock/categories.json');
   }
 
+  submitFeedback(data: any): Observable<{ ok: boolean }> {
+    console.log('[Mock] Feedback:', data);
+    return of({ ok: true }).pipe(delay(500));
+  }
+
   private interestScore(
     card: RecommendationCard,
     interests: Record<string, number>

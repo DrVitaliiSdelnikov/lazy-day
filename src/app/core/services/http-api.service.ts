@@ -36,4 +36,8 @@ export class HttpApiService extends ApiService {
   getCategories(): Observable<CategoryNode[]> {
     return this.http.get<CategoryNode[]>(`${this.baseUrl}/meta/categories`);
   }
+
+  submitFeedback(data: { category: string; text: string; contact?: string; meta?: Record<string, unknown> }): Observable<{ ok: boolean }> {
+    return this.http.post<{ ok: boolean }>(`${this.baseUrl}/feedback`, data);
+  }
 }

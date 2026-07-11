@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { FormsModule } from '@angular/forms';
@@ -98,9 +98,31 @@ import { ThemeService, ThemeName } from '../../core/services/theme.service';
 
       <!-- Links -->
       <section class="settings__card">
+        <button class="settings__link" (click)="openFeedback()">{{ 'settings.feedback' | translate }}</button>
         <a routerLink="/privacy" class="settings__link">{{ 'settings.privacy' | translate }}</a>
         <div class="settings__link settings__link--muted">{{ 'settings.about' | translate }}</div>
       </section>
+
+      <!-- Feedback sheet -->
+      @if (feedbackOpen()) {
+        <div class="ld-sheet-backdrop ld-sheet-backdrop--visible" (click)="feedbackOpen.set(false)"></div>
+        <div class="ld-sheet ld-sheet--open">
+          <div class="ld-sheet__handle"></div>
+          <h3 style="margin: 0 0 12px; font-size: 16px">{{ 'feedback.title' | translate }}</h3>
+          <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px">
+            @for (cat of feedbackCategories; track cat.key) {
+              <button class="ld-chip" [class.ld-chip--active]="feedbackCategory() === cat.key"
+                (click)="feedbackCategory.set(cat.key)">{{ cat.labelKey | translate }}</button>
+            }
+          </div>
+          <textarea class="ld-input" rows="4" [placeholder]="'feedback.placeholder' | translate"
+            (input)="feedbackText.set($any($event.target).value)" style="width:100%;resize:vertical;margin-bottom:8px"></textarea>
+          <input class="ld-input" [placeholder]="'feedback.contact_placeholder' | translate"
+            (input)="feedbackContact.set($any($event.target).value)" style="width:100%;margin-bottom:12px" />
+          <button class="ld-btn ld-btn--primary" style="width:100%" [disabled]="!canSubmitFeedback()"
+            (click)="submitFeedback()">{{ 'feedback.submit' | translate }}</button>
+        </div>
+      }
 
       <!-- Reset -->
       <section class="settings__card">
@@ -281,6 +303,19 @@ export class SettingsComponent implements OnInit {
   editingInterests = signal(false);
   budgetValue = signal(0);
 
+  // Feedback
+  feedbackOpen = signal(false);
+  feedbackCategory = signal('idea');
+  feedbackText = signal('');
+  feedbackContact = signal('');
+  feedbackCategories = [
+    { key: 'bug', labelKey: 'feedback.cat_bug' },
+    { key: 'idea', labelKey: 'feedback.cat_idea' },
+    { key: 'missing', labelKey: 'feedback.cat_missing' },
+    { key: 'other', labelKey: 'feedback.cat_other' },
+  ];
+  canSubmitFeedback = computed(() => this.feedbackText().length >= 10 && !!this.feedbackCategory());
+
   languages = [
     { value: 'ru', label: 'Рус' },
     { value: 'en', label: 'Eng' },
@@ -339,5 +374,22 @@ export class SettingsComponent implements OnInit {
   onReset() {
     this.profileStore.resetProfile();
     this.router.navigate(['/discover/onboarding']);
+  }
+
+  openFeedback() {
+    this.feedbackOpen.set(true);
+  }
+
+  submitFeedback() {
+    this.api.submitFeedback({
+      category: this.feedbackCategory(),
+      text: this.feedbackText(),
+      contact: this.feedbackContact() || undefined,
+      meta: { locale: this.profileStore.locale(), theme: this.profileStore.theme(), url: location.href },
+    }).subscribe(() => {
+      this.feedbackOpen.set(false);
+      this.feedbackText.set('');
+      this.feedbackContact.set('');
+    });
   }
 }

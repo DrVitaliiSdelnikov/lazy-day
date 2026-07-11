@@ -88,6 +88,7 @@
     "edit": "Edit",
     "done": "Done",
     "reset": "Reset profile",
+    "feedback": "Feedback",
     "privacy": "Privacy",
     "about": "About · LaziGo v0.1"
   },
@@ -219,6 +220,16 @@
     "thursday": "Thursday",
     "friday": "Friday",
     "saturday": "Saturday"
+  },
+  "feedback": {
+    "title": "Feedback",
+    "cat_bug": "Bug",
+    "cat_idea": "Idea",
+    "cat_missing": "Missing place",
+    "cat_other": "Other",
+    "placeholder": "What happened? (min. 10 characters)",
+    "contact_placeholder": "Contact (optional)",
+    "submit": "Send"
   },
   "consent": {
     "text": "We use analytics to improve picks. No cookies, no personal data.",
