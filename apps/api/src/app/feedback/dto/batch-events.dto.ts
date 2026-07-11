@@ -25,6 +25,10 @@ export class BatchEventsDto {
   @IsString()
   sessionId!: string;
 
+  @IsOptional()
+  @IsString()
+  deviceId?: string;
+
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => EventItemDto)

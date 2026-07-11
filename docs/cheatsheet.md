@@ -111,3 +111,56 @@ Key features:
   - Chain deprioritization (OSM brand detection)
   - GPS auto-init, route/taxi disabled without GPS
 ```
+
+## Kill/Scale Metrics (SQL)
+
+Run against Railway PostgreSQL after 2 months of data.
+
+```sql
+-- D7 Return Rate (by first-visit cohort)
+WITH first_seen AS (
+  SELECT device_id_hash, MIN(occurred_at::date) d0
+  FROM interaction_events GROUP BY 1
+)
+SELECT d0,
+       COUNT(*) cohort,
+       COUNT(*) FILTER (WHERE ret.device_id_hash IS NOT NULL) returned_d7,
+       ROUND(100.0 * COUNT(*) FILTER (WHERE ret.device_id_hash IS NOT NULL) / COUNT(*), 1) d7_pct
+FROM first_seen f
+LEFT JOIN LATERAL (
+  SELECT 1 AS x, e.device_id_hash FROM interaction_events e
+  WHERE e.device_id_hash = f.device_id_hash
+    AND e.occurred_at::date BETWEEN f.d0 + 5 AND f.d0 + 9
+  LIMIT 1
+) ret ON true
+GROUP BY d0 ORDER BY d0;
+
+-- Top-3 CTR (last 14 days)
+SELECT COUNT(*) FILTER (WHERE event_type='card_click' AND card_position <= 2)::numeric
+     / NULLIF(COUNT(*) FILTER (WHERE event_type='impression' AND card_position <= 2), 0) AS top3_ctr
+FROM interaction_events
+WHERE occurred_at > now() - interval '14 days';
+
+-- Route rate (action / clicks)
+SELECT COUNT(*) FILTER (WHERE event_type='route')::numeric
+     / NULLIF(COUNT(*) FILTER (WHERE event_type='card_click'), 0) AS route_rate
+FROM interaction_events
+WHERE occurred_at > now() - interval '14 days';
+
+-- DAU (last 7 days)
+SELECT occurred_at::date AS day, COUNT(DISTINCT device_id_hash) AS dau
+FROM interaction_events
+WHERE occurred_at > now() - interval '7 days'
+GROUP BY 1 ORDER BY 1;
+```
+
+## Admin Endpoints (require x-admin-token header)
+
+```bash
+# With ADMIN_SECRET set in Railway env:
+curl -X POST https://lazy-day-production.up.railway.app/v1/health/migrate \
+  -H "x-admin-token: YOUR_SECRET"
+
+curl -X POST https://lazy-day-production.up.railway.app/v1/admin/ingestion/osm \
+  -H "x-admin-token: YOUR_SECRET"
+```

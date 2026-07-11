@@ -1,9 +1,11 @@
-import { Controller, Post, Get, Query, Param } from '@nestjs/common';
+import { Controller, Post, Get, Query, Param, UseGuards } from '@nestjs/common';
 import { OsmImportService } from './osm-import.service';
 import { GoogleEnrichmentService } from './google-enrichment.service';
 import { EventIngestionService } from './event-ingestion.service';
+import { AdminGuard } from '../guards/admin.guard';
 
 @Controller('admin/ingestion')
+@UseGuards(AdminGuard)
 export class IngestionController {
   constructor(
     private readonly osmImport: OsmImportService,

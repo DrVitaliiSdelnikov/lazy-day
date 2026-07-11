@@ -1,5 +1,6 @@
-import { Controller, Get, Post } from '@nestjs/common';
+import { Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { DataSource } from 'typeorm';
+import { AdminGuard } from '../guards/admin.guard';
 
 const MIGRATIONS: { name: string; sql: string }[] = [
   { name: '001', sql: `CREATE EXTENSION IF NOT EXISTS "uuid-ossp";` },
@@ -22,6 +23,7 @@ export class HealthController {
   constructor(private readonly dataSource: DataSource) {}
 
   @Post('migrate')
+  @UseGuards(AdminGuard)
   async migrate() {
     try {
       await this.dataSource.query(`CREATE TABLE IF NOT EXISTS _migrations (name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ DEFAULT NOW())`);

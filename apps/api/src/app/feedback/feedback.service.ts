@@ -34,9 +34,10 @@ export class FeedbackService {
     return { ok: true };
   }
 
-  async logBatch(deviceId: string, dto: BatchEventsDto) {
-    const deviceHash = deviceId
-      ? createHash('sha256').update(deviceId).digest('hex').slice(0, 16)
+  async logBatch(headerDeviceId: string, dto: BatchEventsDto) {
+    const rawId = dto.deviceId || headerDeviceId;
+    const deviceHash = rawId
+      ? createHash('sha256').update(rawId).digest('hex').slice(0, 16)
       : 'anonymous';
 
     const entities = dto.events.map(e => this.eventRepo.create({

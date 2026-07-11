@@ -63,7 +63,7 @@ export class InteractionService {
     const events = [...this.buffer];
     this.buffer = [];
 
-    const body = JSON.stringify({ sessionId: this.sessionId, events });
+    const body = JSON.stringify({ sessionId: this.sessionId, deviceId: this.deviceId, events });
 
     if (isDevMode()) {
       console.log(`[Track] Flushing ${events.length} events`, events.map(e => e.eventType));
