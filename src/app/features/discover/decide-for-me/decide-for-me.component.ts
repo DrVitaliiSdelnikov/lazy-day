@@ -266,7 +266,7 @@ export class DecideForMeComponent {
   async onShare() {
     const c = this.current();
     this.interactions.trackShare(c.type, c.id);
-    const url = `https://lazigo.app/detail/${c.type}/${c.id}`;
+    const url = `https://lazy-day-production.up.railway.app/v1/og/${c.type}/${c.id}`;
     const text = `${c.title} — ${c.categoryLabel || c.category}`;
     try {
       if (navigator.share) {

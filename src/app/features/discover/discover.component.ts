@@ -1049,6 +1049,7 @@ export class DiscoverComponent implements OnInit {
     this.interactions.trackClick(card.type, card.id, pos);
     if (window.innerWidth >= 1024) {
       this.modalCard.set(card);
+      history.replaceState({ modal: true }, '', `/detail/${card.type}/${card.id}`);
     } else {
       this.router.navigate(['/detail', card.type, card.id]);
     }
@@ -1056,6 +1057,7 @@ export class DiscoverComponent implements OnInit {
 
   closeModal() {
     this.modalCard.set(null);
+    history.replaceState(null, '', '/discover');
   }
 
   onToggleSave(card: RecommendationCard) {
