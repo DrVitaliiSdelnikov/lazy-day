@@ -456,7 +456,7 @@ export class DetailComponent implements OnInit {
       park: 'trees', viewpoint: 'compass', museum: 'masks-theater',
       gallery: 'masks-theater', theater: 'masks-theater', cinema: 'movie',
       restaurant: 'tools-kitchen-2', cafe: 'coffee', bar: 'glass-cocktail',
-      club: 'music', gym: 'run', spa: 'dog', bath: 'dog',
+      club: 'music', gym: 'run', spa: 'coffee', bath: 'coffee',
       music: 'music', exhibition: 'masks-theater', festival: 'balloon',
       entertainment: 'star', workshop: 'star', market: 'star', sports: 'run',
     };
