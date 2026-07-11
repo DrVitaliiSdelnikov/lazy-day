@@ -43,6 +43,11 @@ export class IngestionController {
     return this.eventIngestion.runByName(name);
   }
 
+  @Post('fix-chains')
+  async fixChains() {
+    return this.osmImport.fixChainFlags();
+  }
+
   @Get('events/sources')
   async listEventSources() {
     return this.eventIngestion.listSources();

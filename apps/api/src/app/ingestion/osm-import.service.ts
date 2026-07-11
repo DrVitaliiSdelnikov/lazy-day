@@ -90,6 +90,41 @@ export class OsmImportService {
     @InjectRepository(SourceRef) private readonly sourceRefRepo: Repository<SourceRef>,
   ) {}
 
+  /** One-time fix: flag known chains by venue name matching */
+  async fixChainFlags(): Promise<{ updated: number }> {
+    let totalUpdated = 0;
+
+    for (const chain of KNOWN_CHAINS) {
+      const result = await this.dataSource.query(
+        `UPDATE places SET is_chain = true, chain_key = $1
+         FROM venues v
+         WHERE places.venue_id = v.id
+           AND places.is_chain = false
+           AND LOWER(v.name) LIKE $2`,
+        [chain.key, `%${chain.match}%`],
+      );
+      totalUpdated += result?.[1] ?? 0;
+    }
+
+    // Also flag by brand in source_items
+    const brandResult = await this.dataSource.query(
+      `UPDATE places SET is_chain = true
+       FROM source_refs sr, source_items si
+       WHERE sr.entity_type = 'venue'
+         AND sr.entity_id = places.venue_id
+         AND sr.source = 'osm'
+         AND si.source = 'osm'
+         AND si.external_id = sr.external_id
+         AND places.is_chain = false
+         AND (si.raw_payload->'tags'->>'brand:wikidata' IS NOT NULL
+           OR si.raw_payload->'tags'->>'brand' IS NOT NULL)`,
+    );
+    totalUpdated += brandResult?.[1] ?? 0;
+
+    this.logger.log(`Fixed chain flags: ${totalUpdated} places updated`);
+    return { updated: totalUpdated };
+  }
+
   async importFromOverpass(): Promise<{ imported: number; skipped: number; errors: number }> {
     this.logger.log('Starting OSM import for Tbilisi...');
 
