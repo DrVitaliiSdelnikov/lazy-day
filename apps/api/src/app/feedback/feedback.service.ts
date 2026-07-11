@@ -40,14 +40,17 @@ export class FeedbackService {
       ? createHash('sha256').update(rawId).digest('hex').slice(0, 16)
       : 'anonymous';
 
+    const consentState = dto.consentState || 'pending';
+
     const entities = dto.events.map(e => this.eventRepo.create({
-      deviceIdHash: deviceHash,
+      deviceIdHash: consentState === 'declined' ? 'anonymous' : deviceHash,
       sessionId: dto.sessionId,
       eventType: e.eventType,
       targetType: e.targetType,
       targetId: e.targetId,
       cardPosition: e.cardPosition,
       context: e.context,
+      consentState,
     }));
 
     await this.eventRepo.save(entities);

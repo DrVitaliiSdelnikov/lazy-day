@@ -63,7 +63,8 @@ export class InteractionService {
     const events = [...this.buffer];
     this.buffer = [];
 
-    const body = JSON.stringify({ sessionId: this.sessionId, deviceId: this.deviceId, events });
+    const consentState = localStorage.getItem('ld_consent') || 'pending';
+    const body = JSON.stringify({ sessionId: this.sessionId, deviceId: this.deviceId, consentState, events });
 
     if (isDevMode()) {
       console.log(`[Track] Flushing ${events.length} events`, events.map(e => e.eventType));
