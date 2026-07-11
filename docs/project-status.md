@@ -137,6 +137,22 @@ Cost:      ~$5/month
 | D7 <10% AND CTR ≥25% | **Pivot** to evening anchor |
 | D7 <10% AND CTR <25% | **Freeze** |
 
+## Known Debts
+
+| Debt | Severity | Effort |
+|---|---|---|
+| 🔴 `/v1/health/migrate` open to public | Security | 15 min |
+| 🔴 Yandex.Metrika loads without consent | Legal (GDPR) | 2-3 hours |
+| 🔴 Desktop modal has no URL (breaks share + OG) | Distribution | 30 min |
+| 🟡 Chain detection covers only 6/50+ chains | Quality | 2-3 hours |
+| 🟡 43% venues without opening hours | Trust | targeted re-enrichment |
+| 🟡 No error monitoring (Sentry) | Stability | 30 min |
+| 🟡 No uptime monitoring (UptimeRobot) | Reliability | 15 min |
+| 🟡 ~55 events may be too thin for K7 digest | Feature gate | check first |
+| 🟡 D7 metric needs first_seen_at tracking | Measurement | 1 hour |
+
+See `docs/post-deploy-review.md` for full analysis and fix plan.
+
 ## Key Documents
 
 | Doc | What |
