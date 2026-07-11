@@ -6,7 +6,12 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.setGlobalPrefix('v1');
-  app.enableCors();
+  app.enableCors({
+    origin: ['https://lazigo.app', 'http://localhost:4200'],
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'x-device-id', 'x-admin-token', 'x-migrate-token'],
+    credentials: false,
+  });
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
