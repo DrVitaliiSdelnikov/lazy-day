@@ -786,6 +786,11 @@ export class DiscoverComponent implements OnInit {
   readonly visibleCount = signal(15);
   private navigatedToDetail = false;
   private cachedScrollY = 0;
+
+  // Qualified session tracking (for ads)
+  private openedCardIds = new Set<string>();
+  private hasQualifiedAction = false;
+  private qualifiedFired = false;
   readonly cards = computed(() => {
     const type = this.activeTypeFilter();
     const filtered = type === 'all'
@@ -1049,6 +1054,13 @@ export class DiscoverComponent implements OnInit {
             // Track impressions for visible cards
             filtered.slice(0, 15).forEach((c, i) =>
               this.interactions.trackImpression(c.type, c.id, i));
+            // GA4: recommendation_generated or no_results
+            if (filtered.length > 0) {
+              (window as any).gtag?.('event', 'recommendation_generated', { result_count: filtered.length });
+            } else {
+              (window as any).gtag?.('event', 'no_results', {});
+              this.interactions.track({ eventType: 'no_results', targetType: 'feed' });
+            }
             // Cache for scroll restore + SWR
             this.cachedScrollY = 0;
             this.saveFeedCache();
@@ -1072,6 +1084,8 @@ export class DiscoverComponent implements OnInit {
   onOpenDetail(card: RecommendationCard) {
     const pos = this.cards().findIndex(c => c.id === card.id);
     this.interactions.trackClick(card.type, card.id, pos);
+    this.openedCardIds.add(card.id);
+    this.checkQualifiedSession('card_click');
     if (window.innerWidth >= 1024) {
       this.modalCard.set(card);
       history.replaceState({ modal: true }, '', `/detail/${card.type}/${card.id}`);
@@ -1092,6 +1106,8 @@ export class DiscoverComponent implements OnInit {
   onToggleSave(card: RecommendationCard) {
     this.savedStore.toggle(card);
     this.interactions.trackSave(card.type, card.id);
+    this.hasQualifiedAction = true;
+    this.checkQualifiedSession('save');
   }
 
   onHideCard(card: RecommendationCard) {
@@ -1163,6 +1179,30 @@ export class DiscoverComponent implements OnInit {
 
     // 'now' — next 6 hours
     return this.defaultTimeWindow();
+  }
+
+  // ── Qualified session (Google Ads conversion) ──
+
+  private checkQualifiedSession(action: string) {
+    if (this.qualifiedFired) return;
+    if (this.openedCardIds.size >= 2 && this.hasQualifiedAction) {
+      this.qualifiedFired = true;
+      this.interactions.track({
+        eventType: 'qualified_session',
+        targetType: 'feed',
+        context: { cards_opened: this.openedCardIds.size, intent_action: action },
+      });
+      (window as any).gtag?.('event', 'qualified_session', {
+        cards_opened: this.openedCardIds.size,
+        intent_action: action,
+      });
+    }
+  }
+
+  /** Called from detail component when route/share happens (via event bubbling or service) */
+  markQualifiedAction() {
+    this.hasQualifiedAction = true;
+    this.checkQualifiedSession('route_or_share');
   }
 
   // ── Feed cache (#41 scroll restore + #42 SWR) ──

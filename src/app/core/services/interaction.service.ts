@@ -1,4 +1,5 @@
-import { Injectable, isDevMode } from '@angular/core';
+import { inject, Injectable, isDevMode } from '@angular/core';
+import { UtmService } from './utm.service';
 
 export interface TrackEvent {
   eventType: string;
@@ -13,6 +14,7 @@ export class InteractionService {
   private buffer: TrackEvent[] = [];
   private readonly sessionId = crypto.randomUUID();
   private readonly deviceId = this.getOrCreateDeviceId();
+  private readonly utm = inject(UtmService);
   private flushTimer: ReturnType<typeof setInterval>;
 
   constructor() {
@@ -25,6 +27,11 @@ export class InteractionService {
   }
 
   track(event: TrackEvent) {
+    // Merge UTM params into event context
+    const utmParams = this.utm.get();
+    if (Object.keys(utmParams).length > 0) {
+      event = { ...event, context: { ...event.context, ...utmParams } };
+    }
     this.buffer.push(event);
     if (this.buffer.length >= 10) this.flush();
   }
@@ -40,14 +47,17 @@ export class InteractionService {
 
   trackRoute(targetType: string, targetId: string) {
     this.track({ eventType: 'route', targetType, targetId });
+    (window as any).gtag?.('event', 'route_clicked', { place_id: targetId });
   }
 
   trackShare(targetType: string, targetId: string) {
     this.track({ eventType: 'share', targetType, targetId });
+    (window as any).gtag?.('event', 'share_clicked', { place_id: targetId });
   }
 
   trackSave(targetType: string, targetId: string) {
     this.track({ eventType: 'save', targetType, targetId });
+    (window as any).gtag?.('event', 'favorite_added', { place_id: targetId });
   }
 
   trackHide(targetType: string, targetId: string, reason?: string) {
