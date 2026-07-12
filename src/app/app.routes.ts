@@ -7,6 +7,24 @@ export const appRoutes: Route[] = [
     pathMatch: 'full',
   },
   {
+    path: 'en/tbilisi/today',
+    loadComponent: () =>
+      import('./features/landing/ad-landing.component').then((m) => m.AdLandingComponent),
+    data: { lang: 'en' },
+  },
+  {
+    path: 'ru/tbilisi/today',
+    loadComponent: () =>
+      import('./features/landing/ad-landing.component').then((m) => m.AdLandingComponent),
+    data: { lang: 'ru' },
+  },
+  {
+    path: 'ka/tbilisi/today',
+    loadComponent: () =>
+      import('./features/landing/ad-landing.component').then((m) => m.AdLandingComponent),
+    data: { lang: 'ka' },
+  },
+  {
     path: 'discover',
     loadChildren: () =>
       import('./features/discover/discover.routes').then((m) => m.discoverRoutes),
@@ -30,11 +48,6 @@ export const appRoutes: Route[] = [
     path: 'privacy',
     loadComponent: () =>
       import('./features/privacy/privacy.component').then((m) => m.PrivacyComponent),
-  },
-  {
-    path: ':lang/tbilisi/today',
-    loadComponent: () =>
-      import('./features/landing/ad-landing.component').then((m) => m.AdLandingComponent),
   },
   {
     path: '**',

@@ -303,8 +303,8 @@ export class AdLandingComponent implements OnInit {
   exampleCards = signal<RecommendationCard[]>([]);
 
   ngOnInit() {
-    // Set language from URL param
-    const lang = this.route.snapshot.paramMap.get('lang') || 'en';
+    // Set language from route data or URL
+    const lang = this.route.snapshot.data['lang'] || this.route.snapshot.paramMap.get('lang') || 'en';
     if (['ru', 'en', 'ka'].includes(lang)) {
       this.setLang(lang);
     }
