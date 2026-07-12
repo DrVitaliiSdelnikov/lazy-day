@@ -1,8 +1,10 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { NavigationEnd, Router, RouterModule } from '@angular/router';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { ConsentBannerComponent } from '../components/consent-banner.component';
 import { LdIconComponent } from '../components/ld-icon.component';
+import { ProfileStore } from '../stores/profile.store';
+import { Locale } from '../models';
 
 @Component({
   selector: 'app-shell',
@@ -19,6 +21,12 @@ import { LdIconComponent } from '../components/ld-icon.component';
             <a routerLink="/saved" routerLinkActive="topnav--active" class="topnav__link">{{ 'nav.saved' | translate }}</a>
             <a routerLink="/settings" routerLinkActive="topnav--active" class="topnav__link">{{ 'nav.settings' | translate }}</a>
           </nav>
+          <div class="shell__lang">
+            @for (l of langs; track l.code) {
+              <button class="shell__lang-btn" [class.shell__lang-btn--active]="currentLang() === l.code"
+                (click)="setLang(l.code)">{{ l.label }}</button>
+            }
+          </div>
         </header>
       }
 
@@ -87,6 +95,29 @@ import { LdIconComponent } from '../components/ld-icon.component';
       gap: 24px;
     }
 
+    .shell__lang {
+      display: flex;
+      gap: 2px;
+      margin-left: 16px;
+    }
+
+    .shell__lang-btn {
+      background: none;
+      border: none;
+      font-family: inherit;
+      font-size: 12px;
+      color: var(--ld-text-3);
+      cursor: pointer;
+      padding: 4px 6px;
+      border-radius: 6px;
+    }
+
+    .shell__lang-btn--active {
+      color: var(--ld-primary);
+      font-weight: 600;
+      background: var(--ld-primary-soft);
+    }
+
     .topnav__link {
       font-size: 14px;
       font-weight: 500;
@@ -142,7 +173,16 @@ import { LdIconComponent } from '../components/ld-icon.component';
 })
 export class AppShellComponent {
   private router = inject(Router);
+  private translate = inject(TranslateService);
+  private profileStore = inject(ProfileStore);
   private currentUrl = signal(this.router.url);
+
+  langs = [
+    { code: 'ru', label: 'RU' },
+    { code: 'en', label: 'EN' },
+    { code: 'ka', label: 'KA' },
+  ];
+  currentLang = signal(this.profileStore.locale());
 
   constructor() {
     this.router.events.subscribe(e => {
@@ -154,4 +194,10 @@ export class AppShellComponent {
     const url = this.currentUrl();
     return !url.includes('/welcome') && !url.includes('/onboarding');
   });
+
+  setLang(code: string) {
+    this.profileStore.setLocale(code as Locale);
+    this.translate.use(code);
+    this.currentLang.set(code as Locale);
+  }
 }

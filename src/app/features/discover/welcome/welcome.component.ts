@@ -1,7 +1,8 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { ProfileStore } from '../../../core/stores/profile.store';
+import { Locale } from '../../../core/models';
 import { LdIconComponent } from '../../../core/components/ld-icon.component';
 
 @Component({
@@ -10,6 +11,14 @@ import { LdIconComponent } from '../../../core/components/ld-icon.component';
   imports: [LdIconComponent, TranslatePipe],
   template: `
     <div class="welcome">
+      <!-- Language switcher -->
+      <div class="welcome__lang">
+        @for (l of langs; track l.code) {
+          <button class="welcome__lang-btn" [class.welcome__lang-btn--active]="currentLang() === l.code"
+            (click)="setLang(l.code)">{{ l.label }}</button>
+        }
+      </div>
+
       <div class="welcome__content">
         <!-- App icon -->
         <div class="welcome__icon">
@@ -73,10 +82,41 @@ import { LdIconComponent } from '../../../core/components/ld-icon.component';
     .welcome {
       min-height: 100vh;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
       padding: 24px;
       background: var(--ld-bg);
+      position: relative;
+    }
+
+    .welcome__lang {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      display: flex;
+      gap: 2px;
+      background: var(--ld-surface);
+      border-radius: 10px;
+      padding: 3px;
+    }
+
+    .welcome__lang-btn {
+      background: none;
+      border: none;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--ld-text-3);
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 8px;
+    }
+
+    .welcome__lang-btn--active {
+      color: var(--ld-primary);
+      background: var(--ld-primary-soft);
+      font-weight: 600;
     }
 
     .welcome__content {
@@ -162,8 +202,23 @@ import { LdIconComponent } from '../../../core/components/ld-icon.component';
 export class WelcomeComponent {
   private router = inject(Router);
   private profileStore = inject(ProfileStore);
+  private translate = inject(TranslateService);
+
+  langs = [
+    { code: 'ru', label: 'RU' },
+    { code: 'en', label: 'EN' },
+    { code: 'ka', label: 'KA' },
+  ];
+  currentLang = signal(this.profileStore.locale());
+
+  setLang(code: string) {
+    this.profileStore.setLocale(code as Locale);
+    this.translate.use(code);
+    this.currentLang.set(code as Locale);
+  }
 
   start() {
+    localStorage.setItem('ld_welcome_done', 'true');
     this.router.navigate(['/discover/onboarding']);
   }
 
