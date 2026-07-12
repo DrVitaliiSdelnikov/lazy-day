@@ -32,6 +32,11 @@ export const appRoutes: Route[] = [
       import('./features/privacy/privacy.component').then((m) => m.PrivacyComponent),
   },
   {
+    path: ':lang/tbilisi/today',
+    loadComponent: () =>
+      import('./features/landing/ad-landing.component').then((m) => m.AdLandingComponent),
+  },
+  {
     path: '**',
     redirectTo: 'discover',
   },

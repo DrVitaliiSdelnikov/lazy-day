@@ -225,6 +225,20 @@
     "friday": "Friday",
     "saturday": "Saturday"
   },
+  "landing": {
+    "title": "What to do in Tbilisi today",
+    "subtitle": "Tell us what you like and who you're with. Get ranked places and events near you, with a reason for every suggestion.",
+    "cta": "Get my recommendations",
+    "no_account": "No registration · everything on your device",
+    "examples_title": "Here's what others find",
+    "how_title": "How it works",
+    "how_1": "Pick your mood and company",
+    "how_2": "Get 15 nearby ideas with reasons",
+    "how_3": "Tap Route — and go",
+    "context_title": "Matched to your situation",
+    "diff_title": "Not another list of places",
+    "diff_text": "LaziGo isn't a catalog. Every suggestion is matched to your interests, company, and time. And explained."
+  },
   "feedback": {
     "title": "Feedback",
     "cat_bug": "Bug",
