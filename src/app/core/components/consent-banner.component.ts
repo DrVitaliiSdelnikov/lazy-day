@@ -99,8 +99,8 @@ export class ConsentBannerComponent {
   accept() {
     localStorage.setItem(CONSENT_KEY, 'accepted');
     this.visible.set(false);
-    // Load Yandex.Metrika now
     this.loadMetrika();
+    this.loadGA();
   }
 
   decline() {
@@ -120,5 +120,18 @@ export class ConsentBannerComponent {
         clickmap: true, trackLinks: true, accurateTrackBounce: true,
       });
     };
+  }
+
+  private loadGA() {
+    if (document.getElementById('ga-script')) return;
+    const s = document.createElement('script');
+    s.id = 'ga-script';
+    s.async = true;
+    s.src = 'https://www.googletagmanager.com/gtag/js?id=G-8RSG5LFWBC';
+    document.head.appendChild(s);
+    (window as any).dataLayer = (window as any).dataLayer || [];
+    const gtag = (...args: any[]) => (window as any).dataLayer.push(args);
+    gtag('js', new Date());
+    gtag('config', 'G-8RSG5LFWBC');
   }
 }
