@@ -274,6 +274,12 @@ import { ThemeService, ThemeName } from '../../core/services/theme.service';
       color: var(--ld-primary);
       text-decoration: none;
       padding: 6px 0;
+      background: none;
+      border: none;
+      font-family: inherit;
+      text-align: left;
+      cursor: pointer;
+      width: 100%;
     }
 
     .settings__link--muted {
