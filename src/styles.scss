@@ -342,20 +342,27 @@ html, body {
 
 .ld-sheet {
   position: fixed;
-  bottom: 0;
+  bottom: 56px; /* above mobile nav */
   left: 0;
   right: 0;
   z-index: 1001;
   background: var(--ld-surface);
   border-radius: var(--ld-radius-sheet) var(--ld-radius-sheet) 0 0;
   box-shadow: var(--ld-shadow-sheet);
-  max-height: 70vh;
+  max-height: 60vh;
   overflow-y: auto;
-  transform: translateY(100%);
+  transform: translateY(calc(100% + 56px));
   transition: transform 250ms ease;
   padding: 0 16px 24px;
 
   &--open { transform: translateY(0); }
+
+  @media (min-width: 1024px) {
+    bottom: 0;
+    max-height: 70vh;
+    transform: translateY(100%);
+    &--open { transform: translateY(0); }
+  }
 
   &__handle {
     width: 36px;

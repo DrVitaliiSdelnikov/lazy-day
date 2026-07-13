@@ -60,10 +60,6 @@ type PanelType = 'location' | 'company' | 'interests' | 'time' | null;
               [ngModel]="radiusKm()" (ngModelChange)="onRadiusChange($event)"
               min="1" max="15" step="1" />
           </div>
-          <div class="panel-section panel-pos-info">
-            📍 {{ geo.position().lat.toFixed(5) }}, {{ geo.position().lng.toFixed(5) }}
-            <span class="panel-pos-source">({{ geo.position().source }})</span>
-          </div>
         }
 
         <!-- Company panel -->
