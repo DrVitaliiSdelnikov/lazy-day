@@ -88,6 +88,11 @@ GET  /v1/health                       # Health + event source freshness
 POST /v1/health/migrate               # Run DB migrations (production)
 POST /v1/admin/ingestion/osm          # OSM import
 POST /v1/admin/ingestion/events/run   # Event refresh
+POST /v1/admin/ingestion/fix-chains   # Flag known chain venues
+POST /v1/admin/ingestion/translate-names  # Translate Georgian names → English
+GET  /v1/admin/ingestion/events/sources   # List event sources
+POST /v1/feedback                     # User feedback → Telegram
+GET  /v1/og/:type/:id                # Dynamic OG preview (messengers)
 ```
 
 ## Architecture

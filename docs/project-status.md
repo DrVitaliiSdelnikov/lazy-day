@@ -51,6 +51,7 @@ Cost:      ~$5/month
 | goodForChildren | 1,292 | Google Atmosphere | July 8 |
 | Events | ~55 | 3 sources (see below) | July 11 |
 | Chains flagged | 258 | OSM brand + 35 known chains | July 11 |
+| Names translated | 285 | Google Translate API (ka→en, ~$0.60) | July 13 |
 | Migrations | 14 + 014b | 001-014 + event sources fix | July 11 |
 
 ### Event Sources (all working on prod)
@@ -139,6 +140,14 @@ All sources were dormant on prod until July 11 (missing `SERPAPI_KEY` env + miss
 - **Feedback** — bottom sheet in settings (4 categories: Bug/Idea/Missing/Other) → POST /v1/feedback → Telegram bot forwarding
 - **Dynamic OG** — GET /v1/og/:type/:id for rich share previews
 - **Kill/scale SQL** — D7 return, top-3 CTR, route rate, DAU queries in cheatsheet
+- **UTM tracking** — UtmService captures gclid + utm_* from ad clicks, persists in sessionStorage, injected into all interaction_events
+- **qualified_session** — GA4 event: ≥2 cards opened + ≥1 action (route/save/share). Primary Google Ads conversion
+- **GA4 events** — recommendation_generated, no_results, route_clicked, share_clicked, favorite_added
+- **Consent Mode v2** — default denied, update on Accept/Decline (analytics_storage, ad_storage, ad_user_data, ad_personalization)
+- **Google Analytics** — G-8RSG5LFWBC, consent-gated alongside Metrika
+- **Ad landing pages** — /en/tbilisi/today, /ru/tbilisi/today, /ka/tbilisi/today (dedicated, no nav)
+- **Batch translate** — 285 Georgian venue names → English via Google Translate API (~$0.60)
+- **Smart title fallback** — ru/en locale: prefer name_en over Georgian name
 
 ### API Endpoints
 
@@ -167,11 +176,12 @@ Protected (x-admin-token):
 
 | Debt | Severity | Status | Notes |
 |---|---|---|---|
+| ~~Georgian venue names~~ | ~~🟡~~ | ✅ fixed | 285 translated via Google Translate API |
 | 43% venues without opening hours | 🟡 | open | Needs targeted re-enrichment for top venues |
 | No error monitoring (Sentry) | 🟡 | pending | User to set up |
 | No uptime monitoring (UptimeRobot) | 🟡 | pending | User to set up |
 | UX-23 Session refinement | 🟡 | spec ready | scroll-triggered sub-tag narrowing |
-| K7 event depth | 🟡 | improved | Was 4 events, now ~55 with all sources. Recheck gate |
+| K7 event depth | 🟡 | improved | Was 4 events, now ~55 with all sources |
 | UX-1 phase 2 (session cooldown + company tune) | 🟡 | spec ready | |
 | UX-4 phase 2 (reason chips + hidden screen) | 🟡 | spec ready | |
 
@@ -204,6 +214,17 @@ Protected (x-admin-token):
 - Fix: CORS for beacon API, event sources in DB (google_events + yolo.ge), chain fix endpoint
 - Fix: detail distance 0m bug (preloadedCard + getCard with lat/lng)
 - Fix: spa/bath icon (dog → coffee), long title overflow
+
+### Post-deploy week 2 (July 12-13)
+- Ads Day 1: UtmService + qualified_session + GA4 events (route_clicked, share_clicked, etc.)
+- Ads Day 2: Ad landing pages (/en/tbilisi/today, /ru/tbilisi/today, /ka/tbilisi/today)
+- Ads Day 3: Consent Mode v2 (default denied, update on Accept)
+- Google Analytics G-8RSG5LFWBC added (consent-gated)
+- Language switcher in header + welcome screen
+- Fix: feedback button style, landing routes, nav hidden on landing
+- Event sources fixed on prod (google_events + yolo.ge: 48 events/run)
+- Batch translate: 285 Georgian venue names → English (~$0.60)
+- Smart title fallback: ru/en prefer name_en over Georgian
 
 ## Next Up
 
