@@ -133,10 +133,11 @@ async createOrRestore(@Req() req, @Res({ passthrough: true }) res) {
     const user = result[0];
     const restored = user.was_update; // Postgres xmax: true if row existed
     this.setCookie(res, user.id);
-    // IMPORTANT: return savedIds + hiddenIds for restore
+    // IMPORTANT: return savedIds + hiddenIds + consentState for restore
     return {
       uid: user.id, profile: user.profile,
       savedIds: user.saved_ids, hiddenIds: user.hidden_ids,
+      consentState: user.consent_state,
       restored,
     };
   }
@@ -237,6 +238,19 @@ export class ProfileSyncService {
         const localHidden = this.profileStore.hiddenIds();
         const merged = [...new Set([...localHidden, ...res.hiddenIds])];
         this.profileStore.setHiddenIds(merged);
+      }
+
+      // Consent: restore from server → don't re-show banner
+      if (res.consentState && res.consentState !== 'pending') {
+        const localConsent = localStorage.getItem('ld_consent');
+        if (!localConsent || localConsent === 'pending') {
+          localStorage.setItem('ld_consent', res.consentState);
+          // Re-init analytics if was granted
+          if (res.consentState === 'accepted') {
+            // Load Metrika + GA4 (same logic as consent banner accept)
+            this.loadAnalytics();
+          }
+        }
       }
     }
 
@@ -428,6 +442,23 @@ app.enableCors({
 });
 ```
 
+```typescript
+// app.module.ts — rate limiting for /auth/anon
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+
+@Module({
+  imports: [
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 10 }]),
+    // ... existing modules
+  ],
+})
+
+// auth.controller.ts
+@Throttle({ default: { ttl: 60000, limit: 10 } })
+@Post('anon')
+async createOrRestore(...) { }
+```
+
 **beacon + credentials**: `navigator.sendBeacon` sends cookies
 automatically for same-site requests. With `api.lazigo.app` ↔ `lazigo.app`
 (same eTLD+1), cookies are first-party. CORS must respond with
@@ -455,7 +486,7 @@ NestJS interceptors working while still setting cookies.
 |---|---|---|---|
 | 0 | `api.lazigo.app` custom domain + CORS + frontend URL | 1-2 hours | `curl https://api.lazigo.app/v1/health` works |
 | 1 | Users table (015) + POST /v1/auth/anon (idempotent, @IsUUID, @Throttle) + cookie | 2-3 hours | Cookie set, second tab reuses same user, invalid UUID → 400 |
-| 2 | ProfileSyncService + PATCH /v1/me (merge guard + savedIds union + hydrate) | 2-3 hours | Clear site data → reopen → saved places visible in Favorites |
+| 2 | ProfileSyncService + PATCH /v1/me (merge guard + savedIds union + hydrate + consent restore) | 2-3 hours | Test A passes (localStorage.clear → saved restored, consent banner not shown); Test B: clean new user |
 | 3 | DELETE /v1/me (anonymize) + Settings UI | 30 min | Events anonymized, user deleted, cookie cleared |
 | 4 | InteractionService uid + device_ids linking | 30 min | New events use server uid |
 | 5 | GC cron for empty anon users | 15 min | Cron runs weekly |
