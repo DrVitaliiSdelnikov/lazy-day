@@ -97,6 +97,7 @@ async createOrRestore(@Req() req, @Res({ passthrough: true }) res) {
       return {
         uid: user.id, profile: user.profile,
         savedIds: user.savedIds, hiddenIds: user.hiddenIds,
+        consentState: user.consentState,
         restored: true,
       };
     }
@@ -152,7 +153,7 @@ async createOrRestore(@Req() req, @Res({ passthrough: true }) res) {
   }));
 
   this.setCookie(res, user.id);
-  return { uid: user.id, profile: user.profile, savedIds: [], hiddenIds: [], restored: false };
+  return { uid: user.id, profile: user.profile, savedIds: [], hiddenIds: [], consentState: 'pending', restored: false };
 }
 
 private cookieOpts() {
@@ -214,6 +215,7 @@ export class ProfileSyncService {
     ));
 
     this.serverUid.set(res.uid);
+    localStorage.setItem('ld_server_uid', res.uid); // cookie-uid wins over generated
 
     // Restore: merge profile + savedIds + hiddenIds
     if (res.restored) {
@@ -496,13 +498,34 @@ NestJS interceptors working while still setting cookies.
 ### Key acceptance tests
 
 **Test A — ITP simulation (the main scenario)**:
-1. Open lazigo.app → save 3 places, set interests
+1. Open lazigo.app → save 3 places, set interests, accept consent
 2. In console: `localStorage.clear(); sessionStorage.clear();`
    (DO NOT clear cookies — ITP doesn't clear server-set HttpOnly cookies)
 3. Reload page
 4. → Favorites shows all 3 saved places ✅
 5. → Feed uses restored interests ✅
 6. → Device considered "returning" in D7 metric ✅
+7. → `localStorage.getItem('ld_server_uid')` === uid from server response ✅
+8. → Consent banner NOT shown (consent restored from server) ✅
+9. → New interaction_events use the server uid, not a phantom ✅
+
+**Run Test A twice**: second run goes entirely through branch 1 (cookie).
+
+### Consent state enum (canonical)
+
+```
+'pending' | 'accepted' | 'declined'
+```
+
+Used consistently in:
+- localStorage key `ld_consent`
+- `users.consent_state` column (default 'pending')
+- `/auth/anon` response field `consentState`
+- `interaction_events.consent_state` column
+- Consent banner checks `=== 'accepted'` / `=== 'declined'`
+
+Never use `'granted'` or `'denied'` — those are gtag consent mode values,
+not our application state.
 
 **Test B — Full wipe (expected: new user)**:
 1. DevTools → Application → Clear site data (kills cookies too)
