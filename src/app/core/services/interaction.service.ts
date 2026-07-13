@@ -82,7 +82,7 @@ export class InteractionService {
 
     // sendBeacon is fire-and-forget, works even when page is closing
     const apiBase = (typeof window !== 'undefined' && window.location.hostname !== 'localhost')
-      ? 'https://lazy-day-production.up.railway.app/v1'
+      ? 'https://api.lazigo.app/v1'
       : '/v1';
     const url = `${apiBase}/interactions/batch`;
     const sent = navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }));

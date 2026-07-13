@@ -12,7 +12,7 @@ import type {
 @Injectable()
 export class HttpApiService extends ApiService {
   private readonly baseUrl = (typeof window !== 'undefined' && window.location.hostname !== 'localhost')
-    ? 'https://lazy-day-production.up.railway.app/v1'
+    ? 'https://api.lazigo.app/v1'
     : '/v1';
 
   constructor(private readonly http: HttpClient) {

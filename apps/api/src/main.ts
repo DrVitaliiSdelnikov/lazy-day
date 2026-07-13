@@ -8,9 +8,9 @@ async function bootstrap() {
   app.setGlobalPrefix('v1');
   app.enableCors({
     origin: ['https://lazigo.app', 'http://localhost:4200'],
-    methods: ['GET', 'POST', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'x-device-id', 'x-admin-token', 'x-migrate-token'],
-    credentials: false,
+    credentials: true,
   });
   app.useGlobalPipes(
     new ValidationPipe({

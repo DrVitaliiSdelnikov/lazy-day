@@ -542,7 +542,7 @@ export class DetailComponent implements OnInit {
   async shareCard(c: RecommendationCard) {
     this.interactions.trackShare(c.type, c.id);
     // OG endpoint returns dynamic preview for messengers, redirects humans to PWA
-    const url = `https://lazy-day-production.up.railway.app/v1/og/${c.type}/${c.id}`;
+    const url = `https://api.lazigo.app/v1/og/${c.type}/${c.id}`;
     const text = `${c.title} — ${c.categoryLabel || c.category}`;
 
     try {
