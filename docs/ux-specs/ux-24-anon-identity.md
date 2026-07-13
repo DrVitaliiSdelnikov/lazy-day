@@ -72,30 +72,50 @@ Race condition risk: two tabs, SWR revalidate, beacon — all can hit
 two requests create two users. Fix: client sends its localStorage uid,
 server uses it as PK via `INSERT ... ON CONFLICT DO UPDATE`.
 
+**Security: clientUid = bearer-secret.**
+UUID v4 is unguessable, but:
+- Validate `@IsUUID(4)` on clientUid — prevent PK injection ('deleted', etc.)
+- uid NEVER in URLs, share links, OG, request logs
+- Future profile transfer: use separate one-time token, NOT uid
+- Rate-limit `/auth/anon`: 10/min per IP (bots will probe this first)
+
 ```typescript
 @Post('anon')
 async createOrRestore(@Req() req, @Res({ passthrough: true }) res) {
-  // 1. Check for existing cookie
+  // 1. Check for existing cookie — also link device_ids
   const cookieUid = req.cookies?.['ld_uid'];
   if (cookieUid) {
     const user = await this.usersRepo.findOne({ where: { id: cookieUid } });
     if (user) {
       user.lastSeenAt = new Date();
+      // Link old device hash if not already linked
+      const deviceIdHash = req.body?.deviceIdHash;
+      if (deviceIdHash && !user.deviceIds?.includes(deviceIdHash)) {
+        user.deviceIds = [...(user.deviceIds || []), deviceIdHash];
+      }
       await this.usersRepo.save(user);
       return { uid: user.id, profile: user.profile, restored: true };
     }
   }
 
-  // 2. Client-generated uid (idempotent)
+  // 2. Client-generated uid (idempotent) — MUST validate UUID v4
   const clientUid = req.body?.clientUid; // from localStorage ld_server_uid
+  if (clientUid && !isUUID(clientUid, 4)) {
+    throw new BadRequestException('Invalid clientUid format');
+  }
   const deviceIdHash = req.body?.deviceIdHash; // old device_id for linking
 
   if (clientUid) {
-    // Upsert: create if missing, update last_seen if exists
+    // Upsert: create if missing, update last_seen + merge device_ids if exists
     const result = await this.dataSource.query(`
       INSERT INTO users (id, profile, saved_ids, hidden_ids, consent_state, device_ids, last_seen_at)
       VALUES ($1, $2, $3, $4, $5, $6, NOW())
-      ON CONFLICT (id) DO UPDATE SET last_seen_at = NOW()
+      ON CONFLICT (id) DO UPDATE SET
+        last_seen_at = NOW(),
+        device_ids = (
+          SELECT array_agg(DISTINCT d)
+          FROM unnest(users.device_ids || EXCLUDED.device_ids) d
+        )
       RETURNING *
     `, [
       clientUid,
@@ -230,12 +250,18 @@ async deleteMe(@Req() req, @Res({ passthrough: true }) res) {
   if (!user) throw new NotFoundException();
 
   // Anonymize events (NOT delete) — keeps aggregates accurate
+  // UTM params are flat keys in context (merged by UtmService.track())
+  // Verify with: SELECT DISTINCT jsonb_object_keys(context) FROM interaction_events
   const allDeviceIds = [uid, ...(user.deviceIds || [])];
   for (const did of allDeviceIds) {
     await this.dataSource.query(
       `UPDATE interaction_events
        SET device_id_hash = 'deleted',
-           context = context - 'utm_source' - 'utm_campaign' - 'gclid'
+           context = context
+             - 'utm_source' - 'utm_medium' - 'utm_campaign'
+             - 'utm_content' - 'utm_term'
+             - 'gclid' - 'campaign_id' - 'adgroup_id' - 'creative_id'
+             - 'device' - 'matchtype'
        WHERE device_id_hash = $1`,
       [did],
     );
@@ -253,13 +279,23 @@ async deleteMe(@Req() req, @Res({ passthrough: true }) res) {
 **Why anonymize not delete**:
 - Events become `device_id_hash='deleted'` — no link to person
 - Impressions, CTR, venue_interaction_stats stay correct
-- PII in context (UTM, gclid) stripped
+- All PII stripped from context: UTM params (utm_source/medium/campaign/
+  content/term), gclid, campaign_id, adgroup_id, creative_id, device, matchtype
+- Non-PII context preserved (category, card_position — needed for aggregates)
 - GDPR satisfied: data no longer personally identifiable
 - Privacy page says: "мы удаляем профиль и разрываем связь событий с вами"
 
 **device_ids linking**: old events used sha256(localStorage device_id).
-New events use server uid. `users.device_ids` stores both, so DELETE
+New events use server uid. `users.device_ids` stores both — merged on
+every /auth/anon call (cookie path AND upsert path), so DELETE
 anonymizes all historical events regardless of when they were created.
+
+**IMPORTANT**: UTM params are written as flat keys in context by UtmService
+(not nested under 'acquisition'). Verify in prod before deploy:
+`SELECT DISTINCT jsonb_object_keys(context) FROM interaction_events LIMIT 100;`
+
+**No FK from events to users.** Events with `device_id_hash='deleted'` or
+GC'd user uid are legitimate — orphaned events = valid aggregate data.
 
 ### Settings UI
 
