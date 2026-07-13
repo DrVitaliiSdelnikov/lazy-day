@@ -346,10 +346,19 @@ export class RecommendationService {
         ? checkOpenStatus(c.opening_hours, timeMid)
         : undefined;
 
-      // Resolve title by locale: en → name_en, ka → name_ka, ru → name (default)
-      const title = dto.locale === 'en' ? (c.title_en ?? c.title)
-        : dto.locale === 'ka' ? (c.title_ka ?? c.title)
-        : c.title;
+      // Resolve title by locale with smart fallback
+      // Problem: v.name is often Georgian in Tbilisi OSM data
+      // For ru/en: prefer name_en over Georgian name
+      const isGeorgian = (s: string) => /[\u10A0-\u10FF]/.test(s);
+      let title: string;
+      if (dto.locale === 'ka') {
+        title = c.title_ka ?? c.title;
+      } else if (dto.locale === 'en') {
+        title = c.title_en ?? (isGeorgian(c.title) ? c.title_en ?? c.title : c.title);
+      } else {
+        // ru: prefer non-Georgian name
+        title = (!isGeorgian(c.title) ? c.title : null) ?? c.title_en ?? c.title;
+      }
 
       // For tomorrow fallback: show tomorrow's opening time instead of current status
       let displayOpenStatus: string | undefined;
