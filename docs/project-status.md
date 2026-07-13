@@ -176,6 +176,8 @@ Protected (x-admin-token):
 
 | Debt | Severity | Status | Notes |
 |---|---|---|---|
+| 🔴 Server identity (Safari ITP, D7 metrics) | 🔴 | **in progress** | UX-24 spec v7 final, branch `feature/ux-24-anon-identity` |
+| 🔴 api.lazigo.app custom domain | 🔴 | pending | Prerequisite for UX-24 (first-party cookies) |
 | ~~Georgian venue names~~ | ~~🟡~~ | ✅ fixed | 285 translated via Google Translate API |
 | 43% venues without opening hours | 🟡 | open | Needs targeted re-enrichment for top venues |
 | No error monitoring (Sentry) | 🟡 | pending | User to set up |
@@ -230,9 +232,10 @@ Protected (x-admin-token):
 
 | # | Task | Effort | Depends on |
 |---|---|---|---|
+| 🔴 **api.lazigo.app** | Railway custom domain — prerequisite for server cookies | 1-2 hours | — |
+| 🔴 **UX-24** | Anon server identity (spec v7, 6 review iterations). Idempotent upsert, HttpOnly cookie, ProfileSync with merge guard, savedIds union, consent restore, GDPR anonymize. Branch: `feature/ux-24-anon-identity` | 1.5 days | blocks K2-lite |
+| **K2-lite** | "Decide together" shared picks | 1-2 days | UX-24 |
 | **A4** | UptimeRobot + Sentry | 30 min | user action |
-| **A2 recheck** | K7 gate with 55 events | 30 min | — |
-| **K2-lite** | "Decide together" shared picks | 1-2 days | R3 done ✅ |
 | **UX-23** | Session refinement | 1-1.5 days | — |
 | **A3** | Opening hours targeted re-enrichment | 2-3 hours | — |
 
