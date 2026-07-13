@@ -20,20 +20,31 @@ implementation guide with scope, data model, component changes, and edge cases.
 | [UX-19 Event source monitoring](ux-19-event-monitoring.md) | pending | 11 — reliability | 1-2 hours |
 | [UX-2 Location without GPS](ux-2-location-fallback.md) | partial (GPS auto-init done) | deferred | 1.5-2 days |
 
-## Post-Deploy: Week 1
+## 🔴 HIGH PRIORITY
 
 | Spec | Status | Effort |
 |------|--------|--------|
-| [UX-20 Detail SSR preview](ux-20-detail-ssr-preview.md) | pending | 3-4 hours |
-| [UX-21 Tourist vs Local](ux-21-tourist-signal.md) | pending | 1-2 hours |
-| [UX-14 Feedback + Telegram](ux-14-feedback.md) | pending | 0.5-1 day |
-| [UX-5 Daily feed rotation](ux-5-daily-rotation.md) | pending | 2-3 hours |
-| [UX-7 Scroll restore](ux-7-scroll-restore.md) | pending | 3-4 hours |
-| [UX-8 Stale-while-revalidate](ux-8-swr-entry.md) | pending | 3-4 hours |
+| [UX-24 Anon server identity](ux-24-anon-identity.md) | pending | 1.5 days |
+
+## Post-Deploy: Done
+
+| Spec | Status | Effort |
+|------|--------|--------|
+| [UX-20 Detail SSR preview](ux-20-detail-ssr-preview.md) | ✅ done (OG endpoint) | 3-4 hours |
+| [UX-21 Tourist vs Local](ux-21-tourist-signal.md) | ✅ done | 1-2 hours |
+| [UX-14 Feedback + Telegram](ux-14-feedback.md) | ✅ done | 0.5-1 day |
+| [UX-5 Daily feed rotation](ux-5-daily-rotation.md) | ✅ done | 2-3 hours |
+| [UX-7 Scroll restore](ux-7-scroll-restore.md) | ✅ done | 3-4 hours |
+| [UX-8 Stale-while-revalidate](ux-8-swr-entry.md) | ✅ done | 3-4 hours |
+| [UX-22 Chain deprioritization](ux-22-chain-deprioritization.md) | ✅ done | 4-5 hours |
+
+## Post-Deploy: Pending
+
+| Spec | Status | Effort |
+|------|--------|--------|
+| [UX-23 Session refinement](ux-23-session-refinement.md) | pending | 1-1.5 days |
 | [UX-4 phase 2](ux-4-hide-improvements.md) | pending | 2-3 hours |
 | [UX-1 phase 2](ux-1-progressive-onboarding.md) | pending | 3-4 hours |
-| [UX-22 Chain deprioritization](ux-22-chain-deprioritization.md) | ✅ done (basic) | 4-5 hours |
-| [UX-23 Session refinement](ux-23-session-refinement.md) | pending | 1-1.5 days |
 
 ## Polish (ongoing)
 

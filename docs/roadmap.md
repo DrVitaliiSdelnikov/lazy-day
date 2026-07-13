@@ -95,18 +95,26 @@ Single source of truth for what we do, what we decide, and when.
 
 ### 🔲 TODO
 
-**UX week 1** (full specs: `docs/ux-specs/`)
+**🔴 HIGH PRIORITY — Identity & Infrastructure**
 
 | # | Task | Effort | Spec |
 |---|---|---|---|
-| 34 | ⚠️ **UX-20: Detail SSR preview** — dynamic OG tags for shared links (Cloudflare Worker or API middleware) | 3-4 hours | [spec](ux-specs/ux-20-detail-ssr-preview.md) |
-| 34b | **UX-23: Session refinement** — IntersectionObserver scroll tracking, sub-tag extraction from primaryTags, inline "Narrow it down" block at card 9, client-side filtering. No API change. | 1-1.5 days | [spec](ux-specs/ux-23-session-refinement.md) |
+| 50 | 🔴 **api.lazigo.app** — Railway custom domain, CORS update, frontend URL migration. Prerequisite for cookies. | 1-2 hours | [ux-24](ux-specs/ux-24-anon-identity.md) |
+| 51 | 🔴 **UX-24: Anon server identity** — users table, POST /v1/auth/anon, HttpOnly cookie, ProfileSyncService. Fixes D7 metrics, unblocks K2-lite. | 1 day | [ux-24](ux-specs/ux-24-anon-identity.md) |
+| 52 | **DELETE /v1/me** — GDPR right to erasure, "Удалить мои данные" in Settings | 30 min | [ux-24](ux-specs/ux-24-anon-identity.md) |
+
 **Killer features** (full analysis: [killer-features.md](research/killer-features.md))
 
+| # | Task | Effort | Spec | Depends on |
+|---|---|---|---|---|
+| 53 | ⭐ **K2-lite: "Decide together"** — shared picks for couples/friends | 1-2 days | [spec](research/killer-features.md) | UX-24 ✅ |
+| 54 | ⭐ **K7: Evening digest bot** — Telegram bot 17:30 | 1 day | [spec](research/killer-features.md) | event depth gate |
+
+**UX improvements**
+
 | # | Task | Effort | Spec |
 |---|---|---|---|
-| 35 | ⭐ **K7: Evening digest bot** — Telegram bot, 17:30 Fri: "Tonight for you: X, Y, Z". Same pipeline on cron | 1 day | [spec](research/killer-features.md) |
-| 36 | ⭐ **K2-lite: "Decide together"** — share link with top-10, both heart, first overlap = match. No real-time sync | 1-2 days | [spec](research/killer-features.md) |
+| 55 | **UX-23: Session refinement** — scroll-triggered sub-tag narrowing | 1-1.5 days | [spec](ux-specs/ux-23-session-refinement.md) |
 
 **UX week 1** (full specs: `docs/ux-specs/`)
 
