@@ -48,6 +48,11 @@ export class IngestionController {
     return this.osmImport.fixChainFlags();
   }
 
+  @Post('translate-names')
+  async translateNames() {
+    return this.osmImport.translateGeorgianNames();
+  }
+
   @Get('events/sources')
   async listEventSources() {
     return this.eventIngestion.listSources();

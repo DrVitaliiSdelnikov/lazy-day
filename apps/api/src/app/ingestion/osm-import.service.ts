@@ -90,6 +90,51 @@ export class OsmImportService {
     @InjectRepository(SourceRef) private readonly sourceRefRepo: Repository<SourceRef>,
   ) {}
 
+  /** Batch translate Georgian venue names → English via Google Translate API */
+  async translateGeorgianNames(): Promise<{ found: number; translated: number; errors: number }> {
+    const key = process.env['GOOGLE_TRANSLATE_KEY'];
+    if (!key) return { found: 0, translated: 0, errors: -1 };
+
+    // Find venues with Georgian name and no name_en
+    const all = await this.dataSource.query(`SELECT id, name FROM venues WHERE name_en IS NULL`);
+    const venues = all.filter((r: any) => /[\u10A0-\u10FF]/.test(r.name));
+    this.logger.log(`Translate: found ${venues.length} Georgian-only venues`);
+
+    let translated = 0;
+    let errors = 0;
+    const BATCH = 50;
+
+    for (let i = 0; i < venues.length; i += BATCH) {
+      const batch = venues.slice(i, i + BATCH);
+      try {
+        const res = await fetch(`https://translation.googleapis.com/language/translate/v2?key=${key}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ q: batch.map((v: any) => v.name), source: 'ka', target: 'en', format: 'text' }),
+        });
+        if (!res.ok) { errors++; continue; }
+        const data = await res.json();
+        const results = data.data.translations;
+
+        for (let j = 0; j < batch.length; j++) {
+          const tr = results[j]?.translatedText;
+          if (tr && tr !== batch[j].name) {
+            await this.dataSource.query(`UPDATE venues SET name_en = $1 WHERE id = $2`, [tr, batch[j].id]);
+            translated++;
+          }
+        }
+        this.logger.log(`  Batch ${Math.floor(i / BATCH) + 1}: ${results.length} translated`);
+      } catch (e: any) {
+        this.logger.error(`  Batch error: ${e.message}`);
+        errors++;
+      }
+      await new Promise(r => setTimeout(r, 100));
+    }
+
+    this.logger.log(`Translate done: ${translated} translated, ${errors} errors`);
+    return { found: venues.length, translated, errors };
+  }
+
   /** One-time fix: flag known chains by venue name matching */
   async fixChainFlags(): Promise<{ updated: number }> {
     let totalUpdated = 0;
