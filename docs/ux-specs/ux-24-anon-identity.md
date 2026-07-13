@@ -50,13 +50,12 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   profile JSONB NOT NULL DEFAULT '{}',
-  -- profile: { interests, company, hasPet, locale, theme, localLevel, budgetMax }
   saved_ids TEXT[] DEFAULT '{}',
   hidden_ids TEXT[] DEFAULT '{}',
   consent_state TEXT NOT NULL DEFAULT 'pending',
-  auth_provider TEXT,  -- null = anon, 'google', 'yandex' (future)
-  auth_external_id TEXT,  -- provider user ID (future)
-  device_ids TEXT[] DEFAULT '{}'  -- all device_id_hash that linked to this user
+  auth_provider TEXT,
+  auth_external_id TEXT,
+  device_ids TEXT[] DEFAULT '{}'
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_last_seen ON users (last_seen_at);
@@ -66,42 +65,64 @@ CREATE INDEX IF NOT EXISTS idx_users_auth ON users (auth_provider, auth_external
 
 ### Endpoint: POST /v1/auth/anon
 
+**Key design: client-generated uid for idempotency.**
+
+Race condition risk: two tabs, SWR revalidate, beacon — all can hit
+`/auth/anon` concurrently without cookie yet. If server generates uid,
+two requests create two users. Fix: client sends its localStorage uid,
+server uses it as PK via `INSERT ... ON CONFLICT DO UPDATE`.
+
 ```typescript
 @Post('anon')
-async createOrRestore(@Req() req, @Res() res) {
+async createOrRestore(@Req() req, @Res({ passthrough: true }) res) {
   // 1. Check for existing cookie
-  const existingUid = req.cookies?.['ld_uid'];
-  if (existingUid) {
-    const user = await this.usersRepo.findOne({ where: { id: existingUid } });
+  const cookieUid = req.cookies?.['ld_uid'];
+  if (cookieUid) {
+    const user = await this.usersRepo.findOne({ where: { id: cookieUid } });
     if (user) {
       user.lastSeenAt = new Date();
       await this.usersRepo.save(user);
-      return res.json({ uid: user.id, profile: user.profile, restored: true });
+      return { uid: user.id, profile: user.profile, restored: true };
     }
   }
 
-  // 2. Check for localStorage uid in body (fallback)
-  const bodyUid = req.body?.localStorageUid;
-  if (bodyUid) {
-    const user = await this.usersRepo.findOne({ where: { id: bodyUid } });
-    if (user) {
-      this.setCookie(res, user.id);
-      user.lastSeenAt = new Date();
-      await this.usersRepo.save(user);
-      return res.json({ uid: user.id, profile: user.profile, restored: true });
-    }
+  // 2. Client-generated uid (idempotent)
+  const clientUid = req.body?.clientUid; // from localStorage ld_server_uid
+  const deviceIdHash = req.body?.deviceIdHash; // old device_id for linking
+
+  if (clientUid) {
+    // Upsert: create if missing, update last_seen if exists
+    const result = await this.dataSource.query(`
+      INSERT INTO users (id, profile, saved_ids, hidden_ids, consent_state, device_ids, last_seen_at)
+      VALUES ($1, $2, $3, $4, $5, $6, NOW())
+      ON CONFLICT (id) DO UPDATE SET last_seen_at = NOW()
+      RETURNING *
+    `, [
+      clientUid,
+      req.body?.profile || {},
+      req.body?.savedIds || [],
+      req.body?.hiddenIds || [],
+      req.body?.consentState || 'pending',
+      deviceIdHash ? [deviceIdHash] : [],
+    ]);
+
+    const user = result[0];
+    const restored = user.created_at < new Date(Date.now() - 5000); // existed before
+    this.setCookie(res, user.id);
+    return { uid: user.id, profile: user.profile, restored };
   }
 
-  // 3. Create new anon user
+  // 3. No client uid — create fresh
   const user = await this.usersRepo.save(this.usersRepo.create({
     profile: req.body?.profile || {},
     savedIds: req.body?.savedIds || [],
     hiddenIds: req.body?.hiddenIds || [],
     consentState: req.body?.consentState || 'pending',
+    deviceIds: deviceIdHash ? [deviceIdHash] : [],
   }));
 
   this.setCookie(res, user.id);
-  return res.json({ uid: user.id, profile: user.profile, restored: false });
+  return { uid: user.id, profile: user.profile, restored: false };
 }
 
 private setCookie(res: Response, uid: string) {
@@ -110,7 +131,7 @@ private setCookie(res: Response, uid: string) {
     secure: true,
     sameSite: 'lax',
     maxAge: 365 * 24 * 60 * 60 * 1000, // 1 year
-    domain: '.lazigo.app', // works for api.lazigo.app → lazigo.app
+    domain: '.lazigo.app',
     path: '/',
   });
 }
@@ -119,8 +140,8 @@ private setCookie(res: Response, uid: string) {
 ### Cookie hierarchy (restore order)
 
 1. HttpOnly cookie `ld_uid` → most reliable (server-set, ITP-proof)
-2. localStorage `ld_server_uid` → fallback (sent in body)
-3. Neither → create new anon user
+2. localStorage `ld_server_uid` → sent as `clientUid` in body (idempotent)
+3. Neither → server generates new UUID
 
 ---
 
@@ -132,50 +153,51 @@ private setCookie(res: Response, uid: string) {
 @Injectable({ providedIn: 'root' })
 export class ProfileSyncService {
   private serverUid = signal<string | null>(null);
+  private mergeComplete = false; // ← sync guard (bug fix #4)
+  readonly identityReady = new Promise<void>(...); // ← all services wait on this
 
-  constructor(
-    private http: HttpClient,
-    private profileStore: ProfileStore,
-  ) {
-    this.init();
-  }
+  constructor() { this.init(); }
 
   private async init() {
-    // On app start: establish server identity
-    const localUid = localStorage.getItem('ld_server_uid');
+    const localUid = localStorage.getItem('ld_server_uid') || crypto.randomUUID();
+    localStorage.setItem('ld_server_uid', localUid); // ensure exists before POST
+
+    const oldDeviceId = localStorage.getItem('ld_device_id');
     const localProfile = this.profileStore.snapshot();
 
     const res = await firstValueFrom(this.http.post<any>(
       `${API_BASE}/auth/anon`,
       {
-        localStorageUid: localUid,
+        clientUid: localUid, // idempotent — same uid = same user
+        deviceIdHash: oldDeviceId ? sha256(oldDeviceId).slice(0,16) : undefined,
         profile: localProfile,
         savedIds: localProfile.savedIds,
         hiddenIds: localProfile.hiddenIds,
         consentState: localStorage.getItem('ld_consent') || 'pending',
       },
-      { withCredentials: true } // sends cookie
+      { withCredentials: true }
     ));
 
     this.serverUid.set(res.uid);
-    localStorage.setItem('ld_server_uid', res.uid);
 
-    // If restored from server → merge into local store
+    // Restore: if server has richer profile (Safari cleared localStorage)
     if (res.restored && res.profile && Object.keys(res.profile).length > 0) {
-      this.profileStore.mergeFromServer(res.profile);
+      const localEmpty = Object.keys(localProfile.interests || {}).length === 0;
+      if (localEmpty) {
+        this.profileStore.mergeFromServer(res.profile);
+      }
     }
+
+    this.mergeComplete = true; // ← NOW sync is safe
+    this.resolveIdentityReady();
   }
 
   /** Debounced sync: local changes → server (background) */
   syncToServer() {
+    if (!this.mergeComplete) return; // ← guard: no sync before merge!
     const uid = this.serverUid();
     if (!uid) return;
     // Debounce 2s, then PATCH /v1/me
-    this.http.patch(`${API_BASE}/me`, {
-      profile: this.profileStore.snapshot(),
-      savedIds: this.profileStore.savedIds(),
-      hiddenIds: this.profileStore.hiddenIds(),
-    }, { withCredentials: true }).subscribe();
   }
 }
 ```
@@ -184,82 +206,104 @@ export class ProfileSyncService {
 
 - **localStorage = primary** (instant UX, offline-capable)
 - **Server = background sync** (debounced 2s after any change)
-- **On restore**: server profile merged into local if local is empty
-- **Conflict resolution**: local wins (user's device is source of truth)
-- **No loading state**: app starts from localStorage immediately,
-  server sync happens in background (SWR pattern already established)
+- **Merge guard**: sync to server ONLY after restore-merge complete.
+  Without this: Safari clears localStorage → empty local profile →
+  sync overwrites server's rich profile with empty → saves lost.
+- **Conflict resolution**: local wins UNLESS local is empty (fresh start)
+- **identityReady** promise: InteractionService, feed requests wait on it
 
 ---
 
-## Step 3: API endpoints
+## Step 3: DELETE /v1/me (GDPR — anonymize, not delete)
 
-```
-POST /v1/auth/anon          — Create or restore anon session (sets cookie)
-GET  /v1/me                 — Get current user profile
-PATCH /v1/me                — Update profile (debounced sync)
-DELETE /v1/me               — Delete user + all data (GDPR)
-```
-
-All `/me` endpoints use cookie for auth — no token header needed.
-
-### DELETE /v1/me (GDPR)
+**Critical**: GDPR requires removing *link to person*, not destroying
+anonymous statistics. Physical deletion of interaction_events would
+corrupt venue_interaction_stats (impressions disappear, CTR drifts).
 
 ```typescript
 @Delete('me')
-async deleteMe(@Req() req, @Res() res) {
+async deleteMe(@Req() req, @Res({ passthrough: true }) res) {
   const uid = req.cookies?.['ld_uid'];
-  if (!uid) return res.status(401).json({ error: 'Not identified' });
+  if (!uid) throw new UnauthorizedException();
 
-  // Delete all user data
+  const user = await this.usersRepo.findOne({ where: { id: uid } });
+  if (!user) throw new NotFoundException();
+
+  // Anonymize events (NOT delete) — keeps aggregates accurate
+  const allDeviceIds = [uid, ...(user.deviceIds || [])];
+  for (const did of allDeviceIds) {
+    await this.dataSource.query(
+      `UPDATE interaction_events
+       SET device_id_hash = 'deleted',
+           context = context - 'utm_source' - 'utm_campaign' - 'gclid'
+       WHERE device_id_hash = $1`,
+      [did],
+    );
+  }
+
+  // Delete user record
   await this.usersRepo.delete(uid);
-  await this.interactionEventsRepo.delete({ deviceIdHash: uid });
 
   // Clear cookie
   res.clearCookie('ld_uid', { domain: '.lazigo.app', path: '/' });
-  return res.json({ ok: true });
+  return { ok: true };
 }
 ```
+
+**Why anonymize not delete**:
+- Events become `device_id_hash='deleted'` — no link to person
+- Impressions, CTR, venue_interaction_stats stay correct
+- PII in context (UTM, gclid) stripped
+- GDPR satisfied: data no longer personally identifiable
+- Privacy page says: "мы удаляем профиль и разрываем связь событий с вами"
+
+**device_ids linking**: old events used sha256(localStorage device_id).
+New events use server uid. `users.device_ids` stores both, so DELETE
+anonymizes all historical events regardless of when they were created.
 
 ### Settings UI
 
 Profile → "Удалить мои данные" (danger button).
-Confirmation: "Это удалит все сохранённые места, настройки и историю.
+Confirmation dialog: "Это удалит профиль, сохранённые места и историю.
 Действие нельзя отменить."
 
 ---
 
 ## Step 4: interaction_events unification
 
-Currently: `device_id_hash` = sha256 of localStorage UUID.
-After: `device_id_hash` = server-issued `user.id` (stable UUID).
-
-**Migration**: InteractionService uses `serverUid` when available,
-falls back to localStorage device_id for pre-migration events.
+InteractionService uses `serverUid` when available:
 
 ```typescript
-// In InteractionService
 private getDeviceId(): string {
   return localStorage.getItem('ld_server_uid')
     || this.getOrCreateDeviceId(); // old fallback
 }
 ```
 
-D7 and cohort metrics become accurate — no more phantom "new users"
-from Safari ITP or browser cache clearing.
+On init, ProfileSyncService sends old `deviceIdHash` to server,
+which stores it in `users.device_ids`. This links old events
+to the server identity for cohort analysis and GDPR deletion.
 
 ---
 
-## What NOT to do in this iteration
+## Step 5: Garbage collection
 
-- **No OAuth** — separate task, only when cross-device demand proven
-- **No username/email** — anonymous identity only
-- **No UI for "account"** — invisible to user
-- **No migration popup** — first visit with server silently imports localStorage
-- **No blocking** — if server unreachable, localStorage works standalone
+Anonymous users with no activity accumulate (bots, incognito).
+Weekly cron removes empty users:
+
+```sql
+-- Add to event-cron or separate cron
+DELETE FROM users
+WHERE auth_provider IS NULL
+  AND last_seen_at < NOW() - INTERVAL '90 days'
+  AND saved_ids = '{}'
+  AND hidden_ids = '{}'
+  AND (profile = '{}' OR profile IS NULL);
+```
 
 ---
 
-## NestJS cookie setup
+## NestJS setup notes
 
 ```typescript
 // main.ts
@@ -268,12 +312,30 @@ import * as cookieParser from 'cookie-parser';
 app.use(cookieParser());
 app.enableCors({
   origin: ['https://lazigo.app', 'http://localhost:4200'],
-  credentials: true, // <-- required for cookies
-  // ... existing config
+  credentials: true, // required for cookies
+  methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'x-device-id', 'x-admin-token'],
 });
 ```
 
-Frontend HttpClient must send `withCredentials: true` for cookie endpoints.
+**beacon + credentials**: `navigator.sendBeacon` sends cookies
+automatically for same-site requests. With `api.lazigo.app` ↔ `lazigo.app`
+(same eTLD+1), cookies are first-party. CORS must respond with
+`Access-Control-Allow-Credentials: true` and exact origin (not `*`) —
+already configured.
+
+**`@Res({ passthrough: true })`** — use instead of `@Res()` to keep
+NestJS interceptors working while still setting cookies.
+
+---
+
+## What NOT to do in this iteration
+
+- **No OAuth** — separate task, only when cross-device demand proven
+- **No username/email** — anonymous identity only
+- **No UI for "account"** — invisible to user
+- **No migration popup** — first visit silently imports localStorage
+- **No blocking** — if server unreachable, localStorage works standalone
 
 ---
 
@@ -281,11 +343,12 @@ Frontend HttpClient must send `withCredentials: true` for cookie endpoints.
 
 | Step | What | Effort | Acceptance |
 |---|---|---|---|
-| 0 | `api.lazigo.app` custom domain + CORS + frontend URL update | 1-2 hours | `curl https://api.lazigo.app/v1/health` works |
-| 1 | Users table (migration 015) + POST /v1/auth/anon + cookie | 2-3 hours | Cookie set on first visit, restored on return |
-| 2 | ProfileSyncService + PATCH /v1/me | 2-3 hours | Profile changes sync to server in background |
-| 3 | DELETE /v1/me + Settings UI | 30 min | User can delete all data |
-| 4 | InteractionService uses server uid | 30 min | interaction_events use stable uid |
+| 0 | `api.lazigo.app` custom domain + CORS + frontend URL | 1-2 hours | `curl https://api.lazigo.app/v1/health` works |
+| 1 | Users table (015) + POST /v1/auth/anon (idempotent) + cookie | 2-3 hours | Cookie set, second tab reuses same user |
+| 2 | ProfileSyncService + PATCH /v1/me (merge guard) | 2-3 hours | Profile syncs, empty local doesn't overwrite server |
+| 3 | DELETE /v1/me (anonymize) + Settings UI | 30 min | Events anonymized, user deleted, cookie cleared |
+| 4 | InteractionService uid + device_ids linking | 30 min | New events use server uid |
+| 5 | GC cron for empty anon users | 15 min | Cron runs weekly |
 
 **Total: ~1.5 days**
 
@@ -297,5 +360,7 @@ Frontend HttpClient must send `withCredentials: true` for cookie endpoints.
 2. **K2-lite unblocked** — server identity for "decide together" sessions
 3. **Future OAuth** — just links provider to existing anon user
 4. **Saved/hidden persist** — survive browser clear, available cross-device later
-5. **GDPR compliance** — DELETE /v1/me provides right to erasure
+5. **GDPR compliance** — anonymize (not delete) events + DELETE /v1/me
 6. **Consent unification** — consent_state on server, not just localStorage
+7. **No phantom users** — idempotent creation prevents race condition duplicates
+8. **Clean aggregates** — anonymization preserves CTR/impressions accuracy
