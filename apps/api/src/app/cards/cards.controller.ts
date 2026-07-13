@@ -11,7 +11,8 @@ export class CardsController {
     @Param('id') id: string,
     @Query('lat') lat?: string,
     @Query('lng') lng?: string,
+    @Query('locale') locale?: string,
   ) {
-    return this.service.getCard(type, id, lat ? Number(lat) : undefined, lng ? Number(lng) : undefined);
+    return this.service.getCard(type, id, lat ? Number(lat) : undefined, lng ? Number(lng) : undefined, locale || 'ru');
   }
 }

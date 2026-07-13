@@ -27,7 +27,11 @@ export class HttpApiService extends ApiService {
   }
 
   getCard(type: string, id: string, lat?: number, lng?: number): Observable<RecommendationCard> {
-    const params = (lat != null && lng != null) ? `?lat=${lat}&lng=${lng}` : '';
+    const locale = localStorage.getItem('ld_profile') ? JSON.parse(localStorage.getItem('ld_profile')!).locale || 'ru' : 'ru';
+    const parts = [];
+    if (lat != null && lng != null) { parts.push(`lat=${lat}`, `lng=${lng}`); }
+    parts.push(`locale=${locale}`);
+    const params = `?${parts.join('&')}`;
     return this.http.get<RecommendationCard>(
       `${this.baseUrl}/cards/${type}/${id}${params}`,
     );

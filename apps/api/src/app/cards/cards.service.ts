@@ -11,14 +11,14 @@ export class CardsService {
     @InjectRepository(Event) private readonly eventRepo: Repository<Event>,
   ) {}
 
-  async getCard(type: string, id: string, userLat?: number, userLng?: number) {
+  async getCard(type: string, id: string, userLat?: number, userLng?: number, locale = 'ru') {
     if (type === 'place') {
       const place = await this.placeRepo.findOne({
         where: { id },
         relations: { venue: true },
       });
       if (!place) throw new NotFoundException(`Place ${id} not found`);
-      return this.mapPlace(place, userLat, userLng);
+      return this.mapPlace(place, userLat, userLng, locale);
     }
 
     if (type === 'event') {
@@ -27,10 +27,19 @@ export class CardsService {
         relations: { venue: true },
       });
       if (!event) throw new NotFoundException(`Event ${id} not found`);
-      return this.mapEvent(event, userLat, userLng);
+      return this.mapEvent(event, userLat, userLng, locale);
     }
 
     throw new NotFoundException(`Unknown card type: ${type}`);
+  }
+
+  /** Smart title fallback — same logic as recommendation service */
+  private resolveTitle(name: string, nameEn?: string, nameKa?: string, locale = 'ru'): string {
+    const isGeorgian = (s: string) => /[\u10A0-\u10FF]/.test(s);
+    if (locale === 'ka') return nameKa ?? name;
+    if (locale === 'en') return nameEn ?? (isGeorgian(name) ? nameEn ?? name : name);
+    // ru: prefer non-Georgian
+    return (!isGeorgian(name) ? name : null) ?? nameEn ?? name;
   }
 
   private haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -41,7 +50,7 @@ export class CardsService {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }
 
-  private mapPlace(p: Place, userLat?: number, userLng?: number) {
+  private mapPlace(p: Place, userLat?: number, userLng?: number, locale = 'ru') {
     const v = p.venue;
     const vLat = v?.lat ?? 0;
     const vLng = v?.lng ?? 0;
@@ -50,7 +59,7 @@ export class CardsService {
     return {
       id: p.id,
       type: 'place' as const,
-      title: v?.name ?? '',
+      title: this.resolveTitle(v?.name ?? '', v?.nameEn, v?.nameKa, locale),
       category: p.category,
       lat: vLat,
       lng: vLng,
@@ -69,7 +78,7 @@ export class CardsService {
     };
   }
 
-  private mapEvent(e: Event, userLat?: number, userLng?: number) {
+  private mapEvent(e: Event, userLat?: number, userLng?: number, locale = 'ru') {
     const v = e.venue;
     const vLat = v?.lat ?? 0;
     const vLng = v?.lng ?? 0;
@@ -78,7 +87,7 @@ export class CardsService {
     return {
       id: e.id,
       type: 'event' as const,
-      title: e.title,
+      title: this.resolveTitle(e.title, e.titleEn, e.titleKa, locale),
       category: e.category,
       lat: vLat,
       lng: vLng,
