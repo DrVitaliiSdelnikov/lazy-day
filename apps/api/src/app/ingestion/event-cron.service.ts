@@ -41,6 +41,31 @@ export class EventCronService {
 
     // 3. Check source health
     await this.checkSourceHealth();
+
+    // 4. GC empty anonymous users (weekly — runs daily but only deletes old ones)
+    await this.gcEmptyUsers();
+  }
+
+  /** Remove anonymous users with no activity after 90 days */
+  private async gcEmptyUsers() {
+    try {
+      const result = await this.dataSource.query(`
+        DELETE FROM users
+        WHERE auth_provider IS NULL
+          AND last_seen_at < NOW() - INTERVAL '90 days'
+          AND saved_ids = '{}'
+          AND hidden_ids = '{}'
+          AND (profile = '{}' OR profile IS NULL)
+        -- K2-lite guard: uncomment when match_sessions table exists
+        -- AND id NOT IN (SELECT DISTINCT user_id FROM match_sessions WHERE status = 'active')
+      `);
+      const deleted = result?.[1] ?? 0;
+      if (deleted > 0) {
+        this.logger.log(`GC: removed ${deleted} empty anonymous users`);
+      }
+    } catch (e: any) {
+      this.logger.warn(`GC failed: ${e?.message}`);
+    }
   }
 
   /** Check each event source for freshness. Alert if 0 events in 48h. */
