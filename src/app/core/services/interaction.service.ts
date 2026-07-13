@@ -15,6 +15,7 @@ export class InteractionService {
   private readonly sessionId = crypto.randomUUID();
   private readonly deviceId = this.getOrCreateDeviceId();
   private readonly utm = inject(UtmService);
+  private readonly acquisition = this.loadAcquisition();
   private flushTimer: ReturnType<typeof setInterval>;
 
   constructor() {
@@ -27,10 +28,13 @@ export class InteractionService {
   }
 
   track(event: TrackEvent) {
-    // Merge UTM params into event context
+    // Merge UTM params (session) + acquisition (first-touch) into event context
     const utmParams = this.utm.get();
-    if (Object.keys(utmParams).length > 0) {
-      event = { ...event, context: { ...event.context, ...utmParams } };
+    const extra: Record<string, unknown> = {};
+    if (Object.keys(utmParams).length > 0) Object.assign(extra, utmParams);
+    if (this.acquisition) extra['acquisition'] = this.acquisition;
+    if (Object.keys(extra).length > 0) {
+      event = { ...event, context: { ...event.context, ...extra } };
     }
     this.buffer.push(event);
     if (this.buffer.length >= 10) this.flush();
@@ -96,6 +100,13 @@ export class InteractionService {
         keepalive: true,
       }).catch(() => {});
     }
+  }
+
+  private loadAcquisition(): Record<string, string> | null {
+    try {
+      const ft = localStorage.getItem('ld_first_touch');
+      return ft ? JSON.parse(ft) : null;
+    } catch { return null; }
   }
 
   private getOrCreateDeviceId(): string {

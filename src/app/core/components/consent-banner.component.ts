@@ -133,6 +133,19 @@ export class ConsentBannerComponent {
       (window as any).ym?.(110570889, 'init', {
         clickmap: true, trackLinks: true, accurateTrackBounce: true,
       });
+      // Send first-touch URL so Metrika attributes the source correctly
+      // (by the time consent is granted, Angular router has stripped UTM params)
+      try {
+        const ft = localStorage.getItem('ld_first_touch');
+        if (ft) {
+          const parsed = JSON.parse(ft);
+          if (parsed.landing_url) {
+            (window as any).ym?.(110570889, 'hit', parsed.landing_url, {
+              params: { first_touch: true, ...parsed },
+            });
+          }
+        }
+      } catch { /* ignore */ }
     };
   }
 
@@ -147,5 +160,6 @@ export class ConsentBannerComponent {
     const gtag = (...args: any[]) => (window as any).dataLayer.push(args);
     gtag('js', new Date());
     gtag('config', 'G-8RSG5LFWBC');
+    gtag('config', 'AW-18318311908');
   }
 }

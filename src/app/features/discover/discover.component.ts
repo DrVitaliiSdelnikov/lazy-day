@@ -1238,6 +1238,12 @@ export class DiscoverComponent implements OnInit {
         cards_opened: this.openedCardIds.size,
         intent_action: action,
       });
+      // Google Ads conversion
+      (window as any).gtag?.('event', 'conversion', {
+        send_to: 'AW-18318311908/Fg7TCIPXjs8cEOSD7Z5E',
+        value: 1.0,
+        currency: 'USD',
+      });
     }
   }
 

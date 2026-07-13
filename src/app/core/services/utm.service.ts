@@ -29,6 +29,19 @@ export class UtmService {
         if (stored) this.params = JSON.parse(stored);
       } catch { /* ignore */ }
     }
+
+    // Fallback: first-touch captured in main.ts before router init
+    if (Object.keys(this.params).length === 0) {
+      try {
+        const ft = localStorage.getItem('ld_first_touch');
+        if (ft) {
+          const parsed = JSON.parse(ft);
+          for (const key of TRACKED_PARAMS) {
+            if (parsed[key]) this.params[key] = parsed[key];
+          }
+        }
+      } catch { /* ignore */ }
+    }
   }
 
   /** Get all captured UTM/ad params */
