@@ -130,6 +130,8 @@ import { ThemeService, ThemeName } from '../../core/services/theme.service';
       <section class="settings__card">
         <button class="ld-btn ld-btn--ghost" style="color: var(--ld-danger); width: 100%; justify-content: flex-start"
           (click)="onReset()">{{ 'settings.reset' | translate }}</button>
+        <button class="ld-btn ld-btn--ghost" style="color: var(--ld-danger); width: 100%; justify-content: flex-start; margin-top: 8px; font-size: 12px"
+          (click)="onDeleteData()">{{ 'settings.delete_data' | translate }}</button>
       </section>
     </div>
   `,
@@ -389,6 +391,26 @@ export class SettingsComponent implements OnInit {
   onReset() {
     this.profileStore.resetProfile();
     this.router.navigate(['/discover/onboarding']);
+  }
+
+  onDeleteData() {
+    if (!confirm(this.translate.instant('settings.delete_confirm'))) return;
+    const apiBase = (window.location.hostname !== 'localhost')
+      ? 'https://api.lazigo.app/v1' : '/v1';
+    fetch(`${apiBase}/auth/me`, {
+      method: 'DELETE',
+      credentials: 'include',
+    }).then(() => {
+      this.profileStore.resetProfile();
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = '/';
+    }).catch(() => {
+      // Offline or no server user — just clear local
+      this.profileStore.resetProfile();
+      localStorage.clear();
+      window.location.href = '/';
+    });
   }
 
   openFeedback() {

@@ -145,6 +145,37 @@ export class ProfileStore {
     this.persist();
   }
 
+  /** Get current state as plain object (for sync to server) */
+  snapshot(): ProfileState {
+    return { ...this.state() };
+  }
+
+  /** Merge profile from server (on ITP restore) */
+  mergeFromServer(serverProfile: Record<string, unknown>) {
+    const current = this.state();
+    this.state.set({
+      ...current,
+      interests: serverProfile['interests'] as Record<string, number> ?? current.interests,
+      company: serverProfile['company'] as any ?? current.company,
+      hasPet: serverProfile['hasPet'] as boolean ?? current.hasPet,
+      locale: serverProfile['locale'] as any ?? current.locale,
+      theme: serverProfile['theme'] as any ?? current.theme,
+      localLevel: serverProfile['localLevel'] as any ?? current.localLevel,
+      budgetMax: serverProfile['budgetMax'] as number ?? current.budgetMax,
+    });
+    this.persist();
+  }
+
+  /** Set saved IDs (for restore from server) */
+  setSavedIds(ids: string[]) {
+    this.patch({ savedIds: ids });
+  }
+
+  /** Set hidden IDs (for restore from server) */
+  setHiddenIds(ids: string[]) {
+    this.patch({ hiddenIds: ids });
+  }
+
   private patch(partial: Partial<ProfileState>) {
     this.state.update((s) => ({ ...s, ...partial }));
     this.persist();

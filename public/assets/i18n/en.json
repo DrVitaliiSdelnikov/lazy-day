@@ -92,6 +92,8 @@
     "edit": "Edit",
     "done": "Done",
     "reset": "Reset profile",
+    "delete_data": "Delete my data",
+    "delete_confirm": "This will delete your profile, saved places, and history. This cannot be undone.",
     "feedback": "Feedback",
     "privacy": "Privacy",
     "about": "About · LaziGo v0.1"

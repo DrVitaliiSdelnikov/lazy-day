@@ -1,6 +1,6 @@
 # LaziGo — Project Status
 
-Last updated: 2026-07-11 (late evening, post week 1 fixes)
+Last updated: 2026-07-13 (UX-24 fully tested, ready to merge)
 
 ## What It Is
 
@@ -52,7 +52,7 @@ Cost:      ~$5/month
 | Events | ~55 | 3 sources (see below) | July 11 |
 | Chains flagged | 258 | OSM brand + 35 known chains | July 11 |
 | Names translated | 285 | Google Translate API (ka→en, ~$0.60) | July 13 |
-| Migrations | 14 + 014b | 001-014 + event sources fix | July 11 |
+| Migrations | 15 | 001-015 (015 = users table for UX-24) | July 13 |
 
 ### Event Sources (all working on prod)
 
@@ -154,13 +154,19 @@ All sources were dormant on prod until July 11 (missing `SERPAPI_KEY` env + miss
 ```
 Public:
   POST /v1/recommendations              — Scored feed (main)
-  GET  /v1/cards/:type/:id?lat=&lng=    — Card detail with distance
+  GET  /v1/cards/:type/:id?lat=&lng=&locale= — Card detail with distance + locale
   GET  /v1/og/:type/:id                 — Dynamic OG HTML (messengers)
   POST /v1/interactions                  — Single interaction
   POST /v1/interactions/batch            — Batch interactions (beacon)
   POST /v1/feedback                      — User feedback → Telegram
   GET  /v1/meta/categories               — Interest categories
   GET  /v1/health                        — Status + event source freshness
+
+Auth (HttpOnly cookie):
+  POST /v1/auth/anon                     — Create/restore anon identity (idempotent)
+  GET  /v1/auth/me                       — Get current user
+  PATCH /v1/auth/me                      — Sync profile/savedIds/hiddenIds/consent
+  DELETE /v1/auth/me                     — GDPR delete (anonymize)
 
 Protected (x-admin-token):
   POST /v1/health/migrate                — Run DB migrations
@@ -176,6 +182,8 @@ Protected (x-admin-token):
 
 | Debt | Severity | Status | Notes |
 |---|---|---|---|
+| ~~Server identity (Safari ITP, D7 metrics)~~ | ~~🔴~~ | ✅ **tested** | UX-24 implemented, 8/8 API tests pass, Test A pass. Branch `feature/ux-24-anon-identity` ready to merge |
+| ~~api.lazigo.app custom domain~~ | ~~🔴~~ | ✅ done | Live, SSL active |
 | ~~Georgian venue names~~ | ~~🟡~~ | ✅ fixed | 285 translated via Google Translate API |
 | 43% venues without opening hours | 🟡 | open | Needs targeted re-enrichment for top venues |
 | No error monitoring (Sentry) | 🟡 | pending | User to set up |
@@ -225,14 +233,17 @@ Protected (x-admin-token):
 - Event sources fixed on prod (google_events + yolo.ge: 48 events/run)
 - Batch translate: 285 Georgian venue names → English (~$0.60)
 - Smart title fallback: ru/en prefer name_en over Georgian
+- **UX-24 Anon server identity** — HttpOnly cookie, idempotent upsert (ON CONFLICT + xmax), ProfileSyncService (merge guard, UNION savedIds/hiddenIds, consent restore, debounced sync), GDPR DELETE /v1/auth/me (anonymize), GC cron (>90 days empty users). Spec v7, 9 commits, 8/8 API tests, both builds pass.
+- Fix: detail save uses SavedStore (favorites work), Georgian titles via resolveTitle + locale, remove coordinates from location panel, sheet above mobile nav, duplicate open_now badge removed
+- api.lazigo.app custom domain — Railway, SSL active, CORS configured
 
 ## Next Up
 
 | # | Task | Effort | Depends on |
 |---|---|---|---|
+| 🔴 **Merge UX-24** | Branch tested (8/8 API, builds pass). Merge to main → deploy → run migration 015 on prod | 30 min | user approval |
+| **K2-lite** | "Decide together" shared picks | 1-2 days | UX-24 merge |
 | **A4** | UptimeRobot + Sentry | 30 min | user action |
-| **A2 recheck** | K7 gate with 55 events | 30 min | — |
-| **K2-lite** | "Decide together" shared picks | 1-2 days | R3 done ✅ |
 | **UX-23** | Session refinement | 1-1.5 days | — |
 | **A3** | Opening hours targeted re-enrichment | 2-3 hours | — |
 
@@ -282,10 +293,11 @@ lazigo.app (Cloudflare Pages, free CDN)
       ├── InteractionService (beacon API, 9 event types)
       └── Consent-gated Yandex.Metrika
 
-lazy-day-production.up.railway.app (Railway ~$5/mo)
+api.lazigo.app (Railway ~$5/mo)
   ├── NestJS 11 API
   │   ├── Recommendation engine (9-step pipeline + chain penalty + rotation)
-  │   ├── Cards service (Haversine distance)
+  │   ├── Cards service (Haversine distance + locale title fallback)
+  │   ├── Auth (HttpOnly cookie, idempotent upsert, GDPR delete)
   │   ├── OG preview (dynamic HTML for messengers)
   │   ├── Interaction tracking (batch + single)
   │   ├── Feedback → Telegram forwarding
@@ -294,9 +306,10 @@ lazy-day-production.up.railway.app (Railway ~$5/mo)
   └── PostgreSQL
       ├── 3,164 venues + 1,755 Google-enriched
       ├── ~55 events (3 sources, daily refresh)
+      ├── users (anon identity, profile, saved/hidden, consent)
       ├── interaction_events (behavioral tracking)
       ├── feedback table
-      └── 14 migrations
+      └── 15 migrations
 ```
 
 ## Cost

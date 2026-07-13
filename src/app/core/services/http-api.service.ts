@@ -12,7 +12,7 @@ import type {
 @Injectable()
 export class HttpApiService extends ApiService {
   private readonly baseUrl = (typeof window !== 'undefined' && window.location.hostname !== 'localhost')
-    ? 'https://lazy-day-production.up.railway.app/v1'
+    ? 'https://api.lazigo.app/v1'
     : '/v1';
 
   constructor(private readonly http: HttpClient) {
@@ -27,7 +27,11 @@ export class HttpApiService extends ApiService {
   }
 
   getCard(type: string, id: string, lat?: number, lng?: number): Observable<RecommendationCard> {
-    const params = (lat != null && lng != null) ? `?lat=${lat}&lng=${lng}` : '';
+    const locale = localStorage.getItem('ld_profile') ? JSON.parse(localStorage.getItem('ld_profile')!).locale || 'ru' : 'ru';
+    const parts = [];
+    if (lat != null && lng != null) { parts.push(`lat=${lat}`, `lng=${lng}`); }
+    parts.push(`locale=${locale}`);
+    const params = `?${parts.join('&')}`;
     return this.http.get<RecommendationCard>(
       `${this.baseUrl}/cards/${type}/${id}${params}`,
     );

@@ -757,14 +757,8 @@ export class RecommendationService {
       }
     }
 
-    // Open status
-    if (c.type === 'place' && c.opening_hours) {
-      const timeMid = new Date((new Date(dto.timeWindow.from).getTime() + new Date(dto.timeWindow.to).getTime()) / 2);
-      const status = checkOpenStatus(c.opening_hours, timeMid);
-      if (status === 'open') {
-        explanations.push({ type: 'open_now', label: l('open_now', locale), priority: 1 });
-      }
-    }
+    // Open status: NOT added to explanations — openStatus badge already shows it on card.
+    // Adding both creates duplicate "Открыто" + "Открыто сейчас" chips.
 
     // Walk time
     if (c.distance_m <= 2000) {

@@ -82,7 +82,7 @@ export class InteractionService {
 
     // sendBeacon is fire-and-forget, works even when page is closing
     const apiBase = (typeof window !== 'undefined' && window.location.hostname !== 'localhost')
-      ? 'https://lazy-day-production.up.railway.app/v1'
+      ? 'https://api.lazigo.app/v1'
       : '/v1';
     const url = `${apiBase}/interactions/batch`;
     const sent = navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }));
@@ -99,6 +99,10 @@ export class InteractionService {
   }
 
   private getOrCreateDeviceId(): string {
+    // Prefer server-issued uid (stable across ITP)
+    const serverUid = localStorage.getItem('ld_server_uid');
+    if (serverUid) return serverUid;
+
     const key = 'ld_device_id';
     let id = localStorage.getItem(key);
     if (!id) {

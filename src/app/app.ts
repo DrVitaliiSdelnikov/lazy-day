@@ -3,6 +3,7 @@ import { RouterModule } from '@angular/router';
 import { TranslateService } from '@ngx-translate/core';
 import { AppShellComponent } from './core/layout/app-shell.component';
 import { ProfileStore } from './core/stores/profile.store';
+import { ProfileSyncService } from './core/services/profile-sync.service';
 
 @Component({
   imports: [RouterModule, AppShellComponent],
@@ -22,6 +23,7 @@ import { ProfileStore } from './core/stores/profile.store';
 export class App implements OnInit {
   private translate = inject(TranslateService);
   private profileStore = inject(ProfileStore);
+  private profileSync = inject(ProfileSyncService); // init on app start
 
   ngOnInit() {
     this.translate.addLangs(['ru', 'en', 'ka']);

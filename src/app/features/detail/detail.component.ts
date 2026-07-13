@@ -8,6 +8,7 @@ import { RecommendationCard } from '../../core/models';
 import { LdIconComponent } from '../../core/components/ld-icon.component';
 import { InteractionService } from '../../core/services/interaction.service';
 import { GeolocationService } from '../../core/services/geolocation.service';
+import { SavedStore } from '../../core/stores/saved.store';
 
 @Component({
   selector: 'app-detail',
@@ -439,6 +440,7 @@ export class DetailComponent implements OnInit {
   private translate = inject(TranslateService);
   private interactions = inject(InteractionService);
   readonly geo = inject(GeolocationService);
+  private savedStore = inject(SavedStore);
   readonly hasGps = computed(() => this.geo.position().source === 'gps');
 
   card = signal<RecommendationCard | null>(null);
@@ -455,7 +457,7 @@ export class DetailComponent implements OnInit {
     const pos = this.geo.position();
     this.api.getCard(this.type(), this.id(), pos.lat, pos.lng).subscribe((c) => {
       this.card.set(c);
-      this.isSaved.set(this.profileStore.isSaved(c.id));
+      this.isSaved.set(this.savedStore.isSaved(c.id));
     });
   }
 
@@ -542,7 +544,7 @@ export class DetailComponent implements OnInit {
   async shareCard(c: RecommendationCard) {
     this.interactions.trackShare(c.type, c.id);
     // OG endpoint returns dynamic preview for messengers, redirects humans to PWA
-    const url = `https://lazy-day-production.up.railway.app/v1/og/${c.type}/${c.id}`;
+    const url = `https://api.lazigo.app/v1/og/${c.type}/${c.id}`;
     const text = `${c.title} — ${c.categoryLabel || c.category}`;
 
     try {
@@ -585,8 +587,9 @@ export class DetailComponent implements OnInit {
   onToggleSave() {
     const c = this.card();
     if (!c) return;
-    this.profileStore.toggleSaved(c.id);
-    this.isSaved.set(this.profileStore.isSaved(c.id));
+    this.savedStore.toggle(c);
+    this.isSaved.set(this.savedStore.isSaved(c.id));
+    this.interactions.trackSave(c.type, c.id);
   }
 
   goBack() {

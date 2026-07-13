@@ -14,11 +14,12 @@ PostgreSQL 16 + PostGIS. Подключение: `postgresql://lazyday:lazyday_d
 | `interactions` | Действия пользователей (impression, click, save, hide) |
 | `recommendation_logs` | Логи выдач для отладки и тюнинга |
 | `dedup_candidates` | Очередь дублей на модерацию |
+| `users` | Анонимные пользователи (profile, saved/hidden IDs, consent, device_ids) |
 | `_migrations` | Трекинг прогнанных миграций |
 
 ## Миграции
 
-Файлы: `apps/api/src/app/database/migrations/001_*.sql` — `009_*.sql`
+Файлы: `apps/api/src/app/database/migrations/001_*.sql` — `015_*.sql`
 
 ```bash
 npx tsx tools/run-migrations.ts

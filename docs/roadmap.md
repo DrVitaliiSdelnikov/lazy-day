@@ -100,8 +100,9 @@ Single source of truth for what we do, what we decide, and when.
 | # | Task | Effort | Spec |
 |---|---|---|---|
 | 50 | 🔴 **api.lazigo.app** — Railway custom domain, CORS update, frontend URL migration. Prerequisite for cookies. | 1-2 hours | [ux-24](ux-specs/ux-24-anon-identity.md) |
-| 51 | 🔴 **UX-24: Anon server identity** — users table, POST /v1/auth/anon, HttpOnly cookie, ProfileSyncService. Fixes D7 metrics, unblocks K2-lite. | 1 day | [ux-24](ux-specs/ux-24-anon-identity.md) |
-| 52 | **DELETE /v1/me** — GDPR right to erasure, "Удалить мои данные" in Settings | 30 min | [ux-24](ux-specs/ux-24-anon-identity.md) |
+| 51 | 🔴 **UX-24: Anon server identity** — users table, POST /v1/auth/anon (idempotent, @IsUUID, @Throttle), HttpOnly cookie, ProfileSyncService (merge guard, savedIds union, consent restore). Spec v7 — 6 review iterations. | 1.5 days | [ux-24](ux-specs/ux-24-anon-identity.md) |
+| 52 | **DELETE /v1/me** — GDPR anonymize (not delete) events, "Удалить мои данные" in Settings | 30 min | [ux-24](ux-specs/ux-24-anon-identity.md) |
+| 52b | **GC cron** — weekly cleanup empty anon users >90 days, K2-lite guard | 15 min | [ux-24](ux-specs/ux-24-anon-identity.md) |
 
 **Killer features** (full analysis: [killer-features.md](research/killer-features.md))
 

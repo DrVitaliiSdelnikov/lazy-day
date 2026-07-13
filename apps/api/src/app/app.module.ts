@@ -8,6 +8,7 @@ import { CardsModule } from './cards/cards.module';
 import { FeedbackModule } from './feedback/feedback.module';
 import { MetaModule } from './meta/meta.module';
 import { IngestionModule } from './ingestion/ingestion.module';
+import { AuthModule } from './auth/auth.module';
 import { Venue } from './database/entities/venue.entity';
 import { Place } from './database/entities/place.entity';
 import { Event } from './database/entities/event.entity';
@@ -16,6 +17,7 @@ import { SourceRef } from './database/entities/source-ref.entity';
 import { Interaction } from './database/entities/interaction.entity';
 import { RecommendationLog } from './database/entities/recommendation-log.entity';
 import { DedupCandidate } from './database/entities/dedup-candidate.entity';
+import { User } from './database/entities/user.entity';
 
 @Module({
   imports: [
@@ -34,6 +36,7 @@ import { DedupCandidate } from './database/entities/dedup-candidate.entity';
         Interaction,
         RecommendationLog,
         DedupCandidate,
+        User,
       ],
       namingStrategy: new SnakeNamingStrategy(),
       synchronize: false,
@@ -45,6 +48,7 @@ import { DedupCandidate } from './database/entities/dedup-candidate.entity';
     FeedbackModule,
     MetaModule,
     IngestionModule,
+    AuthModule,
   ],
 })
 export class AppModule {}
