@@ -120,7 +120,7 @@ async createOrRestore(@Req() req, @Res({ passthrough: true }) res) {
           SELECT array_agg(DISTINCT d)
           FROM unnest(users.device_ids || EXCLUDED.device_ids) d
         )
-      RETURNING *
+      RETURNING *, (xmax <> 0) AS was_update
     `, [
       clientUid,
       req.body?.profile || {},
@@ -131,7 +131,7 @@ async createOrRestore(@Req() req, @Res({ passthrough: true }) res) {
     ]);
 
     const user = result[0];
-    const restored = user.created_at < new Date(Date.now() - 5000); // existed before
+    const restored = user.was_update; // Postgres xmax: true if row existed
     this.setCookie(res, user.id);
     // IMPORTANT: return savedIds + hiddenIds for restore
     return {
@@ -154,16 +154,20 @@ async createOrRestore(@Req() req, @Res({ passthrough: true }) res) {
   return { uid: user.id, profile: user.profile, savedIds: [], hiddenIds: [], restored: false };
 }
 
-private setCookie(res: Response, uid: string) {
+private cookieOpts() {
   const isDev = process.env['NODE_ENV'] === 'development';
-  res.cookie('ld_uid', uid, {
+  return {
     httpOnly: true,
-    secure: !isDev,            // false on localhost
-    sameSite: 'lax',
+    secure: !isDev,
+    sameSite: 'lax' as const,
     maxAge: 365 * 24 * 60 * 60 * 1000,
-    ...(isDev ? {} : { domain: '.lazigo.app' }),  // no domain on localhost
+    ...(isDev ? {} : { domain: '.lazigo.app' }),
     path: '/',
-  });
+  };
+}
+
+private setCookie(res: Response, uid: string) {
+  res.cookie('ld_uid', uid, this.cookieOpts());
 }
 ```
 
@@ -266,6 +270,13 @@ private hydrateCards(ids: string[]) {
 Optional: `POST /v1/cards/batch` endpoint (30 min). Or use existing
 `GET /v1/cards/:type/:id` sequentially — saved items are typically <10.
 
+**NOTE on saved_ids format**: currently stores bare UUID without type prefix.
+Events and places share UUID space so no collision, but hydration needs
+to know the type. Options:
+- Prefix now: `place:uuid` / `event:uuid` (migration, cleaner)
+- Infer: try place first, fallback to event (no migration, slower)
+Decision: prefix later if needed. For now infer — saved events are rare.
+
 ### Sync strategy
 
 - **localStorage = primary** (instant UX, offline-capable)
@@ -275,6 +286,22 @@ Optional: `POST /v1/cards/batch` endpoint (30 min). Or use existing
   sync overwrites server's rich profile with empty → saves lost.
 - **Conflict resolution**: local wins UNLESS local is empty (fresh start)
 - **identityReady** promise: InteractionService, feed requests wait on it
+
+---
+
+### PATCH /v1/me validation
+
+Prevent garbage injection:
+```typescript
+class UpdateProfileDto {
+  @IsOptional() @IsObject() profile?: Record<string, unknown>;
+  @IsOptional() @IsArray() @ArrayMaxSize(500) @IsString({ each: true }) savedIds?: string[];
+  @IsOptional() @IsArray() @ArrayMaxSize(500) @IsString({ each: true }) hiddenIds?: string[];
+}
+```
+
+Plus: reject if `JSON.stringify(profile).length > 10240` (10KB).
+`ValidationPipe` with `whitelist: true` on `/me` — strips unknown fields.
 
 ---
 
@@ -314,8 +341,8 @@ async deleteMe(@Req() req, @Res({ passthrough: true }) res) {
   // Delete user record
   await this.usersRepo.delete(uid);
 
-  // Clear cookie
-  res.clearCookie('ld_uid', { domain: '.lazigo.app', path: '/' });
+  // Clear cookie (same opts as setCookie for consistency)
+  res.clearCookie('ld_uid', this.cookieOpts());
   return { ok: true };
 }
 ```
@@ -378,7 +405,10 @@ WHERE auth_provider IS NULL
   AND last_seen_at < NOW() - INTERVAL '90 days'
   AND saved_ids = '{}'
   AND hidden_ids = '{}'
-  AND (profile = '{}' OR profile IS NULL);
+  AND (profile = '{}' OR profile IS NULL)
+  -- K2-lite guard: don't delete participants of active match sessions
+  -- AND id NOT IN (SELECT DISTINCT user_id FROM match_sessions WHERE status = 'active')
+  ;
 ```
 
 ---
@@ -432,13 +462,27 @@ NestJS interceptors working while still setting cookies.
 
 **Total: ~1.5 days**
 
-### Key acceptance test (the whole point of this feature)
-1. Open lazigo.app → save 3 places to favorites
-2. Clear all site data (DevTools → Application → Clear)
-3. Reopen lazigo.app
+### Key acceptance tests
+
+**Test A — ITP simulation (the main scenario)**:
+1. Open lazigo.app → save 3 places, set interests
+2. In console: `localStorage.clear(); sessionStorage.clear();`
+   (DO NOT clear cookies — ITP doesn't clear server-set HttpOnly cookies)
+3. Reload page
 4. → Favorites shows all 3 saved places ✅
 5. → Feed uses restored interests ✅
 6. → Device considered "returning" in D7 metric ✅
+
+**Test B — Full wipe (expected: new user)**:
+1. DevTools → Application → Clear site data (kills cookies too)
+2. Reload → new user created, empty favorites
+3. This is **expected** — fixing it requires OAuth/transfer token (Future)
+4. Verifies: no crash, clean state, onboarding shows
+
+**Why the distinction matters**: DevTools "Clear storage" kills cookies.
+Real Safari ITP clears script-writable storage but NOT server-set
+HttpOnly cookies. Test A simulates the real ITP scenario. Test B would
+falsely fail a correct implementation.
 
 ---
 
