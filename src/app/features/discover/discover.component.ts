@@ -130,6 +130,11 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
             </button>
           }
         </div>
+        @if (hasActiveFilters()) {
+          <button class="discover__clear-btn" (click)="clearAllFilters()">
+            <ld-icon name="x" [size]="12" />
+          </button>
+        }
         <button class="discover__decide-btn" (click)="openDecide()"
           [disabled]="loading() || cards().length === 0">
           <ld-icon name="compass" [size]="15" />
@@ -610,6 +615,21 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
       }
     }
 
+    .discover__clear-btn {
+      width: 32px;
+      min-height: 32px;
+      background: var(--ld-surface);
+      border: 1px solid var(--ld-border);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--ld-text-3);
+      padding: 0;
+      flex-shrink: 0;
+    }
+
     .discover__decide-btn {
       width: 40px;
       min-height: 36px;
@@ -961,6 +981,16 @@ export class DiscoverComponent implements OnInit {
   onTuneDismissed() {
     localStorage.setItem('ld_tune_interests', 'dismissed');
     this.tuneBlockDismissed.set(true);
+  }
+
+  readonly hasActiveFilters = computed(() =>
+    this.activePreset() !== null || this.activeTypeFilter() !== 'all'
+  );
+
+  clearAllFilters() {
+    this.activePreset.set(null);
+    this.activeTypeFilter.set('all');
+    this.loadFeed();
   }
 
   openDecide() {
