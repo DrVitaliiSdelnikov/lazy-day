@@ -245,8 +245,10 @@
     "cat_idea": "Идея",
     "cat_missing": "Нет места",
     "cat_other": "Другое",
+    "message_label": "Сообщение",
     "placeholder": "Что случилось? (мин. 10 символов)",
-    "contact_placeholder": "Контакт (необязательно)",
+    "contact_label": "Контакт (необязательно)",
+    "contact_placeholder": "Email или Telegram",
     "submit": "Отправить"
   },
   "consent": {

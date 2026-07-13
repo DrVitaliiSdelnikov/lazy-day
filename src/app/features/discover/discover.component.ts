@@ -169,7 +169,7 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
 
       <!-- Results count -->
       @if (!loading() && cards().length > 0) {
-        <div class="discover__count">{{ cards().length }} {{ 'discover.results' | translate }}</div>
+        <div class="discover__count">{{ cards().length }} {{ pluralizeResults(cards().length) }}</div>
       }
 
       <!-- Loading: feed loader animation -->
@@ -991,6 +991,18 @@ export class DiscoverComponent implements OnInit {
     this.activePreset.set(null);
     this.activeTypeFilter.set('all');
     this.loadFeed();
+  }
+
+  pluralizeResults(n: number): string {
+    const locale = this.profileStore.locale();
+    if (locale === 'en') return n === 1 ? 'result' : 'results';
+    if (locale === 'ka') return 'შედეგი';
+    // Russian pluralization: 1 результат, 2-4 результата, 5-20 результатов, 21 результат...
+    const mod10 = n % 10;
+    const mod100 = n % 100;
+    if (mod10 === 1 && mod100 !== 11) return 'результат';
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'результата';
+    return 'результатов';
   }
 
   openDecide() {

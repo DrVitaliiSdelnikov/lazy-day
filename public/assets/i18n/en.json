@@ -245,8 +245,10 @@
     "cat_idea": "Idea",
     "cat_missing": "Missing place",
     "cat_other": "Other",
+    "message_label": "Message",
     "placeholder": "What happened? (min. 10 characters)",
-    "contact_placeholder": "Contact (optional)",
+    "contact_label": "Contact (optional)",
+    "contact_placeholder": "Email or Telegram",
     "submit": "Send"
   },
   "consent": {

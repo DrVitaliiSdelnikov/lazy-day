@@ -115,8 +115,10 @@ import { ThemeService, ThemeName } from '../../core/services/theme.service';
                 (click)="feedbackCategory.set(cat.key)">{{ cat.labelKey | translate }}</button>
             }
           </div>
+          <label class="settings__field-label">{{ 'feedback.message_label' | translate }} <span style="color:var(--ld-primary)">*</span></label>
           <textarea class="ld-input" rows="4" [placeholder]="'feedback.placeholder' | translate"
             (input)="feedbackText.set($any($event.target).value)" style="width:100%;resize:vertical;margin-bottom:8px"></textarea>
+          <label class="settings__field-label">{{ 'feedback.contact_label' | translate }}</label>
           <input class="ld-input" [placeholder]="'feedback.contact_placeholder' | translate"
             (input)="feedbackContact.set($any($event.target).value)" style="width:100%;margin-bottom:12px" />
           <button class="ld-btn ld-btn--primary" style="width:100%" [disabled]="!canSubmitFeedback()"
@@ -266,6 +268,13 @@ import { ThemeService, ThemeName } from '../../core/services/theme.service';
       background: var(--ld-surface);
       color: var(--ld-on-primary-soft);
       box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+
+    .settings__field-label {
+      display: block;
+      font-size: 12px;
+      color: var(--ld-text-2);
+      margin: 0 0 4px;
     }
 
     .settings__link {

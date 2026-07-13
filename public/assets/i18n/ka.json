@@ -245,8 +245,10 @@
     "cat_idea": "იდეა",
     "cat_missing": "ადგილი არ არის",
     "cat_other": "სხვა",
+    "message_label": "შეტყობინება",
     "placeholder": "რა მოხდა? (მინ. 10 სიმბოლო)",
-    "contact_placeholder": "საკონტაქტო (არასავალდებულო)",
+    "contact_label": "საკონტაქტო (არასავალდებულო)",
+    "contact_placeholder": "ელფოსტა ან Telegram",
     "submit": "გაგზავნა"
   },
   "consent": {

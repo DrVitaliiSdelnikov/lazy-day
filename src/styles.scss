@@ -424,8 +424,8 @@ html, body {
   }
 
   &--on {
-    background: var(--ld-secondary);
-    &::after { transform: translateX(20px); }
+    background: var(--ld-primary);
+    &::after { transform: translateX(20px); background: var(--ld-bg); }
   }
 }
 
