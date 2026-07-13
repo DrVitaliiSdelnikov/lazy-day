@@ -99,6 +99,10 @@ export class InteractionService {
   }
 
   private getOrCreateDeviceId(): string {
+    // Prefer server-issued uid (stable across ITP)
+    const serverUid = localStorage.getItem('ld_server_uid');
+    if (serverUid) return serverUid;
+
     const key = 'ld_device_id';
     let id = localStorage.getItem(key);
     if (!id) {

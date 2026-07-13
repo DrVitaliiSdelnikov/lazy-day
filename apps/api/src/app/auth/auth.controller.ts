@@ -1,5 +1,6 @@
 import {
-  Controller, Post, Req, Res, BadRequestException,
+  Controller, Post, Patch, Delete, Get, Req, Res, Body,
+  BadRequestException, UnauthorizedException, NotFoundException,
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -107,6 +108,86 @@ export class AuthController {
       consentState: 'pending',
       restored: false,
     };
+  }
+
+  @Get('me')
+  async getMe(@Req() req: Request) {
+    const user = await this.getUserFromCookie(req);
+    return {
+      uid: user.id,
+      profile: user.profile,
+      savedIds: user.savedIds,
+      hiddenIds: user.hiddenIds,
+      consentState: user.consentState,
+    };
+  }
+
+  @Patch('me')
+  async updateMe(@Req() req: Request, @Body() body: any) {
+    const user = await this.getUserFromCookie(req);
+
+    if (body.profile) {
+      // Validate profile size (max 10KB)
+      if (JSON.stringify(body.profile).length > 10240) {
+        throw new BadRequestException('Profile too large');
+      }
+      user.profile = body.profile;
+    }
+    if (body.savedIds) {
+      if (body.savedIds.length > 500) throw new BadRequestException('Too many saved items');
+      user.savedIds = body.savedIds;
+    }
+    if (body.hiddenIds) {
+      if (body.hiddenIds.length > 500) throw new BadRequestException('Too many hidden items');
+      user.hiddenIds = body.hiddenIds;
+    }
+    if (body.consentState) {
+      user.consentState = body.consentState;
+    }
+
+    user.lastSeenAt = new Date();
+    await this.usersRepo.save(user);
+    return { ok: true };
+  }
+
+  @Delete('me')
+  async deleteMe(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const user = await this.getUserFromCookie(req);
+
+    // Anonymize events (NOT delete) — preserves aggregates
+    const allDeviceIds = [user.id, ...(user.deviceIds || [])];
+    for (const did of allDeviceIds) {
+      await this.dataSource.query(
+        `UPDATE interaction_events
+         SET device_id_hash = 'deleted',
+             context = context
+               - 'utm_source' - 'utm_medium' - 'utm_campaign'
+               - 'utm_content' - 'utm_term'
+               - 'gclid' - 'campaign_id' - 'adgroup_id' - 'creative_id'
+               - 'device' - 'matchtype'
+         WHERE device_id_hash = $1`,
+        [did],
+      );
+    }
+
+    // Delete user record
+    await this.usersRepo.delete(user.id);
+    this.logger.log(`Deleted user ${user.id}, anonymized events for ${allDeviceIds.length} device(s)`);
+
+    // Clear cookie
+    res.clearCookie('ld_uid', this.cookieOpts());
+    return { ok: true };
+  }
+
+  private async getUserFromCookie(req: Request): Promise<User> {
+    const uid = req.cookies?.['ld_uid'];
+    if (!uid) throw new UnauthorizedException('Not identified');
+    const user = await this.usersRepo.findOne({ where: { id: uid } });
+    if (!user) throw new NotFoundException('User not found');
+    return user;
   }
 
   private cookieOpts() {
