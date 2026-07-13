@@ -94,7 +94,11 @@ async createOrRestore(@Req() req, @Res({ passthrough: true }) res) {
         user.deviceIds = [...(user.deviceIds || []), deviceIdHash];
       }
       await this.usersRepo.save(user);
-      return { uid: user.id, profile: user.profile, restored: true };
+      return {
+        uid: user.id, profile: user.profile,
+        savedIds: user.savedIds, hiddenIds: user.hiddenIds,
+        restored: true,
+      };
     }
   }
 
@@ -129,7 +133,12 @@ async createOrRestore(@Req() req, @Res({ passthrough: true }) res) {
     const user = result[0];
     const restored = user.created_at < new Date(Date.now() - 5000); // existed before
     this.setCookie(res, user.id);
-    return { uid: user.id, profile: user.profile, restored };
+    // IMPORTANT: return savedIds + hiddenIds for restore
+    return {
+      uid: user.id, profile: user.profile,
+      savedIds: user.saved_ids, hiddenIds: user.hidden_ids,
+      restored,
+    };
   }
 
   // 3. No client uid — create fresh
@@ -142,16 +151,17 @@ async createOrRestore(@Req() req, @Res({ passthrough: true }) res) {
   }));
 
   this.setCookie(res, user.id);
-  return { uid: user.id, profile: user.profile, restored: false };
+  return { uid: user.id, profile: user.profile, savedIds: [], hiddenIds: [], restored: false };
 }
 
 private setCookie(res: Response, uid: string) {
+  const isDev = process.env['NODE_ENV'] === 'development';
   res.cookie('ld_uid', uid, {
     httpOnly: true,
-    secure: true,
+    secure: !isDev,            // false on localhost
     sameSite: 'lax',
-    maxAge: 365 * 24 * 60 * 60 * 1000, // 1 year
-    domain: '.lazigo.app',
+    maxAge: 365 * 24 * 60 * 60 * 1000,
+    ...(isDev ? {} : { domain: '.lazigo.app' }),  // no domain on localhost
     path: '/',
   });
 }
@@ -200,11 +210,29 @@ export class ProfileSyncService {
 
     this.serverUid.set(res.uid);
 
-    // Restore: if server has richer profile (Safari cleared localStorage)
-    if (res.restored && res.profile && Object.keys(res.profile).length > 0) {
-      const localEmpty = Object.keys(localProfile.interests || {}).length === 0;
-      if (localEmpty) {
-        this.profileStore.mergeFromServer(res.profile);
+    // Restore: merge profile + savedIds + hiddenIds
+    if (res.restored) {
+      // Profile: server wins if local is empty (Safari cleared localStorage)
+      if (res.profile && Object.keys(res.profile).length > 0) {
+        const localEmpty = Object.keys(localProfile.interests || {}).length === 0;
+        if (localEmpty) {
+          this.profileStore.mergeFromServer(res.profile);
+        }
+      }
+
+      // Saved/Hidden: UNION (not replace) — covers offline saves + server restore
+      if (res.savedIds?.length) {
+        const localSaved = this.profileStore.savedIds();
+        const merged = [...new Set([...localSaved, ...res.savedIds])];
+        this.profileStore.setSavedIds(merged);
+        // Hydrate card snapshots for restored IDs missing locally
+        const missingIds = res.savedIds.filter((id: string) => !localSaved.includes(id));
+        if (missingIds.length) this.hydrateCards(missingIds);
+      }
+      if (res.hiddenIds?.length) {
+        const localHidden = this.profileStore.hiddenIds();
+        const merged = [...new Set([...localHidden, ...res.hiddenIds])];
+        this.profileStore.setHiddenIds(merged);
       }
     }
 
@@ -221,6 +249,22 @@ export class ProfileSyncService {
   }
 }
 ```
+
+### Hydrate restored cards
+
+Saved store keeps card snapshots (title, category, etc.) for UI.
+Server stores only IDs. On restore, missing snapshots need fetching:
+
+```typescript
+private hydrateCards(ids: string[]) {
+  // Batch fetch: POST /v1/cards/batch { ids } → RecommendationCard[]
+  // Or sequential: ids.forEach(id => api.getCard('place', id))
+  // Usually <10 cards, either approach is fine
+}
+```
+
+Optional: `POST /v1/cards/batch` endpoint (30 min). Or use existing
+`GET /v1/cards/:type/:id` sequentially — saved items are typically <10.
 
 ### Sync strategy
 
@@ -380,13 +424,21 @@ NestJS interceptors working while still setting cookies.
 | Step | What | Effort | Acceptance |
 |---|---|---|---|
 | 0 | `api.lazigo.app` custom domain + CORS + frontend URL | 1-2 hours | `curl https://api.lazigo.app/v1/health` works |
-| 1 | Users table (015) + POST /v1/auth/anon (idempotent) + cookie | 2-3 hours | Cookie set, second tab reuses same user |
-| 2 | ProfileSyncService + PATCH /v1/me (merge guard) | 2-3 hours | Profile syncs, empty local doesn't overwrite server |
+| 1 | Users table (015) + POST /v1/auth/anon (idempotent, @IsUUID, @Throttle) + cookie | 2-3 hours | Cookie set, second tab reuses same user, invalid UUID → 400 |
+| 2 | ProfileSyncService + PATCH /v1/me (merge guard + savedIds union + hydrate) | 2-3 hours | Clear site data → reopen → saved places visible in Favorites |
 | 3 | DELETE /v1/me (anonymize) + Settings UI | 30 min | Events anonymized, user deleted, cookie cleared |
 | 4 | InteractionService uid + device_ids linking | 30 min | New events use server uid |
 | 5 | GC cron for empty anon users | 15 min | Cron runs weekly |
 
 **Total: ~1.5 days**
+
+### Key acceptance test (the whole point of this feature)
+1. Open lazigo.app → save 3 places to favorites
+2. Clear all site data (DevTools → Application → Clear)
+3. Reopen lazigo.app
+4. → Favorites shows all 3 saved places ✅
+5. → Feed uses restored interests ✅
+6. → Device considered "returning" in D7 metric ✅
 
 ---
 
@@ -400,3 +452,15 @@ NestJS interceptors working while still setting cookies.
 6. **Consent unification** — consent_state on server, not just localStorage
 7. **No phantom users** — idempotent creation prevents race condition duplicates
 8. **Clean aggregates** — anonymization preserves CTR/impressions accuracy
+
+---
+
+## Future notes (don't implement now)
+
+**K4 Telegram Mini App**: webview may partition/block cookies.
+Don't design `/me` endpoints as cookie-only — keep `clientUid` in body
+as fallback auth. Same security model (UUID v4 = bearer), no weakening.
+
+**OAuth**: links provider to existing anon user, doesn't create new.
+Transfer between devices: generate one-time token (not uid) → scan/paste
+on other device → link same user row. Separate spec when demand proven.
