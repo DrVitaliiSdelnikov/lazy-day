@@ -18,6 +18,8 @@ import { Interaction } from './database/entities/interaction.entity';
 import { RecommendationLog } from './database/entities/recommendation-log.entity';
 import { DedupCandidate } from './database/entities/dedup-candidate.entity';
 import { User } from './database/entities/user.entity';
+import { InteractionEvent } from './database/entities/interaction-event.entity';
+import { Feedback } from './database/entities/feedback.entity';
 
 @Module({
   imports: [
@@ -34,9 +36,11 @@ import { User } from './database/entities/user.entity';
         SourceItem,
         SourceRef,
         Interaction,
+        InteractionEvent,
         RecommendationLog,
         DedupCandidate,
         User,
+        Feedback,
       ],
       namingStrategy: new SnakeNamingStrategy(),
       synchronize: false,
