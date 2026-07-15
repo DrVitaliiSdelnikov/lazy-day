@@ -192,7 +192,10 @@ export class AppShellComponent {
 
   readonly showNav = computed(() => {
     const url = this.currentUrl();
-    return !url.includes('/welcome') && !url.includes('/onboarding') && !url.includes('/tbilisi/');
+    return url !== '/'
+      && !url.includes('/welcome')
+      && !url.includes('/onboarding')
+      && !url.includes('/tbilisi/');
   });
 
   setLang(code: string) {

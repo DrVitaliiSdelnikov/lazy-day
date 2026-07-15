@@ -905,8 +905,10 @@ export class DiscoverComponent implements OnInit {
 
   ngOnInit() {
     if (!this.profileStore.onboardingCompleted()) {
+      // If user saw landing but didn't finish onboarding → resume onboarding
+      // If user never saw landing → send to landing
       const welcomeDone = localStorage.getItem('ld_welcome_done');
-      this.router.navigate([welcomeDone ? '/discover/onboarding' : '/discover/welcome']);
+      this.router.navigate([welcomeDone ? '/discover/onboarding' : '/'], { replaceUrl: true });
       return;
     }
     this.geoVersion = this.geo.updated();
