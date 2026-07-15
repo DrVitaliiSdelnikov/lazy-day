@@ -731,7 +731,9 @@ export class RecommendationService {
         chainCount.set((card as any).chain_key, count + 1);
       }
 
-      if (result.length >= 2) {
+      // Category streak limit applies only to places — events are unique by definition
+      // (different title/time/performer), so we never cut them for category repetition.
+      if (card.type === 'place' && result.length >= 2) {
         const prev1 = result[result.length - 1].category;
         const prev2 = result[result.length - 2].category;
         if (prev1 === card.category && prev2 === card.category) {
