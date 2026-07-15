@@ -31,16 +31,17 @@ export class EventCronService {
     }
 
     // 2. Run all enabled sources
+    let ingestionResults: any[] = [];
     try {
-      const results = await this.eventIngestion.runAll();
-      const total = results.reduce((sum, r) => sum + r.inserted + r.updated, 0);
-      this.logger.log(`Daily refresh done: ${total} events inserted/updated across ${results.length} sources`);
+      ingestionResults = await this.eventIngestion.runAll();
+      const total = ingestionResults.reduce((sum: number, r: any) => sum + r.inserted + r.updated, 0);
+      this.logger.log(`Daily refresh done: ${total} events inserted/updated across ${ingestionResults.length} sources`);
     } catch (err: any) {
       this.logger.error(`Daily event refresh failed: ${err?.message}`);
     }
 
-    // 3. Check source health
-    await this.checkSourceHealth();
+    // 3. Check source health and alert on failures
+    await this.checkSourceHealth(ingestionResults);
 
     // 4. GC empty anonymous users (weekly — runs daily but only deletes old ones)
     await this.gcEmptyUsers();
@@ -68,30 +69,52 @@ export class EventCronService {
     }
   }
 
-  /** Check each event source for freshness. Alert if 0 events in 48h. */
-  async checkSourceHealth(): Promise<Record<string, { count: number; status: string }>> {
-    const sources = ['opera_ge', 'google_events', 'yolo_ge'];
-    const result: Record<string, { count: number; status: string }> = {};
+  /**
+   * Check each event source for freshness using event_sources.last_fetched_at
+   * and last_event_count (updated after every runAll run).
+   * Alerts via Telegram if a source fetched 0 events or has errors.
+   */
+  async checkSourceHealth(
+    ingestionResults: Array<{ source: string; fetched: number; inserted: number; updated: number; errors: number }> = [],
+  ): Promise<Record<string, { fetched: number; status: string }>> {
+    // Build a quick lookup from ingestion run results
+    const resultBySource = new Map(ingestionResults.map((r) => [r.source, r]));
 
-    for (const source of sources) {
-      const rows = await this.dataSource.query(
-        `SELECT COUNT(*) as cnt FROM events WHERE source = $1 AND created_at > NOW() - INTERVAL '48 hours'`,
-        [source],
-      );
-      const count = parseInt(rows[0]?.cnt ?? '0', 10);
-      const status = count > 0 ? 'ok' : 'stale';
-      result[source] = { count, status };
+    // All enabled sources from DB
+    const rows = await this.dataSource.query(
+      `SELECT name, last_fetched_at, last_event_count FROM event_sources WHERE enabled = true ORDER BY name`,
+    );
 
-      if (status === 'stale') {
-        this.logger.error(`[EVENT ALERT] Source "${source}" returned 0 events in last 48h`);
-        await this.sendTelegramAlert(source);
+    const health: Record<string, { fetched: number; status: string }> = {};
+    const failures: string[] = [];
+
+    for (const row of rows) {
+      const runResult = resultBySource.get(row.name);
+      const fetched = runResult?.fetched ?? row.last_event_count ?? 0;
+      const hasErrors = (runResult?.errors ?? 0) > 0;
+      const stale = fetched === 0 || hasErrors;
+
+      health[row.name] = { fetched, status: stale ? 'stale' : 'ok' };
+
+      if (stale) {
+        this.logger.error(
+          `[EVENT ALERT] Source "${row.name}": fetched=${fetched}, errors=${runResult?.errors ?? 0}`,
+        );
+        failures.push(row.name);
       }
     }
 
-    return result;
+    if (failures.length > 0) {
+      await this.sendTelegramAlert(failures, ingestionResults);
+    }
+
+    return health;
   }
 
-  private async sendTelegramAlert(source: string) {
+  private async sendTelegramAlert(
+    failedSources: string[],
+    allResults: Array<{ source: string; fetched: number; inserted: number; updated: number; errors: number }>,
+  ) {
     const token = process.env['TELEGRAM_BOT_TOKEN'];
     const chatId = process.env['TELEGRAM_CHAT_ID'];
     if (!token || !chatId) {
@@ -99,13 +122,25 @@ export class EventCronService {
       return;
     }
 
-    const text = `⚠️ LaziGo: Event source "${source}" — 0 events in 48h. Check adapter.`;
+    const lines = [
+      `⚠️ *LaziGo — event ingestion alert*`,
+      ``,
+      `Failed sources: ${failedSources.map((s) => `\`${s}\``).join(', ')}`,
+      ``,
+      `*All source results:*`,
+      ...allResults.map(
+        (r) => `• \`${r.source}\`: fetched=${r.fetched} ins=${r.inserted} upd=${r.updated} err=${r.errors}`,
+      ),
+    ];
+
+    const text = lines.join('\n');
     try {
       await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: chatId, text }),
+        body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'Markdown' }),
       });
+      this.logger.log(`Telegram alert sent for: ${failedSources.join(', ')}`);
     } catch (err: any) {
       this.logger.error(`Telegram alert failed: ${err?.message}`);
     }
