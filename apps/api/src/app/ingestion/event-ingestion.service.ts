@@ -8,6 +8,7 @@ import { OperaGeAdapter } from './event-sources/opera-ge.adapter';
 import { GoogleEventsAdapter } from './event-sources/google-events.adapter';
 import { YoloGeAdapter } from './event-sources/yolo-ge.adapter';
 import { BiletebiGeAdapter } from './event-sources/biletebi-ge.adapter';
+import { TktGeAdapter } from './event-sources/tkt-ge.adapter';
 
 interface IngestionResult {
   source: string;
@@ -35,6 +36,7 @@ export class EventIngestionService {
       ['google_events', new GoogleEventsAdapter(serpApiKey, 'events in Tbilisi', 'en')],
       ['yolo.ge', new YoloGeAdapter()],
       ['biletebi.ge', new BiletebiGeAdapter()],
+      ['tkt.ge', new TktGeAdapter()],
     ]);
   }
 
