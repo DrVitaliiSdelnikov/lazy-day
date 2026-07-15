@@ -8,7 +8,7 @@ VALUES (
   'tkt.ge',
   'https://tkt.ge/en/concerts',
   'json_api',
-  '{"categories":[2,5],"note":"Public API key in frontend JS; categories: 2=concerts, 5=sports"}'
+  '{"categories":[2,5,16,17,18,71,73,75],"note":"Public API key in frontend JS; cats: 2=concerts,5=sports,16=theater,17=kids,18=opera,71=standup,73=masterclass,75=festival"}'
 )
 ON CONFLICT (name) DO UPDATE SET
   url          = EXCLUDED.url,

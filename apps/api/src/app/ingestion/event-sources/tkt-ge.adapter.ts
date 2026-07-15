@@ -11,10 +11,21 @@ const IMAGE_CDN = `${BASE_URL}/api/image`;
  * API key is public — baked into tkt.ge frontend JS bundle.
  * robots.txt: content pages allowed, checkout/search blocked.
  * We only read event listings.
+ *
+ * Full category list: gateway.tkt.ge/Categories?api_key=...
+ *   1=კინო(cinema, empty)  2=მუსიკა/კონცერტი  5=სპორტი
+ *  16=თეატრი  17=საბავშვო(kids)  18=ოპერა
+ *  71=სთენდაფი(standup)  73=მასტერკლასი  75=ფესტივალი
  */
 const CATEGORIES: Array<{ id: number; category: string; tags: string[] }> = [
-  { id: 2, category: 'music',  tags: ['music', 'concert', 'entertainment'] },
-  { id: 5, category: 'sports', tags: ['sports', 'outdoor'] },
+  { id: 2,  category: 'music',         tags: ['music', 'concert', 'entertainment'] },
+  { id: 5,  category: 'sports',        tags: ['sports', 'outdoor'] },
+  { id: 16, category: 'theater',       tags: ['culture', 'theater', 'entertainment'] },
+  { id: 17, category: 'family',        tags: ['family', 'entertainment'] },
+  { id: 18, category: 'theater',       tags: ['culture', 'theater'] },
+  { id: 71, category: 'entertainment', tags: ['entertainment', 'comedy'] },
+  { id: 73, category: 'culture',       tags: ['culture', 'workshop'] },
+  { id: 75, category: 'entertainment', tags: ['entertainment', 'festival', 'outdoor'] },
 ];
 
 /**
