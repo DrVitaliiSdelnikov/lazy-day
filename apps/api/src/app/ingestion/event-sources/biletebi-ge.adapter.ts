@@ -110,7 +110,7 @@ export class BiletebiGeAdapter implements EventSourceAdapter {
         startsAt,
         venueName: this.decodeHtml(venue) || 'Tbilisi',
         category,
-        tags: this.enrichTags(baseTags, title, eventType),
+        tags: this.enrichTags(baseTags, title, eventType, categorySlug),
         priceMin: price,
         currency: 'GEL',
         ticketUrl,
@@ -200,17 +200,39 @@ export class BiletebiGeAdapter implements EventSourceAdapter {
     return date;
   }
 
-  private enrichTags(base: string[], title: string, eventType: string): string[] {
+  /**
+   * Enriches event tags with LazyDay interest-compatible bridge tags.
+   *
+   * Bridge map (biletebi category/title → LazyDay INTEREST_SYNONYMS keys):
+   *   music/concert events  → entertainment (concerts are leisure entertainment)
+   *   jazz                  → entertainment, culture
+   *   theater               → culture, entertainment
+   *   night/club/dj/party   → nightlife, entertainment
+   *   festival              → entertainment
+   *   family/children       → family
+   *   stadium/outdoor       → outdoor, entertainment
+   *   sports                → sports
+   */
+  private enrichTags(base: string[], title: string, eventType: string, categorySlug: string): string[] {
     const tags = [...base];
     const t = title.toLowerCase();
-    if (/jazz|джаз/.test(t)) tags.push('jazz');
+
+    // Category-level bridge
+    if (categorySlug === 'concerts') tags.push('entertainment');
+    if (categorySlug === 'theatres') tags.push('culture', 'entertainment');
+    if (categorySlug === 'sport') tags.push('sports');
+    if (categorySlug === 'sabavshvo') tags.push('family');
+
+    // Title-level refinements
+    if (/jazz/.test(t)) tags.push('culture');
     if (/concert|კონცერტი/.test(t)) tags.push('concert');
     if (/festival|ფესტ/.test(t)) tags.push('festival');
-    if (/night|ночь/.test(t)) tags.push('nightlife');
+    if (/night|party|dj\s|disco/.test(t)) tags.push('nightlife');
     if (/club|კლუბი/.test(t)) tags.push('nightlife');
     if (/kid|child|bav|ბავ/.test(t)) tags.push('family');
     if (eventType === 'Stadium') tags.push('outdoor');
-    return [...new Set(tags)].slice(0, 5);
+
+    return [...new Set(tags)].slice(0, 6);
   }
 
   private decodeHtml(s: string): string {
