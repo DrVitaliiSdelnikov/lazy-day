@@ -56,7 +56,7 @@ type PanelType = 'location' | 'company' | 'interests' | 'time' | null;
           </div>
           <div class="panel-section">
             <label class="panel-label">{{ radiusLabel() }}</label>
-            <input type="range" class="ld-slider"
+            <input type="range" class="ld-slider" aria-label="Radius"
               [ngModel]="radiusKm()" (ngModelChange)="onRadiusChange($event)"
               min="1" max="15" step="1" />
           </div>

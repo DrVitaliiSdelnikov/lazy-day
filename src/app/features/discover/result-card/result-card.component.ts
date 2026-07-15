@@ -15,7 +15,7 @@ import { LdIconComponent } from '../../../core/components/ld-icon.component';
       <div class="card__inner">
         <!-- Header: title + save -->
         <div class="card__header">
-          <h3 class="card__title">{{ card().title }}</h3>
+          <h2 class="card__title">{{ card().title }}</h2>
           @if (card().type === 'event') {
             <ld-icon name="ticket" [size]="18" class="card__ticket-icon" />
           }

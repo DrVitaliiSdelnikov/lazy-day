@@ -50,7 +50,7 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
         </div>
         <div class="sidebar__section">
           <p class="sidebar__label">{{ 'sidebar.radius' | translate }} · {{ sidebarRadius() }} км</p>
-          <input type="range" class="ld-slider"
+          <input type="range" class="ld-slider" aria-label="Radius"
             [value]="sidebarRadius()" (input)="onSidebarRadiusChange($event)" min="1" max="15" step="1" />
         </div>
         <div class="sidebar__section">
@@ -136,7 +136,8 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
           </button>
         }
         <button class="discover__decide-btn" (click)="openDecide()"
-          [disabled]="loading() || cards().length === 0">
+          [disabled]="loading() || cards().length === 0"
+          [attr.aria-label]="'decide.button' | translate">
           <ld-icon name="compass" [size]="15" />
         </button>
         <button class="discover__filter-btn" (click)="openFilters()" aria-label="Filters">

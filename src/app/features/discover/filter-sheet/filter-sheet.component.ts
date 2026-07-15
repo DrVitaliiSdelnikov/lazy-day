@@ -49,7 +49,7 @@ export const defaultFilters: FilterState = {
               : {{ budgetValue() }} GEL
             }
           </label>
-          <input type="range" class="ld-slider"
+          <input type="range" class="ld-slider" aria-label="Budget"
             [ngModel]="budgetValue()" (ngModelChange)="onBudgetChange($event)"
             min="0" max="500" step="10" />
         </div>
