@@ -239,7 +239,9 @@
     "how_3": "Tap Route — and go",
     "context_title": "Matched to your situation",
     "diff_title": "Not another list of places",
-    "diff_text": "LaziGo isn't a catalog. Every suggestion is matched to your interests, company, and time. And explained."
+    "diff_text": "LaziGo isn't a catalog. Every suggestion is matched to your interests, company, and time. And explained.",
+    "setup_interests": "Set up interests",
+    "events_title": "Upcoming events"
   },
   "feedback": {
     "title": "Feedback",

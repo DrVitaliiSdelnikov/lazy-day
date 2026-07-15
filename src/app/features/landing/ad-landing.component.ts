@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { ApiService } from '../../core/services/api.service';
@@ -29,9 +29,15 @@ import { RecommendationCard, Locale } from '../../core/models';
         <div class="land__hero-inner">
           <h1 class="land__title ld-display">{{ 'landing.title' | translate }}</h1>
           <p class="land__subtitle">{{ 'landing.subtitle' | translate }}</p>
-          <button class="ld-btn ld-btn--primary land__cta" (click)="goToFeed()">
-            {{ 'landing.cta' | translate }}
-          </button>
+          <div class="land__actions">
+            <button class="ld-btn ld-btn--primary land__cta" (click)="goToFeed()">
+              {{ 'landing.cta' | translate }}
+            </button>
+            <button class="land__setup-btn" (click)="goToOnboarding()">
+              <ld-icon name="sliders" [size]="13" />
+              {{ 'landing.setup_interests' | translate }}
+            </button>
+          </div>
           <p class="land__no-account">
             <ld-icon name="user" [size]="11" /> {{ 'landing.no_account' | translate }}
           </p>
@@ -44,6 +50,19 @@ import { RecommendationCard, Locale } from '../../core/models';
           <h2 class="land__section-title">{{ 'landing.examples_title' | translate }}</h2>
           <div class="land__cards">
             @for (card of exampleCards(); track card.id) {
+              <app-result-card [card]="card" [isSaved]="false"
+                (openDetail)="goToFeed()" />
+            }
+          </div>
+        </section>
+      }
+
+      <!-- Event cards -->
+      @if (eventCards().length > 0) {
+        <section class="land__examples">
+          <h2 class="land__section-title">{{ 'landing.events_title' | translate }}</h2>
+          <div class="land__cards">
+            @for (card of eventCards(); track card.id) {
               <app-result-card [card]="card" [isSaved]="false"
                 (openDetail)="goToFeed()" />
             }
@@ -73,19 +92,35 @@ import { RecommendationCard, Locale } from '../../core/models';
       <!-- Context examples -->
       <section class="land__contexts">
         <h2 class="land__section-title">{{ 'landing.context_title' | translate }}</h2>
+
+        <!-- Company: icon + label -->
         <div class="land__chips">
-          <span class="ld-chip">{{ 'company.solo' | translate }}</span>
-          <span class="ld-chip">{{ 'company.couple' | translate }}</span>
-          <span class="ld-chip">{{ 'company.friends' | translate }}</span>
-          <span class="ld-chip">{{ 'company.family' | translate }}</span>
-          <span class="ld-chip">{{ 'company.with_pet' | translate }}</span>
+          @for (c of companyChips; track c.value) {
+            <button class="ld-chip"
+              [class.ld-chip--active]="selectedCompany() === c.value"
+              (click)="selectCompany(c.value)">
+              <ld-icon [name]="c.icon" [size]="14" />
+              {{ c.labelKey | translate }}
+            </button>
+          }
+          <button class="ld-chip"
+            [class.ld-chip--active]="selectedPet()"
+            (click)="togglePet()">
+            <ld-icon name="dog" [size]="14" />
+            {{ 'company.with_pet' | translate }}
+          </button>
         </div>
-        <div class="land__chips" style="margin-top: 8px">
-          <span class="ld-chip">{{ 'interest.food' | translate }}</span>
-          <span class="ld-chip">{{ 'interest.nature' | translate }}</span>
-          <span class="ld-chip">{{ 'interest.culture' | translate }}</span>
-          <span class="ld-chip">{{ 'interest.nightlife' | translate }}</span>
-          <span class="ld-chip">{{ 'interest.active' | translate }}</span>
+
+        <!-- Presets: icon + label, same as discover toolbar -->
+        <div class="land__chips" style="margin-top: 10px">
+          @for (p of presetChips; track p.key) {
+            <button class="ld-chip"
+              [class.ld-chip--active]="selectedPreset() === p.key"
+              (click)="selectPreset(p.key)">
+              <ld-icon [name]="p.icon" [size]="14" />
+              {{ p.labelKey | translate }}
+            </button>
+          }
         </div>
       </section>
 
@@ -168,10 +203,41 @@ import { RecommendationCard, Locale } from '../../core/models';
       line-height: 1.5;
     }
 
+    .land__actions {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
     .land__cta {
       min-width: 200px;
       min-height: 48px;
       font-size: 16px;
+    }
+
+    .land__setup-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-width: 200px;
+      min-height: 48px;
+      padding: 0 24px;
+      background: none;
+      border: 1.5px solid var(--ld-primary);
+      border-radius: 14px;
+      font-family: inherit;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--ld-primary);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .land__setup-btn:hover {
+      background: var(--ld-primary-soft);
     }
 
     .land__no-account {
@@ -266,6 +332,7 @@ import { RecommendationCard, Locale } from '../../core/models';
       justify-content: center;
     }
 
+
     .land__diff {
       padding: 32px 20px;
       background: var(--ld-primary-soft);
@@ -299,12 +366,41 @@ export class AdLandingComponent implements OnInit {
     { code: 'en', label: 'EN' },
     { code: 'ka', label: 'KA' },
   ];
-  currentLang = signal(this.profileStore.locale());
-  exampleCards = signal<RecommendationCard[]>([]);
+
+  companyChips = [
+    { value: 'solo',    labelKey: 'company.solo',    icon: 'user' },
+    { value: 'couple',  labelKey: 'company.couple',  icon: 'hearts' },
+    { value: 'friends', labelKey: 'company.friends', icon: 'users' },
+    { value: 'family',  labelKey: 'company.family',  icon: 'balloon' },
+  ];
+
+  presetChips: Array<{ key: string; labelKey: string; icon: string; interests: Record<string, number> }> = [
+    { key: 'chill',     labelKey: 'preset.chill',     icon: 'trees',           interests: { nature: 0.8, food: 0.5, spa: 0.5 } },
+    { key: 'food',      labelKey: 'preset.food',       icon: 'tools-kitchen-2', interests: { food: 1 } },
+    { key: 'culture',   labelKey: 'preset.culture',    icon: 'masks-theater',   interests: { culture: 1, food: 0.3 } },
+    { key: 'active',    labelKey: 'preset.active',     icon: 'run',             interests: { active: 1, sports: 0.5 } },
+    { key: 'family',    labelKey: 'preset.family',     icon: 'balloon',         interests: { family: 1, entertainment: 0.5 } },
+    { key: 'nightlife', labelKey: 'preset.nightlife',  icon: 'moon',            interests: { nightlife: 1 } },
+  ];
+
+  currentLang     = signal(this.profileStore.locale());
+  selectedCompany = signal<string | null>(null);
+  selectedPreset  = signal<string | null>(null);
+  selectedPet     = signal(false);
+  exampleCards    = signal<RecommendationCard[]>([]);
+  eventCards      = signal<RecommendationCard[]>([]);
 
   ngOnInit() {
-    // Set language from route data or URL
-    const lang = this.route.snapshot.data['lang'] || this.route.snapshot.paramMap.get('lang') || 'en';
+    // Returning user: skip landing, go straight to feed
+    if (localStorage.getItem('ld_welcome_done')) {
+      this.router.navigate(['/discover'], { replaceUrl: true });
+      return;
+    }
+
+    // Set language: from route data (ad URLs like /en/tbilisi/today),
+    // else from stored profile, else default to Russian
+    const routeLang = this.route.snapshot.data['lang'] || this.route.snapshot.paramMap.get('lang');
+    const lang = routeLang || this.profileStore.locale() || 'ru';
     if (['ru', 'en', 'ka'].includes(lang)) {
       this.setLang(lang);
     }
@@ -312,7 +408,7 @@ export class AdLandingComponent implements OnInit {
     // Fire landing_view GA4 event
     (window as any).gtag?.('event', 'landing_view', {
       language: lang,
-      landing_type: 'today',
+      landing_type: routeLang ? 'ad' : 'organic',
     });
 
     // Load example cards
@@ -326,31 +422,72 @@ export class AdLandingComponent implements OnInit {
   }
 
   goToFeed() {
-    // Skip onboarding — go directly to feed (ghost path)
+    this.applySelectionsToStore();
     this.profileStore.completeOnboarding();
     localStorage.setItem('ld_welcome_done', 'true');
     this.router.navigate(['/discover']);
   }
 
+  goToOnboarding() {
+    this.applySelectionsToStore();
+    localStorage.setItem('ld_welcome_done', 'true');
+    this.router.navigate(['/discover/onboarding']);
+  }
+
+  private applySelectionsToStore() {
+    const presetKey = this.selectedPreset();
+    const preset = this.presetChips.find(p => p.key === presetKey);
+    if (preset) {
+      this.profileStore.setInterests(preset.interests);
+    }
+    if (this.selectedCompany()) {
+      this.profileStore.setCompany(this.selectedCompany() as any);
+    }
+    if (this.selectedPet()) {
+      this.profileStore.setHasPet(true);
+    }
+  }
+
+  selectCompany(value: string) {
+    this.selectedCompany.set(this.selectedCompany() === value ? null : value);
+    this.loadExamples();
+  }
+
+  togglePet() {
+    this.selectedPet.set(!this.selectedPet());
+    this.loadExamples();
+  }
+
+  selectPreset(key: string) {
+    this.selectedPreset.set(this.selectedPreset() === key ? null : key);
+    this.loadExamples();
+  }
+
   private loadExamples() {
     const pos = this.geo.position();
+    const presetKey = this.selectedPreset();
+    const preset = this.presetChips.find(p => p.key === presetKey);
+    const interests: Record<string, number> = preset?.interests ?? {};
+    const companyVal = (this.selectedCompany() ?? undefined) as any;
+
+    const now = new Date();
+    const timeWindow = {
+      from: now.toISOString(),
+      to: new Date(now.getTime() + 72 * 3600_000).toISOString(),
+    };
+
     this.api.discover({
       lat: pos.lat,
       lng: pos.lng,
       radiusM: 5000,
-      timeWindow: this.defaultTimeWindow(),
-      profile: { interests: {} },
+      timeWindow,
+      profile: { interests, company: companyVal, hasPet: this.selectedPet() },
       hiddenIds: [],
       locale: this.currentLang(),
     }).subscribe(res => {
-      // Show first 6 non-chain cards
-      const filtered = res.cards.filter(c => !c.isChain).slice(0, 6);
-      this.exampleCards.set(filtered);
+      this.exampleCards.set(res.cards.filter(c => c.type === 'place' && !c.isChain).slice(0, 6));
+      this.eventCards.set(res.cards.filter(c => c.type === 'event').slice(0, 3));
     });
   }
 
-  private defaultTimeWindow() {
-    const now = new Date();
-    return { from: now.toISOString(), to: new Date(now.getTime() + 6 * 3600000).toISOString() };
-  }
 }

@@ -3,8 +3,8 @@ import { Route } from '@angular/router';
 export const appRoutes: Route[] = [
   {
     path: '',
-    redirectTo: 'discover',
-    pathMatch: 'full',
+    loadComponent: () =>
+      import('./features/landing/ad-landing.component').then((m) => m.AdLandingComponent),
   },
   {
     path: 'en/tbilisi/today',

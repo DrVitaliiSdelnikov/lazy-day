@@ -29,12 +29,12 @@ const INTEREST_SYNONYMS: Record<string, string[]> = {
   spa: ['bath', 'swimming'],
   bath: ['bath'],
   food: ['food', 'restaurant', 'cafe', 'bakery'],
-  nightlife: ['nightlife', 'bar', 'club'],
+  nightlife: ['nightlife', 'bar', 'club', 'concert'],
   culture: ['culture', 'museum', 'gallery', 'theater'],
   gym: ['gym', 'wellness', 'sports'],
   sports: ['sports', 'climbing', 'karting', 'paintball', 'trampoline', 'bowling'],
   shopping: ['shopping', 'mall'],
-  entertainment: ['entertainment', 'cinema', 'club', 'bowling', 'escape_room', 'gaming', 'arcade', 'water_park'],
+  entertainment: ['entertainment', 'cinema', 'club', 'bowling', 'escape_room', 'gaming', 'arcade', 'water_park', 'music', 'concert', 'festival'],
   family: ['family', 'playground', 'park', 'trampoline', 'water_park', 'arcade'],
   active: ['sports', 'climbing', 'karting', 'paintball', 'trampoline', 'gym', 'bowling', 'escape_room', 'gaming', 'arcade', 'water_park'],
 };
@@ -547,7 +547,8 @@ export class RecommendationService {
       }
     }
 
-    const distance = Math.max(0, 1 - c.distance_m / radiusM);
+    // Events without a linked venue have distance_m = null → neutral score (0.5)
+    const distance = c.distance_m === null ? 0.5 : Math.max(0, 1 - c.distance_m / radiusM);
     const time = this.timeFit(c, dto.timeWindow);
     const quality = Number(c.quality_score) || 0.5;
     const source = 0.6;
@@ -619,25 +620,28 @@ export class RecommendationService {
       `SELECT
         e.id, 'event' AS type, e.title, e.category, e.tags,
         v.lat, v.lng,
-        (6371000 * acos(
-          cos(radians($1)) * cos(radians(v.lat)) *
-          cos(radians(v.lng) - radians($2)) +
-          sin(radians($1)) * sin(radians(v.lat))
-        )) AS distance_m,
+        CASE
+          WHEN v.lat IS NOT NULL AND v.lng IS NOT NULL THEN
+            (6371000 * acos(LEAST(1.0,
+              cos(radians($1)) * cos(radians(v.lat)) *
+              cos(radians(v.lng) - radians($2)) +
+              sin(radians($1)) * sin(radians(v.lat))
+            )))
+          ELSE NULL
+        END AS distance_m,
         v.address, v.name AS venue_name,
         e.starts_at, e.ends_at, e.ticket_url,
         e.price_min, e.price_max, e.quality_score
       FROM events e
-      JOIN venues v ON e.venue_id = v.id
+      LEFT JOIN venues v ON e.venue_id = v.id
       WHERE e.status = 'scheduled'
-        AND e.starts_at BETWEEN $4 AND $5
-        AND v.lat BETWEEN $1 - ($3::float / 111000) AND $1 + ($3::float / 111000)
-        AND v.lng BETWEEN $2 - ($3::float / (111000 * cos(radians($1)))) AND $2 + ($3::float / (111000 * cos(radians($1))))
-      ORDER BY e.starts_at
-      LIMIT 100`,
-      [lat, lng, radiusM, timeWindow.from, timeWindow.to],
+        AND e.starts_at BETWEEN $3 AND $4
+      ORDER BY distance_m ASC NULLS LAST, e.starts_at ASC
+      LIMIT 150`,
+      [lat, lng, timeWindow.from, timeWindow.to],
     );
-    return rows.filter((r: any) => r.distance_m <= radiusM);
+    // Events with known venue: keep only within radius. Events without venue: always include.
+    return rows.filter((r: any) => r.distance_m === null || r.distance_m <= radiusM);
   }
 
   // ---------------------------------------------------------------------------
@@ -727,7 +731,9 @@ export class RecommendationService {
         chainCount.set((card as any).chain_key, count + 1);
       }
 
-      if (result.length >= 2) {
+      // Category streak limit applies only to places — events are unique by definition
+      // (different title/time/performer), so we never cut them for category repetition.
+      if (card.type === 'place' && result.length >= 2) {
         const prev1 = result[result.length - 1].category;
         const prev2 = result[result.length - 2].category;
         if (prev1 === card.category && prev2 === card.category) {
