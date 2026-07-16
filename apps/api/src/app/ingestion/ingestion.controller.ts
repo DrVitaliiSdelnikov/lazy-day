@@ -1,4 +1,5 @@
-import { Controller, Post, Get, Query, Param, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Query, Param, Body, UseGuards } from '@nestjs/common';
+import { DataSource } from 'typeorm';
 import { OsmImportService } from './osm-import.service';
 import { GoogleEnrichmentService } from './google-enrichment.service';
 import { EventIngestionService } from './event-ingestion.service';
@@ -11,6 +12,7 @@ export class IngestionController {
     private readonly osmImport: OsmImportService,
     private readonly googleEnrich: GoogleEnrichmentService,
     private readonly eventIngestion: EventIngestionService,
+    private readonly dataSource: DataSource,
   ) {}
 
   @Post('osm')
@@ -56,5 +58,34 @@ export class IngestionController {
   @Get('events/sources')
   async listEventSources() {
     return this.eventIngestion.listSources();
+  }
+
+  /** Temporary: import enrichment data from local DB export. Remove after use. */
+  @Post('import-enrichment')
+  async importEnrichment(@Body() body: { venues: any[]; places: any[] }) {
+    let venueUpdated = 0, placeUpdated = 0;
+
+    for (const v of body.venues) {
+      const r = await this.dataSource.query(
+        `UPDATE venues SET google_place_id = $1 WHERE id = $2 AND google_place_id IS NULL`,
+        [v.google_place_id, v.id],
+      );
+      if (r[1] > 0) venueUpdated++;
+    }
+
+    for (const p of body.places) {
+      const r = await this.dataSource.query(
+        `UPDATE places SET google_rating = $1, google_rating_count = $2,
+         opening_hours = $3, attributes = $4, google_types = $5, photos = $6
+         WHERE id = $7 AND google_rating IS NULL`,
+        [p.google_rating, p.google_rating_count,
+         p.opening_hours ? JSON.stringify(p.opening_hours) : null,
+         p.attributes ? JSON.stringify(p.attributes) : null,
+         p.google_types, p.photos, p.id],
+      );
+      if (r[1] > 0) placeUpdated++;
+    }
+
+    return { venueUpdated, placeUpdated, venueTotal: body.venues.length, placeTotal: body.places.length };
   }
 }
