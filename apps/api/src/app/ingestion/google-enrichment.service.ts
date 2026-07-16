@@ -124,7 +124,7 @@ export class GoogleEnrichmentService {
     const loc = place.location;
     if (loc) {
       const dist = this.haversineM(venue.lat, venue.lng, loc.latitude, loc.longitude);
-      if (dist > 200) {
+      if (dist > 500) {
         this.logger.debug(`Skipping ${venue.name}: Google match ${dist.toFixed(0)}m away`);
         return null;
       }
