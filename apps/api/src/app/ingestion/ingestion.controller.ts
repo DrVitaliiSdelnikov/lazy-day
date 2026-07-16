@@ -60,32 +60,45 @@ export class IngestionController {
     return this.eventIngestion.listSources();
   }
 
-  /** Temporary: import enrichment data from local DB export. Remove after use. */
+  /** Temporary: import enrichment data from local DB. Matches by coords. Remove after osm_id migration. */
   @Post('import-enrichment')
-  async importEnrichment(@Body() body: { venues: any[]; places: any[] }) {
-    let venueUpdated = 0, placeUpdated = 0;
+  async importEnrichment(@Body() body: { records: any[] }) {
+    let updated = 0, notFound = 0;
 
-    for (const v of body.venues) {
-      const r = await this.dataSource.query(
-        `UPDATE venues SET google_place_id = $1 WHERE id = $2 AND google_place_id IS NULL`,
-        [v.google_place_id, v.id],
+    for (const r of body.records) {
+      const res = await this.dataSource.query(
+        `UPDATE venues SET
+          google_place_id = COALESCE($1, google_place_id)
+        WHERE ABS(lat - $2) < 0.0000001 AND ABS(lng - $3) < 0.0000001
+          AND google_place_id IS NULL`,
+        [r.google_place_id, r.lat, r.lng],
       );
-      if (r[1] > 0) venueUpdated++;
+      if (res[1] > 0) {
+        // Now update the linked place
+        await this.dataSource.query(
+          `UPDATE places SET
+            google_rating = COALESCE($1, google_rating),
+            google_rating_count = COALESCE($2, google_rating_count),
+            opening_hours = COALESCE($3, opening_hours),
+            attributes = COALESCE($4, attributes),
+            google_types = COALESCE($5, google_types),
+            photos = COALESCE($6, photos)
+          WHERE venue_id = (
+            SELECT id FROM venues
+            WHERE ABS(lat - $7) < 0.0000001 AND ABS(lng - $8) < 0.0000001
+            LIMIT 1
+          ) AND google_rating IS NULL`,
+          [r.google_rating, r.google_rating_count,
+           r.opening_hours ? JSON.stringify(r.opening_hours) : null,
+           r.attributes ? JSON.stringify(r.attributes) : null,
+           r.google_types, r.photos, r.lat, r.lng],
+        );
+        updated++;
+      } else {
+        notFound++;
+      }
     }
 
-    for (const p of body.places) {
-      const r = await this.dataSource.query(
-        `UPDATE places SET google_rating = $1, google_rating_count = $2,
-         opening_hours = $3, attributes = $4, google_types = $5, photos = $6
-         WHERE id = $7 AND google_rating IS NULL`,
-        [p.google_rating, p.google_rating_count,
-         p.opening_hours ? JSON.stringify(p.opening_hours) : null,
-         p.attributes ? JSON.stringify(p.attributes) : null,
-         p.google_types, p.photos, p.id],
-      );
-      if (r[1] > 0) placeUpdated++;
-    }
-
-    return { venueUpdated, placeUpdated, venueTotal: body.venues.length, placeTotal: body.places.length };
+    return { updated, notFound, total: body.records.length };
   }
 }
