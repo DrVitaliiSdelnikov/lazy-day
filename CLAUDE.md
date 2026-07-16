@@ -55,10 +55,10 @@ See `docs/research/product-differentiation.md` for full analysis and competitive
 | Venues | 3,166 | OSM (bbox incl. Lilo, Orkhevi) |
 | Google matched | 1,755 (55%) | Google Places |
 | Opening hours | 1,794 (57%) | Google + OSM |
-| Ratings | 1,755 (55%) | Google |
+| Ratings | 1,755 local / ~1,256 prod (40%) | Google |
 | allowsDogs | 607 | Google Atmosphere |
 | goodForChildren | 1,292 | Google Atmosphere |
-| Events | 55 (10 opera.ge + 21 Google Events + 24 YOLO.ge) | 3 adapters |
+| Events | ~68 (4 opera.ge + 20 Google Events + 24 YOLO.ge + tkt.ge/biletebi.ge disabled) | 5 adapters (3 active) |
 | Localization | en: ~74%, ka: ~54% | OSM name_en/name_ka |
 
 ## Docs
@@ -87,34 +87,58 @@ See `docs/research/product-differentiation.md` for full analysis and competitive
 
 ## Roadmap (what builds the moat)
 
-### MVP — Intelligence + Events + Deploy
-1. ~~Events: SerpApi Google Events~~ — DONE (21 events, one adapter any city)
-2. ~~Mood presets~~ — DONE (6 presets: chill, active, family, culture, food, nightlife)
-3. ~~Events: YOLO.ge parser~~ — DONE (24 events, AJAX endpoint, workshops/exhibitions/excursions)
-4. ~~Event cron~~ — DONE (daily 06:00 Tbilisi, marks past, refreshes all sources)
-5. ~~Type filter~~ — DONE (Всё / Места / События, client-side)
-6. ~~Closed venues filter~~ — DONE (hard-filtered from results)
-7. ~~Location: GPS + coords~~ — DONE (removed districts, DMS parser)
-8. ~~Interest categories~~ — DONE (11 intent-based: food, nature, culture, active, entertainment...)
+### MVP — Intelligence + Events + Deploy — COMPLETE
+1. ~~Events: SerpApi Google Events~~ — DONE
+2. ~~Mood presets~~ — DONE (6 presets)
+3. ~~Events: YOLO.ge parser~~ — DONE
+4. ~~Event cron~~ — DONE (daily 02:00 UTC)
+5. ~~Type filter~~ — DONE
+6. ~~Closed venues filter~~ — DONE
+7. ~~Location: GPS + coords~~ — DONE
+8. ~~Interest categories~~ — DONE (11 intent-based)
+9. ~~SEO basics~~ — DONE (robots, sitemap, OG, JSON-LD, hreflang)
+10. ~~Domain~~ — DONE (lazigo.app, Cloudflare DNS)
+11. ~~Privacy~~ — DONE (privacy.component.ts, consent-banner.component.ts, Consent Mode v2)
+12. ~~Interaction schema~~ — DONE (migration 013, interaction_events entity)
+13. ~~Analytics~~ — DONE (GA4 G-8RSG5LFWBC + Google Ads AW-18318311908, gtag events)
+14. ~~Deploy~~ — DONE (Cloudflare Pages + Railway EU West)
 **Full roadmap with decisions: `docs/roadmap.md`**
 
-9. ~~Pre-deploy: SEO basics~~ — DONE (robots.txt, sitemap.xml, meta+OG, JSON-LD, hreflang)
-10. **Pre-deploy: Domain** — buy domain, configure DNS ← NEXT
-11. **Pre-deploy: Privacy** — policy page + consent banner
-12. **Pre-deploy: Interaction schema** — migration 013 (interaction_events, venue_stats, user_prefs)
-13. **Pre-deploy: Analytics** — Plausible/Umami + webmaster tools
-14. **Deploy** — Cloudflare Pages + Hetzner VPS
-15. Post-deploy: share button, behavioral tracking, SSR, re-ranking, sort modes
+### Post-MVP — done in 2026-07-16 session
+- ~~Events: tkt.ge adapter~~ — DONE (8 categories, 125 events). Disabled: Cloudflare blocks Railway IP.
+- ~~Events: biletebi.ge adapter~~ — DONE. Disabled: same Cloudflare issue.
+- ~~Landing page~~ — DONE (entry point, company+preset chips, event cards, ProfileStore sync)
+- ~~Telegram monitoring~~ — DONE (daily alerts on source failures)
+- ~~Google enrichment sync~~ — DONE (~1,256/1,755 venues with ratings on prod)
+- ~~locationRestriction fix~~ — DONE (future enrichment works from prod directly)
+
+### Current TODOs
+- [ ] osm_id migration (018) — stable sync key for cross-env, future cities
+- [ ] Atmosphere enrichment on prod (allowsDogs/goodForChildren)
+- [ ] Remaining ~500 venue enrichment gap (coord collisions, short names)
+- [ ] tkt.ge + biletebi.ge proxy solution (Cloudflare bypass)
+- [ ] Remove temporary `import-enrichment` endpoint after osm_id
+- [ ] Telegram env vars (TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID)
+- [ ] Share button, behavioral tracking
 
 ### v1 — Community Layer (the moat)
-6. Events: TKT.ge (Puppeteer, only if Google gap >30%). 7. Micro-tips + collections + "been here" badges. 8. Search/autocomplete. 9. Conversational discovery (one smart question per session). 10. Compact API + offline cache.
+1. ~~Events: TKT.ge~~ — DONE (adapter ready, blocked by Cloudflare)
+2. Micro-tips + collections + "been here" badges
+3. Search/autocomplete
+4. Conversational discovery (one smart question per session)
+5. Compact API + offline cache
 
 ### v2 — Personalization + Scale
-11. Behavioral re-ranking (from accumulated user data). 12. Gamification (light: exploration badges, streaks). 13. Journey planner. 14. Weather-aware. 15. City expansion via CityConfig. 16. Local curator network.
+6. Behavioral re-ranking (from accumulated user data)
+7. Gamification (exploration badges, streaks)
+8. Journey planner
+9. Weather-aware
+10. City expansion via CityConfig (needs osm_id first)
+11. Local curator network
 
 ### Competitive Moat Timeline
 ```
-Month 1-3:  Intelligence advantage (done: scoring, explanations, context)
+Month 1-3:  Intelligence advantage (DONE: scoring, explanations, context)
 Month 3-6:  Behavioral data (save/hide/click from real users)
 Month 6-12: Community data (tips, collections, badges — network effect)
 Month 12+:  Curator network + multi-city = sustainable moat
@@ -126,11 +150,13 @@ Events must be refreshed daily. Stale events = broken trust.
 
 Automated via `@nestjs/schedule` cron (daily 02:00 UTC = 06:00 Tbilisi). Manual: `POST /v1/admin/ingestion/events/run`.
 
-| Source | Refresh | SerpApi cost | Notes |
+| Source | Refresh | Cost | Notes |
 |---|---|---|---|
 | opera.ge | 1x/day | 0 | Free HTML parser |
-| google_events | 1x/day | 3 calls/day | 90/month ≈ free tier limit (100/mo) |
+| google_events | 1x/day | 3 SerpApi/day | 90/month ≈ free tier limit (100/mo) |
 | yolo.ge | 1x/day | 0 | Free AJAX endpoint |
+| tkt.ge | **disabled** | 0 | Cloudflare 403 blocks Railway IPs |
+| biletebi.ge | **disabled** | 0 | Cloudflare 403 blocks Railway IPs |
 
 **SerpApi quota**: 100 searches/month (free tier), resets 1st of each month. Cached (identical) queries = free, don't count. Our 1 run = 3 searches. Daily refresh = 90/month. Fits in free tier for 1 city. No cost. 2+ cities = $50/mo plan (5,000 searches).
 
@@ -140,11 +166,32 @@ Automated via `@nestjs/schedule` cron (daily 02:00 UTC = 06:00 Tbilisi). Manual:
 
 - **Opening hours unknown (57% venues)**: currently no label shown. Closed venues hard-filtered. Need to decide: show "Hours unknown"? Or improve coverage (more Google enrichment)? For now — silence = no data, don't lie to user.
 
+## Google Enrichment Pipeline
+
+Three-phase enrichment. All require `GOOGLE_PLACES_API_KEY` env var on Railway.
+Run order: Pro → Enterprise → Atmosphere (each phase needs the previous).
+
+| Phase | Endpoint | What it writes | Cost |
+|---|---|---|---|
+| Pro | `POST /v1/admin/ingestion/google-enrich?limit=N` | `googlePlaceId`, photos, types | ~$0 (free) |
+| Enterprise | `POST /v1/admin/ingestion/google-enrich-enterprise?limit=N` | **rating, ratingCount, openingHours** | ~$35 |
+| Atmosphere | `POST /v1/admin/ingestion/google-enrich-atmosphere?limit=N` | allowsDogs, goodForChildren | ~$39 |
+
+**Important**: limit=100-200 max from external URL (Railway proxy timeout). From Railway Console use `node -e "fetch('http://localhost:3000/...', {method:'POST'}).then(r=>r.json()).then(console.log)"` (no curl in container).
+
+**Prod status (2026-07-16)**:
+- Pro matched: ~684 (via API) + 572 (via coord sync) = **~1,256 venues with ratings**
+- Local: 1,755. Gap: ~500 (venues with coord collisions or no match)
+- Atmosphere: NOT run (allowsDogs/goodForChildren = 0 on prod)
+- `locationRestriction` fix deployed — future enrichment runs on prod directly
+- Coord-based sync done — `import-enrichment` endpoint works, remove after osm_id migration
+
 ## Cost Tracking
 
 | Month | Google Places | SerpApi | Total | Budget |
 |---|---|---|---|---|
-| July 2026 | $74 | $0 (free tier) | $74 | $100 |
+| July 2026 (local) | $74 | $0 (free tier) | $74 | $100 |
+| July 2026 (prod) | ~$35 (enterprise enrichment) | $0 | ~$35 | $100 |
 
 Google Places breakdown: Pro (free) + Enterprise (~$35) + Atmosphere (~$39). One-time enrichment, not recurring.
 
@@ -152,4 +199,44 @@ Google Places breakdown: Pro (free) + Enterprise (~$35) + Atmosphere (~$39). One
 
 - Domain: **lazigo.app** (lazy + go)
 - Frontend: `lazigo.app` → Cloudflare Pages
-- API: `api.lazigo.app` → Hetzner VPS + Docker Compose
+- API: `api.lazigo.app` → **Railway** (EU West, Node.js 22, 1 replica)
+- DB: Railway PostgreSQL (EU West, migrated from US West)
+- Migrations: `POST /v1/health/migrate` (inline MIGRATIONS array in `health.controller.ts`)
+- Manual ingestion: `POST /v1/admin/ingestion/events/run`
+- Discover endpoint: `POST /v1/recommendations` (NOT /v1/discover)
+
+## Known Issues
+
+### tkt.ge + biletebi.ge: Cloudflare IP Block (2026-07-16)
+Railway runs on shared datacenter IPs. tkt.ge and biletebi.ge are both behind Cloudflare
+which returns **HTTP 403** to all Railway egress IPs. The adapters are registered and in
+`event_sources` but `enabled=false` until a proxy solution is in place.
+
+Root cause: outbound requests from Railway → Cloudflare bot protection → 403 HTML page →
+`response.json()` throws → caught per-category silently → `fetched: 0, errors: 0`.
+
+**Fix options:**
+- ScrapingBee / ScraperAPI ($30-50/mo) — simplest
+- Georgian VPS ($5-10/mo) + cron → POST to Railway ingest endpoint
+- Cloudflare Worker as proxy (free 100k req/day)
+
+**Current state:** both sources disabled in DB (`enabled=false`).
+To re-enable after proxy is set up: `UPDATE event_sources SET enabled=true WHERE name IN ('tkt.ge','biletebi.ge')`
+
+### Railway Console: no curl (2026-07-16)
+Railway containers don't have `curl`. Use `node -e "fetch(...)"` for all HTTP calls from Console.
+
+### Railway proxy timeout (2026-07-16)
+External requests to `api.lazigo.app` timeout after ~30s. For long operations (enrichment, bulk ingestion),
+use Railway Console with `http://localhost:3000/...` to bypass the proxy. Or use smaller batch sizes (limit=100-200).
+
+### Google enrichment: sync resolved, gap remaining (2026-07-16)
+- **Fixed**: `locationBias` → `locationRestriction` (rectangle + regionCode:GE). +162 new matches on prod.
+- **Fixed**: coord-based sync (lat/lng match, ABS < 1e-7). +572 venues synced from local.
+- **Remaining gap**: ~500 venues (local 1,755 vs prod ~1,256). Mostly coord collisions or short Georgian names.
+- **TODO**: osm_id migration (018) for permanent stable key. After that, remove `import-enrichment` endpoint.
+- **TODO**: Atmosphere enrichment on prod (allowsDogs/goodForChildren).
+- NestJS body limit ~100KB — sync uses chunks of 30 records.
+
+### Migration numbers used
+016 = biletebi.ge source, 017 = tkt.ge source. Next free: **018**.
