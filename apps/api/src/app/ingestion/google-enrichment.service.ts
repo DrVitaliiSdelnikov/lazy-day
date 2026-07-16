@@ -101,14 +101,21 @@ export class GoogleEnrichmentService {
       },
       body: JSON.stringify({
         textQuery: venue.name,
-        locationBias: {
-          circle: {
-            center: { latitude: venue.lat, longitude: venue.lng },
-            radius: 100.0,
+        locationRestriction: {
+          rectangle: {
+            low: {
+              latitude: venue.lat - 500 / 111_000,
+              longitude: venue.lng - 500 / (111_000 * Math.cos(venue.lat * Math.PI / 180)),
+            },
+            high: {
+              latitude: venue.lat + 500 / 111_000,
+              longitude: venue.lng + 500 / (111_000 * Math.cos(venue.lat * Math.PI / 180)),
+            },
           },
         },
         maxResultCount: 1,
         languageCode: 'ka',
+        regionCode: 'GE',
       }),
     });
 
