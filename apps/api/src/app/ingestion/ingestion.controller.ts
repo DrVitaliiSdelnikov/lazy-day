@@ -40,6 +40,11 @@ export class IngestionController {
     return this.eventIngestion.runAll();
   }
 
+  @Post('events/import')
+  async importEvents(@Body() body: { events: any[] }) {
+    return this.eventIngestion.importEvents(body.events);
+  }
+
   @Post('events/source/:name')
   async triggerEventSource(@Param('name') name: string) {
     return this.eventIngestion.runByName(name);

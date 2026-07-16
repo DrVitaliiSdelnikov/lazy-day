@@ -1,0 +1,22 @@
+name: Fetch blocked event sources
+
+on:
+  schedule:
+    - cron: '0 2 * * *' # 02:00 UTC = 06:00 Tbilisi
+  workflow_dispatch: # Manual trigger for testing
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsx tools/fetch-blocked-events.ts
+        env:
+          ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+          API_URL: https://api.lazigo.app

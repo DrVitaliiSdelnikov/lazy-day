@@ -88,6 +88,48 @@ export class EventIngestionService {
   }
 
   /**
+   * Import pre-fetched events from an external worker (push model).
+   * Used when Railway IP is blocked by Cloudflare (tkt.ge, biletebi.ge).
+   */
+  async importEvents(events: NormalizedEvent[]): Promise<IngestionResult> {
+    const sourceName = events[0]?.source ?? 'unknown';
+    this.logger.log(`Importing ${events.length} events from ${sourceName}...`);
+
+    let inserted = 0, updated = 0, skipped = 0, errors = 0;
+
+    for (const ne of events) {
+      try {
+        // Reconstruct Date from JSON string
+        ne.startsAt = new Date(ne.startsAt);
+        if (ne.endsAt) ne.endsAt = new Date(ne.endsAt);
+
+        const result = await this.upsertEvent(ne);
+        if (result === 'inserted') inserted++;
+        else if (result === 'updated') updated++;
+        else skipped++;
+      } catch (err: any) {
+        errors++;
+        if (errors <= 3) {
+          this.logger.warn(`Error importing event "${ne.title}": ${err?.message}`);
+        }
+      }
+    }
+
+    // Group by source and update event_sources stats
+    const sources = [...new Set(events.map(e => e.source))];
+    for (const src of sources) {
+      const srcEvents = events.filter(e => e.source === src);
+      await this.dataSource.query(
+        `UPDATE event_sources SET last_fetched_at = NOW(), last_event_count = $1 WHERE name = $2`,
+        [srcEvents.length, src],
+      );
+    }
+
+    this.logger.log(`Import done: ${inserted} inserted, ${updated} updated, ${skipped} skipped, ${errors} errors`);
+    return { source: sourceName, fetched: events.length, inserted, updated, skipped, errors };
+  }
+
+  /**
    * List all sources with stats.
    */
   async listSources() {
