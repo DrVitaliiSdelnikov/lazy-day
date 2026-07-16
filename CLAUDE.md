@@ -112,29 +112,45 @@ See `docs/research/product-differentiation.md` for full analysis and competitive
 - ~~Google enrichment sync~~ — DONE (~1,256/1,755 venues with ratings on prod)
 - ~~locationRestriction fix~~ — DONE (future enrichment works from prod directly)
 
-### Current TODOs
-- [ ] osm_id migration (018) — stable sync key for cross-env, future cities
-- [ ] Atmosphere enrichment on prod (allowsDogs/goodForChildren)
-- [ ] Remaining ~500 venue enrichment gap (coord collisions, short names)
-- [ ] tkt.ge + biletebi.ge proxy solution (Cloudflare bypass)
-- [ ] Remove temporary `import-enrichment` endpoint after osm_id
+### Phase A: Stabilization (current priority)
+Full spec: `.workbench/specs/data-enrichment-roadmap.md`
+- [ ] A1: osm_id migration (018) — stable sync key + sync remaining ~500 venues + remove temp endpoint
+- [ ] A2: `enriched_at` timestamp on places — Google 30-day TTL compliance
+- [ ] A3: 30-day refresh cron — re-fetch Enterprise data for stale venues
+- [ ] A4: "Hours unknown" UI policy — don't show stale hours
+- [ ] A5: Atmosphere enrichment on prod (allowsDogs/goodForChildren)
+- [ ] A6: Field mask audit — ensure minimal tier per Google call
+- [ ] A7: Google Cloud budget controls (alerts + hard cap)
 - [ ] Telegram env vars (TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID)
-- [ ] Share button, behavioral tracking
+- [ ] tkt.ge + biletebi.ge proxy solution (Cloudflare bypass)
 
-### v1 — Community Layer (the moat)
+### Phase B: Multi-source enrichment (after Phase A + real traffic)
+Full spec: `.workbench/specs/data-enrichment-roadmap.md`
+- [ ] B1: Overture Maps Places (free, GERS ID, confidence score)
+- [ ] B2: Foursquare OS Places (free, closure detection)
+- [ ] B3: OSM improvement (check_date, Wikidata QID)
+- [ ] B4: owner_maintenance_score as ranking feature
+- [ ] B5: Entity resolution pipeline (conflation engine)
+- [ ] B6: 2GIS commercial (best owner-verified for Tbilisi)
+- [ ] B7: Yandex Maps (if 2GIS gaps, $2,750/yr minimum)
+
+### v1 — Community Layer + Data Quality (the moat)
 1. ~~Events: TKT.ge~~ — DONE (adapter ready, blocked by Cloudflare)
-2. Micro-tips + collections + "been here" badges
-3. Search/autocomplete
-4. Conversational discovery (one smart question per session)
-5. Compact API + offline cache
+2. **Phase A: Data stabilization** (osm_id, 30-day refresh, "hours unknown", budget controls)
+3. **Phase B: Multi-source enrichment** (Overture, FSQ, 2GIS — after traffic)
+4. Micro-tips + collections + "been here" badges
+5. Search/autocomplete
+6. Conversational discovery (one smart question per session)
+7. Compact API + offline cache
+8. Share button, behavioral tracking
 
 ### v2 — Personalization + Scale
-6. Behavioral re-ranking (from accumulated user data)
-7. Gamification (exploration badges, streaks)
-8. Journey planner
-9. Weather-aware
-10. City expansion via CityConfig (needs osm_id first)
-11. Local curator network
+9. Behavioral re-ranking (from accumulated user data)
+10. Gamification (exploration badges, streaks)
+11. Journey planner
+12. Weather-aware
+13. City expansion via CityConfig (needs osm_id + Phase B)
+14. Local curator network
 
 ### Competitive Moat Timeline
 ```
