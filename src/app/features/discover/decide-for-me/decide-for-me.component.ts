@@ -53,9 +53,13 @@ import { SavedStore } from '../../../core/stores/saved.store';
 
           <!-- Actions -->
           <div class="dfm__actions">
-            <button class="ld-btn ld-btn--primary dfm__route" (click)="onRoute()" [disabled]="!hasGps()">
+            <button class="ld-btn ld-btn--primary dfm__route" (click)="onRoute()">
               <ld-icon name="route" [size]="14" /> {{ 'detail.route' | translate }}
             </button>
+            @if (showTaxi()) {
+              <button class="dfm__taxi-btn" (click)="onTaxi('yandex')">Yandex Go</button>
+              <button class="dfm__taxi-btn" (click)="onTaxi('bolt')">Bolt</button>
+            }
             <button class="dfm__icon-btn" (click)="onShare()" [attr.aria-label]="'detail.share' | translate">
               <ld-icon name="share-2" [size]="16" />
             </button>
@@ -215,6 +219,24 @@ import { SavedStore } from '../../../core/stores/saved.store';
     }
 
     .dfm__icon-btn--saved { color: var(--ld-heart, #E05D5D); }
+
+    .dfm__taxi-btn {
+      height: 48px;
+      padding: 0 12px;
+      background: var(--ld-surface);
+      border: 1px solid var(--ld-border);
+      border-radius: 14px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--ld-text-2);
+      white-space: nowrap;
+    }
+
+    @media (min-width: 1024px) {
+      .dfm__taxi-btn { display: none; }
+    }
 
     .dfm__bottom {
       text-align: center;
@@ -385,6 +407,11 @@ export class DecideForMeComponent {
     return m < 1000 ? `${Math.round(m)} м` : `${(m / 1000).toFixed(1)} км`;
   }
 
+  showTaxi(): boolean {
+    const c = this.current();
+    return c?.distanceM != null && c.distanceM > 500;
+  }
+
   onRoute() {
     const c = this.current();
     this.interactions.trackRoute(c.type, c.id);
@@ -392,6 +419,16 @@ export class DecideForMeComponent {
     if ((c as any).googlePlaceId) url += `&destination_place_id=${(c as any).googlePlaceId}`;
     if (c.distanceM && c.distanceM < 2500) url += '&travelmode=walking';
     window.open(url, '_blank');
+  }
+
+  onTaxi(provider: 'yandex' | 'bolt') {
+    const c = this.current();
+    this.interactions.trackTaxi(c.type, c.id, provider);
+    if (provider === 'bolt') {
+      window.location.href = `bolt://ride?destination_lat=${c.lat}&destination_lng=${c.lng}`;
+    } else {
+      window.location.href = `yandextaxi://route?end-lat=${c.lat}&end-lon=${c.lng}`;
+    }
   }
 
   async onShare() {

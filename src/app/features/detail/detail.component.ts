@@ -108,9 +108,11 @@ import { SavedStore } from '../../core/stores/saved.store';
             <ld-icon name="route" [size]="14" /> {{ 'detail.route' | translate }}
           </button>
           @if (showTaxi(c)) {
-            <button class="detail__taxi-btn" (click)="openYandexTaxi(c)" aria-label="Yandex Go"
-              [disabled]="!hasGps()">
+            <button class="detail__taxi-btn" (click)="openYandexTaxi(c)" aria-label="Yandex Go">
               Yandex Go
+            </button>
+            <button class="detail__taxi-btn" (click)="openBolt(c)" aria-label="Bolt">
+              Bolt
             </button>
           }
           <button class="detail__icon-action" (click)="shareCard(c)" [attr.aria-label]="'detail.share' | translate">
