@@ -446,6 +446,12 @@ export class AdLandingComponent implements OnInit {
     if (this.selectedPet()) {
       this.profileStore.setHasPet(true);
     }
+    // Sync preset to sessionStorage so discover toolbar shows it active
+    if (presetKey) {
+      const filters = JSON.parse(sessionStorage.getItem('ld_filters') || '{}');
+      filters.preset = presetKey;
+      sessionStorage.setItem('ld_filters', JSON.stringify(filters));
+    }
   }
 
   selectCompany(value: string) {

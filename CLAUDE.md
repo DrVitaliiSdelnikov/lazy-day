@@ -114,7 +114,7 @@ See `docs/research/product-differentiation.md` for full analysis and competitive
 - ~~Push-model event ingestion~~ — DONE (325 events: tkt.ge 224 + biletebi.ge 101). `tools/fetch-blocked-events.ts` + `events/import` endpoint + GH Actions workflow.
 - ~~Body limit fix~~ — DONE (`json({ limit: '5mb' })` in main.ts)
 
-### Post-MVP — done in 2026-07-17 session (NOT committed)
+### Post-MVP — done in 2026-07-17 session (COMMITTED + DEPLOYED)
 - ~~Feed card refactor~~ — 3-slot structure (title, meta, status). Removed: badges, walk_time chip, "тебе нравится" chip, separate rating line.
 - ~~Detail card refactor~~ — removed "Почему это вам" block, price dupe, double "на карте", `canonical` leak. Added: info rows, "часы не подтверждены", taxi hidden <500m.
 - ~~Place/event stripe~~ — places get `--ld-primary` stripe, events keep `--ld-event` stripe.
@@ -122,17 +122,21 @@ See `docs/research/product-differentiation.md` for full analysis and competitive
 - ~~"Также: bar" translation~~ — `lAlsoHas` now translates tags (bar→бар, food→еда) via `lTag()`.
 - ~~Session filter persistence~~ — preset, typeFilter, radius, time saved to sessionStorage as `ld_filters` object.
 - ~~"Реши за меня" pulse~~ — subtle box-shadow pulse animation (3s cycle, 40% opacity, 9px radius).
+- ~~tkt.ge ticketUrl fix~~ — `/en/event/{slug}` → `/en/show/{showId}/{slug}` (was 404).
+- ~~Event price on reload~~ — `cards.service.mapEvent` now returns `priceLabel`.
+- ~~Ticket button label~~ — "Билеты" when no price, "Билеты от X" when price exists.
 
 ### Phase 0: Stabilize what we built (BLOCKER — nothing else until done)
 
 #### 0.1 Critical bugs & flows
-- [ ] **Global loader/pin пропал** — spinner при загрузке приложения не отображается. Проверить index.html + app-shell init.
-- [ ] **openStatus inconsistent** — у части карточек мест "Открыто", у части пусто. Баг или данные? Проверить opening_hours coverage, логику getOpenLabel, fallback.
-- [ ] **Events показывают "0м"** — если venue не привязан (venueId=null), distanceM=0 и walkMinutes=0. Не показывать метраж/время пешком когда venue отсутствует.
+- [x] ~~Global loader/pin~~ — FIXED. Плавный fade-out 400ms при bootstrap.
+- [x] ~~openStatus~~ — PARTIAL. 3 состояния работают: Открыто (зелёный), unknown → "Часы не подтверждены" (серый), Закрыто отфильтрован из выдачи. "Открыто до 22:00" / "Закрывается скоро" → deferred (closesAt, Phase A).
+- [x] ~~Events "0м"~~ — FIXED. distanceM/walkMinutes=null когда venue не привязан. walk_time explanation скипается.
 - [ ] **Переработка карточек** — полная спека: `.workbench/specs/feed-cards-ui-spec.md`. Batch 1 (удаление дублей, 1ч) → Batch 2 (status slot, 3ч) → Batch 3 (API, blocked on A2) → Batch 4 (events rail, 3ч).
-- [ ] **Ссылки tkt.ge/biletebi.ge не работают** — ticketUrl может быть невалидным (slug encoding, спецсимволы, 404). Проверить генерацию URL в адаптерах + добавить fallback.
+- [x] ~~Ссылки tkt.ge~~ — FIXED. `/en/show/{showId}/{slug}`. Нужен re-ingestion на проде после деплоя.
 - [ ] **Фильтр цен** — проверить работает ли budgetMax. Фронт отправляет? Бек фильтрует? price_level/price_min покрытие в данных?
 - [ ] **Синхронизация фильтров** — landing chips → discover toolbar не синхронизированы. Выбрал категорию на лендинге → на discover toolbar должен быть активен тот же фильтр. ProfileStore → toolbar state sync.
+- [ ] **"Реши за меня" алгоритм** — клиентский ре-ранкер: полоса DELTA_BAND 0.15, MMR λ=0.6, квота типа (≥1 событие), сидированный выбор (mulberry32), сессионные штрафы. ~4ч. Спека: `.workbench/specs/decide-for-me-algorithm.md`
 - [ ] События не видны в выдаче (scoring places > events, уходят за лимит 60)
 - [ ] Проверить фильтр "События" на фронте — отделяет ли type=event от type=place
 - [ ] UI flows: landing → discover, onboarding, chips → ProfileStore, language switcher
@@ -147,14 +151,15 @@ See `docs/research/product-differentiation.md` for full analysis and competitive
 - [ ] Telegram: TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID в Railway Variables
 
 #### 0.3 Testing strategy
-- [ ] **Решить**: E2E (Playwright/Cypress) vs Unit (Vitest) vs оба
-  - Unit: скоринг, адаптеры, date parsing, enrichment matching — чистая логика, быстро
-  - E2E: landing → discover → карточка → share flow — critical path
-  - Рекомендация: **unit first** (скоринг + адаптеры), E2E на critical path потом
-- [ ] Покрыть unit тестами: RecommendationService.scoreCandidate, timeFit, applyDiversity
-- [ ] Покрыть unit тестами: TktGeAdapter.parseShows, BiletebiGeAdapter.parseCategory
-- [ ] Покрыть unit тестами: enrichment matchVenue (locationRestriction, distance check)
-- [ ] E2E smoke: landing → discover → видны карточки → клик → детали
+Full spec: `.workbench/specs/testing-strategy.md`
+Vitest via `vitest-angular` (Angular 21 default). Zoneless. ~2 дня total.
+- [ ] **0.3a Setup**: Vitest config + test-providers.ts + trivial passing test (~2ч)
+- [ ] **0.3b Pure logic**: extract `resolveStatusSlot`, `formatDistance`, `formatEventTime` → `core/logic/`, write specs (~4ч)
+- [ ] **0.3b** i18n key parity test (ru/en/ka key sets match)
+- [ ] **0.3c Stores**: profile.store.spec.ts + saved.store.spec.ts (~2ч)
+- [ ] **0.3c Components**: result-card.spec.ts (distance hidden, status slot variants) (~1ч)
+- [ ] **0.3d K1 algorithm**: extract `decidePick()` → `core/logic/decide.ts`, write specs (determinism, anti-repeat, event quota) (~2ч)
+- [ ] **0.3e E2E smoke**: landing → discover → card visible; "Реши за меня" → result (~2ч)
 
 #### 0.4 Frontend optimization
 - [ ] Аудит каждого модуля:
@@ -183,6 +188,7 @@ See `docs/research/product-differentiation.md` for full analysis and competitive
   - `docs/project-status.md` — обновить с текущими цифрами
 - [ ] `.workbench/` cleanup — удалить устаревшие specs, оставить актуальные
 - [ ] README.md — quick start для нового разработчика (setup, run, deploy)
+- [ ] Notion MCP интеграция — подключить Claude Code к Notion для спек и доков. `@notionhq/notion-mcp-server` + API key. После стабилизации.
 
 #### 0.6 Deferred (не делаем пока, зависимости или нужны метрики)
 - [ ] `closesAt` на бэке — парсинг opening_hours.periods → close time в Asia/Tbilisi. Edge cases: 24/7, holidays, без periods. ~2ч. Делать в Batch 3 карточек.
@@ -197,7 +203,7 @@ See `docs/research/product-differentiation.md` for full analysis and competitive
 - [ ] Перевод категорий в карточках — проверить что category labels (Museum, Bar, Viewpoint...) переведены на ru/ka.
 - [ ] Лайк в модальном окне — кнопка ♡ save в детальной карточке когда открыта как модалка (сейчас скрыта `@if (!isModal())`).
 - [ ] Убирать прошедшие events — залоканные ивенты с `startsAt < now` не должны показываться. Проверить фронт-фильтрацию + бек cron.
-- [ ] Алгоритм "Реши за меня" — продумать логику выбора: рандом из top-5? Weighted random по скору? Учёт seen/hidden?
+- [ ] "Реши за меня" Фаза 2 — межсессионный impression discounting (Postgres), эвристика причины скипа, интерливинг. Только после метрик Фазы 1.
 - [ ] Тултип полного имени — если title обрезан ellipsis, показывать полное имя по hover/long-press.
 - [ ] Переводы мест на английский — не у всех venues есть `name_en`. Проверить coverage, запустить translate для недостающих.
 
