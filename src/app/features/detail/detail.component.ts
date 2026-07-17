@@ -546,7 +546,7 @@ export class DetailComponent implements OnInit {
 
   openBolt(c: RecommendationCard) {
     this.interactions.trackTaxi(c.type, c.id, 'bolt');
-    window.location.href = `https://m.bolt.eu/ride/?destination_lat=${c.lat}&destination_lng=${c.lng}&destination_name=${encodeURIComponent(c.title)}`;
+    window.location.href = `bolt://ride/?destination_lat=${c.lat}&destination_lng=${c.lng}&destination_name=${encodeURIComponent(c.title)}`;
   }
 
   onToggleSave() {
