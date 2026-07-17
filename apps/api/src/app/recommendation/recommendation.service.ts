@@ -161,10 +161,24 @@ function lStartsIn(minutes: number, locale: string): string {
   return `Начало через ${minutes} мин`;
 }
 
+function lTag(tag: string, locale: string): string {
+  const map: Record<string, Record<string, string>> = {
+    food: { ru: 'еда', en: 'food', ka: 'საჭმელი' },
+    cafe: { ru: 'кафе', en: 'café', ka: 'კაფე' },
+    restaurant: { ru: 'ресторан', en: 'restaurant', ka: 'რესტორანი' },
+    bar: { ru: 'бар', en: 'bar', ka: 'ბარი' },
+    bath: { ru: 'бани', en: 'baths', ka: 'აბანოები' },
+    swimming: { ru: 'бассейн', en: 'pool', ka: 'აუზი' },
+    gym: { ru: 'фитнес', en: 'gym', ka: 'ფიტნესი' },
+  };
+  return map[tag]?.[locale] ?? map[tag]?.['en'] ?? tag;
+}
+
 function lAlsoHas(tag: string, locale: string): string {
-  if (locale === 'ka') return `ასევე: ${tag}`;
-  if (locale === 'en') return `Also: ${tag}`;
-  return `Также: ${tag}`;
+  const name = lTag(tag, locale);
+  if (locale === 'ka') return `ასევე: ${name}`;
+  if (locale === 'en') return `Also: ${name}`;
+  return `Также: ${name}`;
 }
 
 /** Weight threshold: interests >= this are "I want this" (hard filter). */

@@ -43,99 +43,80 @@ import { SavedStore } from '../../core/stores/saved.store';
 
       <!-- Content -->
       <div class="detail__body">
+        <!-- Type label (small, muted) -->
         @if (c.type === 'event') {
-          <span class="ld-badge ld-badge--event" style="margin-bottom: 8px">{{ 'detail.event_badge' | translate }} · {{ eventTypeLabel(c) }}</span>
+          <p class="detail__type-label">{{ eventTypeLabel(c) }}</p>
         }
 
+        <!-- Title -->
         <h1 class="detail__title">{{ c.title }}</h1>
+
+        <!-- Meta: category + rating (places) -->
         <p class="detail__meta">
-          {{ c.categoryLabel || c.category }} · {{ formatDistance(c.distanceM) }}
-          @if (c.walkMinutes) { · {{ c.walkMinutes }} {{ 'detail.min' | translate }} }
+          {{ c.categoryLabel || c.category }}
           @if (c.rating) {
             · <ld-icon name="star-filled" [size]="12" class="detail__star" /> {{ c.rating }}
             @if (c.ratingCount) { ({{ formatRatingCount(c.ratingCount) }}) }
           }
         </p>
 
-        <!-- Event: date block -->
-        @if (c.type === 'event' && c.startsAt) {
-          <div class="detail__card">
-            <div class="detail__date-row">
-              <div>
-                <p class="detail__date-title">{{ formatEventDateTime(c.startsAt) }}</p>
-                @if (c.endsAt) {
-                  <p class="detail__date-sub">{{ 'detail.duration' | translate }}{{ estimateDuration(c.startsAt, c.endsAt) }}</p>
-                }
-              </div>
+        <!-- Info rows -->
+        <div class="detail__info">
+          <!-- Date/time for events -->
+          @if (c.type === 'event' && c.startsAt) {
+            <div class="detail__info-row">
+              <ld-icon name="clock" [size]="14" class="detail__info-icon detail__info-icon--event" />
+              <span>{{ formatEventDateTime(c.startsAt) }}</span>
               @if (minutesUntil(c.startsAt); as mins) {
                 @if (mins > 0 && mins <= 180) {
-                  <span class="ld-badge" style="background: var(--ld-glow-soft, var(--ld-primary-soft)); color: var(--ld-on-glow-soft, var(--ld-on-primary-soft))">
-                    {{ 'detail.in_time' | translate }} {{ formatCountdown(mins) }}
-                  </span>
+                  <span class="detail__countdown">{{ 'detail.in_time' | translate }} {{ formatCountdown(mins) }}</span>
                 }
               }
             </div>
-          </div>
-        }
-
-        <!-- Badges -->
-        <div class="detail__badges">
-          @if (c.openStatus) {
-            <span class="ld-badge" [class.ld-badge--open]="isOpen(c.openStatus)" [class.ld-badge--closed]="!isOpen(c.openStatus)">
-              {{ c.openStatus }}
-            </span>
           }
-          @for (tag of c.explanations?.slice(0, 3); track tag.type) {
-            <span class="ld-badge" [class]="badgeClass(tag.type)">{{ tag.label }}</span>
+
+          <!-- Location row (clickable → map) -->
+          @if (hasDistance(c.distanceM)) {
+            <button class="detail__info-row detail__info-row--tap" (click)="openOnMap(c)">
+              <ld-icon name="map-pin" [size]="14" class="detail__info-icon" />
+              <span>{{ c.venueName || c.address || '' }}{{ c.venueName || c.address ? ' · ' : '' }}{{ formatDistance(c.distanceM) }} · {{ c.walkMinutes }} {{ 'detail.min' | translate }}</span>
+            </button>
+          } @else if (c.venueName || c.address) {
+            <button class="detail__info-row detail__info-row--tap" (click)="openOnMap(c)">
+              <ld-icon name="map-pin" [size]="14" class="detail__info-icon" />
+              <span>{{ c.venueName || c.address }}</span>
+            </button>
+          }
+
+          <!-- Hours / status for places -->
+          @if (c.type !== 'event') {
+            <div class="detail__info-row">
+              <ld-icon [name]="c.openStatus ? 'clock' : 'clock-off'" [size]="14" class="detail__info-icon" />
+              @if (c.openStatus) {
+                <span [class.detail__status--open]="isOpen(c.openStatus)" [class.detail__status--closed]="!isOpen(c.openStatus)">{{ c.openStatus }}</span>
+              } @else {
+                <span class="detail__status--muted">{{ 'card.hours_unknown' | translate }}</span>
+              }
+            </div>
           }
         </div>
 
-        <!-- Why this -->
-        @if (c.explanations?.length) {
-          <div class="detail__card">
-            <p class="detail__card-title">{{ 'detail.why_recommended' | translate }}</p>
-            @for (tag of c.explanations; track tag.type) {
-              <p class="detail__why-line">
-                <ld-icon [name]="whyIcon(tag.type)" [size]="13" [class]="'detail__why-icon detail__why-icon--' + tag.type" />
-                {{ tag.label }}
-              </p>
-            }
-          </div>
-        }
-
-        <!-- Address -->
-        <div class="detail__card">
-          <div class="detail__address-row">
-            <p class="detail__address">
-              <ld-icon name="map-pin" [size]="13" class="detail__addr-icon" />
-              {{ c.address || c.venueName || ('detail.show_on_map' | translate) }}
-            </p>
-            <button class="ld-btn ld-btn--ghost detail__map-link" (click)="openOnMap(c)">{{ 'detail.on_map' | translate }}</button>
-          </div>
-        </div>
-
-        <!-- Event: price -->
-        @if (c.priceLabel) {
-          <div class="detail__card detail__price-row">
-            <span style="color: var(--ld-text-2); font-size: 12px">{{ 'detail.tickets' | translate }}</span>
-            <span style="font-weight: 700; font-size: 12px">{{ c.priceLabel }}</span>
-          </div>
-        }
-
-        <!-- Actions -->
+        <!-- Actions row -->
         <div class="detail__actions">
           <button class="ld-btn ld-btn--primary detail__action-main" (click)="openRoute(c)"
             [disabled]="!hasGps()">
             <ld-icon name="route" [size]="14" /> {{ 'detail.route' | translate }}
           </button>
-          <button class="detail__taxi-btn" (click)="openYandexTaxi(c)" aria-label="Yandex Go"
-            [disabled]="!hasGps()">
-            <span class="detail__taxi-label">Yandex Go</span>
-          </button>
+          @if (showTaxi(c)) {
+            <button class="detail__taxi-btn" (click)="openYandexTaxi(c)" aria-label="Yandex Go"
+              [disabled]="!hasGps()">
+              Yandex Go
+            </button>
+          }
           <button class="detail__icon-action" (click)="shareCard(c)" [attr.aria-label]="'detail.share' | translate">
             <ld-icon name="share-2" [size]="15" />
           </button>
-          <button class="detail__icon-action detail__icon-action--danger" [attr.aria-label]="'detail.hide' | translate">
+          <button class="detail__icon-action detail__icon-action--danger" (click)="onHide()" [attr.aria-label]="'detail.hide' | translate">
             <ld-icon name="eye-off" [size]="15" />
           </button>
         </div>
@@ -152,7 +133,6 @@ import { SavedStore } from '../../core/stores/saved.store';
           <a class="ld-btn ld-btn--primary detail__ticket-btn" [href]="c.ticketUrl || c.externalUrl" target="_blank" rel="noopener">
             <ld-icon name="ticket" [size]="15" />
             {{ 'detail.tickets_from' | translate }}{{ c.priceLabel ? ' ' + c.priceLabel : '' }}
-            @if (c.source) { · {{ c.source }} }
           </a>
         </div>
       }
@@ -225,10 +205,16 @@ import { SavedStore } from '../../core/stores/saved.store';
       overflow-wrap: break-word;
     }
 
+    .detail__type-label {
+      font-size: 12px;
+      color: var(--ld-text-3);
+      margin: 0 0 2px;
+    }
+
     .detail__meta {
       font-size: 12px;
       color: var(--ld-text-2);
-      margin: 0 0 10px;
+      margin: 0 0 14px;
       display: flex;
       align-items: center;
       gap: 3px;
@@ -237,93 +223,53 @@ import { SavedStore } from '../../core/stores/saved.store';
 
     .detail__star { color: var(--ld-warn); }
 
-    .detail__badges {
+    .detail__info {
       display: flex;
-      gap: 5px;
-      flex-wrap: wrap;
-      margin-bottom: 12px;
-    }
-
-    .detail__card {
-      background: var(--ld-surface);
-      border: 1px solid var(--ld-border);
-      border-radius: 16px;
-      padding: 12px;
-      margin-bottom: 8px;
-    }
-
-    .detail__card-title {
-      font-size: 13px;
-      font-weight: 700;
-      margin: 0 0 8px;
-    }
-
-    .detail__why-line {
-      font-size: 12px;
-      margin: 0 0 6px;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-
-    .detail__why-line:last-child { margin-bottom: 0; }
-
-    .detail__why-icon--matches_interest,
-    .detail__why-icon--pet_friendly,
-    .detail__why-icon--company_fit { color: var(--ld-secondary); }
-    .detail__why-icon--open_now,
-    .detail__why-icon--walk_time { color: var(--ld-primary); }
-    .detail__why-icon--highly_rated { color: var(--ld-warn); }
-
-    .detail__address-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      flex-direction: column;
       gap: 8px;
+      margin-bottom: 16px;
     }
 
-    .detail__address {
-      font-size: 12px;
-      color: var(--ld-text-2);
-      margin: 0;
+    .detail__info-row {
       display: flex;
       align-items: center;
-      gap: 4px;
-      flex: 1;
-      min-width: 0;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--ld-text);
+      background: none;
+      border: none;
+      padding: 0;
+      text-align: left;
+      font-family: inherit;
     }
 
-    .detail__addr-icon { color: var(--ld-primary); }
-
-    .detail__map-link {
-      font-size: 12px;
+    .detail__info-row--tap {
+      cursor: pointer;
       color: var(--ld-primary);
-      white-space: nowrap;
+    }
+
+    .detail__info-icon {
+      color: var(--ld-text-3);
       flex-shrink: 0;
     }
 
-    .detail__date-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+    .detail__info-icon--event {
+      color: var(--ld-event);
     }
 
-    .detail__date-title {
-      font-size: 13px;
-      font-weight: 700;
-      margin: 0;
+    .detail__countdown {
+      margin-left: auto;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ld-on-primary-soft);
+      background: var(--ld-primary-soft);
+      padding: 2px 8px;
+      border-radius: var(--ld-radius-chip, 8px);
     }
 
-    .detail__date-sub {
-      font-size: 11px;
-      color: var(--ld-text-2);
-      margin: 2px 0 0;
-    }
-
-    .detail__price-row {
-      display: flex;
-      justify-content: space-between;
-    }
+    .detail__status--open { color: var(--ld-open); font-weight: 500; }
+    .detail__status--closed { color: var(--ld-text-2); }
+    .detail__status--muted { color: var(--ld-text-3); }
 
     .detail__actions {
       display: flex;
@@ -498,9 +444,22 @@ export class DetailComponent implements OnInit {
     }
   }
 
+  hasDistance(m: number): boolean {
+    return m != null && m > 0;
+  }
+
   formatDistance(m: number): string {
+    if (m == null || m <= 0) return '';
     if (m < 1000) return `${Math.round(m)} м`;
     return `${(m / 1000).toFixed(1)} км`;
+  }
+
+  showTaxi(c: RecommendationCard): boolean {
+    return this.hasDistance(c.distanceM) && c.distanceM > 500;
+  }
+
+  onHide() {
+    // TODO: implement hide with undo toast
   }
 
   formatRatingCount(count: number): string {

@@ -8,17 +8,15 @@ import { LdIconComponent } from '../../../core/components/ld-icon.component';
   standalone: true,
   imports: [TranslatePipe, LdIconComponent],
   template: `
-    <article class="card ld-card" [class.card--event]="card().type === 'event'" (click)="openDetail.emit()">
-      @if (card().type === 'event') {
-        <div class="card__stripe"></div>
-      }
+    <article class="card ld-card" [class.card--event]="card().type === 'event'" [class.card--place]="card().type === 'place'" (click)="openDetail.emit()">
+      <div class="card__stripe"></div>
       <div class="card__inner">
-        <!-- Header: title + save -->
+        <!-- Slot 1: title + save -->
         <div class="card__header">
-          <h2 class="card__title">{{ card().title }}</h2>
           @if (card().type === 'event') {
-            <ld-icon name="ticket" [size]="18" class="card__ticket-icon" />
+            <ld-icon name="ticket" [size]="16" class="card__ticket-icon" />
           }
+          <h2 class="card__title">{{ card().title }}</h2>
           <button class="card__hide-btn" (click)="onHideClick($event)"
             [attr.aria-label]="'detail.hide' | translate">
             <ld-icon name="eye-off" [size]="15" />
@@ -32,40 +30,40 @@ import { LdIconComponent } from '../../../core/components/ld-icon.component';
           </button>
         </div>
 
-        <!-- Meta line -->
+        <!-- Slot 2: meta line -->
         <p class="card__meta">
-          {{ card().type === 'event' ? eventLabel() : categoryLabel() }}
-          · {{ formatDistance() }}
-          @if (card().walkMinutes && card().type !== 'event') {
-            · {{ card().walkMinutes }} {{ 'detail.min' | translate }}
-          }
-          @if (card().startsAt) {
-            · <span class="card__event-time">{{ formatEventTime() }}</span>
+          @if (card().type === 'event') {
+            {{ eventLabel() }}
+            @if (formatEventTime()) {
+              · <span class="card__event-time">{{ formatEventTime() }}</span>
+            }
+          } @else {
+            {{ categoryLabel() }}
+            @if (hasDistance()) {
+              · {{ formatDistance() }}
+            }
+            @if (card().rating) {
+              · <span class="card__rating-inline">★ {{ card().rating }}@if (card().ratingCount) { ({{ formatRatingCount() }})}</span>
+            }
+            @if (crossInterest()) {
+              · <span class="card__cross">{{ crossInterest() }}</span>
+            }
           }
         </p>
 
-        <!-- Badges row -->
-        <div class="card__badges">
-          @if (card().openStatus) {
-            <span class="ld-badge" [class.ld-badge--open]="isOpen()" [class.ld-badge--closed]="!isOpen()">
-              {{ card().openStatus }}
-            </span>
-          }
-          @for (tag of card().explanations.slice(0, 3); track tag.type) {
-            <span class="ld-badge" [class]="badgeClass(tag.type)">{{ tag.label }}</span>
+        <!-- Slot 3: status (always one line) -->
+        <div class="card__status" [class]="'card__status--' + statusTone()">
+          @if (card().type === 'event') {
+            <ld-icon name="clock" [size]="12" />
+            <span>{{ eventStatus() }}</span>
+          } @else if (card().openStatus) {
+            <span class="card__status-dot"></span>
+            <span>{{ card().openStatus }}</span>
+          } @else {
+            <ld-icon name="clock-off" [size]="12" />
+            <span>{{ 'card.hours_unknown' | translate }}</span>
           }
         </div>
-
-        <!-- Rating -->
-        @if (card().rating) {
-          <p class="card__rating tabular-nums">
-            <ld-icon name="star-filled" [size]="13" class="card__star" />
-            {{ card().rating }}
-            @if (card().ratingCount) {
-              <span class="card__rating-count">({{ formatRatingCount() }})</span>
-            }
-          </p>
-        }
       </div>
     </article>
   `,
@@ -81,14 +79,23 @@ import { LdIconComponent } from '../../../core/components/ld-icon.component';
       &:active { transform: scale(0.98); }
     }
 
-    .card--event {
+    .card--event,
+    .card--place {
       display: flex;
     }
 
     .card__stripe {
       width: 4px;
       flex-shrink: 0;
+      border-radius: var(--ld-radius-card) 0 0 var(--ld-radius-card);
+    }
+
+    .card--event .card__stripe {
       background: var(--ld-event);
+    }
+
+    .card--place .card__stripe {
+      background: var(--ld-primary);
     }
 
     .theme-evening .card__stripe { width: 5px; }
@@ -102,7 +109,7 @@ import { LdIconComponent } from '../../../core/components/ld-icon.component';
     .card__header {
       display: flex;
       justify-content: space-between;
-      align-items: flex-start;
+      align-items: center;
       gap: 8px;
     }
 
@@ -170,7 +177,7 @@ import { LdIconComponent } from '../../../core/components/ld-icon.component';
     .card__meta {
       font-size: 11px;
       color: var(--ld-text-2);
-      margin: 3px 0 8px;
+      margin: 4px 0 0;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -178,6 +185,7 @@ import { LdIconComponent } from '../../../core/components/ld-icon.component';
 
     .card__ticket-icon {
       color: var(--ld-event);
+      flex-shrink: 0;
     }
 
     .card__event-time {
@@ -185,26 +193,43 @@ import { LdIconComponent } from '../../../core/components/ld-icon.component';
       font-weight: 500;
     }
 
-    .card__badges {
-      display: flex;
-      gap: 5px;
-      flex-wrap: wrap;
-      margin-bottom: 8px;
-    }
-
-    .card__rating {
-      font-size: 12px;
-      margin: 0;
-      color: var(--ld-text);
-    }
-
-    .card__star {
+    .card__rating-inline {
       color: var(--ld-warn);
-      font-size: 13px;
+      font-weight: 500;
     }
 
-    .card__rating-count {
-      color: var(--ld-text-2);
+    .card__cross {
+      color: var(--ld-text-3);
+      font-style: italic;
+    }
+
+    .card__status {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+      margin-top: 12px;
+
+      &--success {
+        color: var(--ld-open);
+      }
+      &--warning {
+        color: var(--ld-warn);
+      }
+      &--muted {
+        color: var(--ld-text-3);
+      }
+      &--secondary {
+        color: var(--ld-text-2);
+      }
+    }
+
+    .card__status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      flex-shrink: 0;
     }
   `,
 })
@@ -247,8 +272,14 @@ export class ResultCardComponent {
     return `${day} ${month} ${time}`;
   }
 
+  hasDistance(): boolean {
+    const d = this.card().distanceM;
+    return d != null && d > 0;
+  }
+
   formatDistance(): string {
     const d = this.card().distanceM;
+    if (d == null || d <= 0) return '';
     if (d < 1000) return `${Math.round(d)} м`;
     return `${(d / 1000).toFixed(1)} км`;
   }
@@ -259,21 +290,43 @@ export class ResultCardComponent {
     return `${c}`;
   }
 
-  isOpen(): boolean {
-    const s = this.card().openStatus;
-    return s === 'Открыто' || s === 'Open' || s === 'ღიაა';
+  crossInterest(): string | null {
+    const expl = this.card().explanations;
+    const also = expl.find(e => e.type === 'also_has');
+    return also?.label ?? null;
   }
 
-  badgeClass(type: string): string {
-    switch (type) {
-      case 'open_now': return 'ld-badge--open';
-      case 'company_fit':
-      case 'pet_friendly': return 'ld-badge--secondary';
-      case 'matches_interest': return 'ld-badge--primary';
-      case 'highly_rated': return 'ld-badge--primary';
-      case 'also_has': return 'ld-badge--event';
-      default: return 'ld-badge--primary';
+  statusTone(): string {
+    if (this.card().type === 'event') {
+      const s = this.card().startsAt;
+      if (!s) return 'secondary';
+      const mins = (new Date(s).getTime() - Date.now()) / 60000;
+      return mins < 180 ? 'warning' : 'secondary';
     }
+    const s = this.card().openStatus;
+    if (!s) return 'muted';
+    if (s === 'Открыто' || s === 'Open' || s === 'ღიაა') return 'success';
+    if (s === 'Закрыто' || s === 'Closed' || s === 'დახურულია') return 'secondary';
+    return 'muted';
+  }
+
+  eventStatus(): string {
+    const s = this.card().startsAt;
+    if (!s) return '';
+    const d = new Date(s);
+    const mins = (d.getTime() - Date.now()) / 60000;
+    if (mins < 0) return this.formatEventTime();
+    if (mins < 60) return `Через ${Math.round(mins)} мин`;
+    if (mins < 180) {
+      const h = Math.floor(mins / 60);
+      const m = Math.round(mins % 60);
+      return `Через ${h}:${String(m).padStart(2, '0')}`;
+    }
+    const today = new Date();
+    if (d.toDateString() === today.toDateString()) {
+      return `Сегодня в ${d.toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit', hour12: false })}`;
+    }
+    return this.formatEventTime();
   }
 
   onSaveClick(event: Event) {

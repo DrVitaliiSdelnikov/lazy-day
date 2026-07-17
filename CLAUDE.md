@@ -111,9 +111,99 @@ See `docs/research/product-differentiation.md` for full analysis and competitive
 - ~~Telegram monitoring~~ — DONE (daily alerts on source failures)
 - ~~Google enrichment sync~~ — DONE (~1,256/1,755 venues with ratings on prod)
 - ~~locationRestriction fix~~ — DONE (future enrichment works from prod directly)
+- ~~Push-model event ingestion~~ — DONE (325 events: tkt.ge 224 + biletebi.ge 101). `tools/fetch-blocked-events.ts` + `events/import` endpoint + GH Actions workflow.
+- ~~Body limit fix~~ — DONE (`json({ limit: '5mb' })` in main.ts)
 
-### Phase A: Stabilization (current priority)
+### Post-MVP — done in 2026-07-17 session (NOT committed)
+- ~~Feed card refactor~~ — 3-slot structure (title, meta, status). Removed: badges, walk_time chip, "тебе нравится" chip, separate rating line.
+- ~~Detail card refactor~~ — removed "Почему это вам" block, price dupe, double "на карте", `canonical` leak. Added: info rows, "часы не подтверждены", taxi hidden <500m.
+- ~~Place/event stripe~~ — places get `--ld-primary` stripe, events keep `--ld-event` stripe.
+- ~~Icons~~ — added `clock-off`, `car` to ld-icon registry.
+- ~~"Также: bar" translation~~ — `lAlsoHas` now translates tags (bar→бар, food→еда) via `lTag()`.
+- ~~Session filter persistence~~ — preset, typeFilter, radius, time saved to sessionStorage as `ld_filters` object.
+- ~~"Реши за меня" pulse~~ — subtle box-shadow pulse animation (3s cycle, 40% opacity, 9px radius).
+
+### Phase 0: Stabilize what we built (BLOCKER — nothing else until done)
+
+#### 0.1 Critical bugs & flows
+- [ ] **Global loader/pin пропал** — spinner при загрузке приложения не отображается. Проверить index.html + app-shell init.
+- [ ] **openStatus inconsistent** — у части карточек мест "Открыто", у части пусто. Баг или данные? Проверить opening_hours coverage, логику getOpenLabel, fallback.
+- [ ] **Events показывают "0м"** — если venue не привязан (venueId=null), distanceM=0 и walkMinutes=0. Не показывать метраж/время пешком когда venue отсутствует.
+- [ ] **Переработка карточек** — полная спека: `.workbench/specs/feed-cards-ui-spec.md`. Batch 1 (удаление дублей, 1ч) → Batch 2 (status slot, 3ч) → Batch 3 (API, blocked on A2) → Batch 4 (events rail, 3ч).
+- [ ] **Ссылки tkt.ge/biletebi.ge не работают** — ticketUrl может быть невалидным (slug encoding, спецсимволы, 404). Проверить генерацию URL в адаптерах + добавить fallback.
+- [ ] **Фильтр цен** — проверить работает ли budgetMax. Фронт отправляет? Бек фильтрует? price_level/price_min покрытие в данных?
+- [ ] **Синхронизация фильтров** — landing chips → discover toolbar не синхронизированы. Выбрал категорию на лендинге → на discover toolbar должен быть активен тот же фильтр. ProfileStore → toolbar state sync.
+- [ ] События не видны в выдаче (scoring places > events, уходят за лимит 60)
+- [ ] Проверить фильтр "События" на фронте — отделяет ли type=event от type=place
+- [ ] UI flows: landing → discover, onboarding, chips → ProfileStore, language switcher
+- [ ] QA: полный пользовательский путь на проде (landing → discover → карточка → share)
+
+#### 0.2 Backend stabilization
+- [ ] GitHub Actions `workflow_dispatch` тест (Azure IP vs Cloudflare для tkt.ge/biletebi.ge)
+- [ ] Если 403 → настроить local cron на тбилисской машине
+- [ ] ADMIN_SECRET: проверить что guard реально блокирует (сейчас dev mode)
+- [ ] Daily cron 02:00 UTC: проверить что работает (opera.ge, google_events, yolo.ge)
+- [ ] Качество event данных: дубли, пустые titles, прошедшие даты, encoding
+- [ ] Telegram: TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID в Railway Variables
+
+#### 0.3 Testing strategy
+- [ ] **Решить**: E2E (Playwright/Cypress) vs Unit (Vitest) vs оба
+  - Unit: скоринг, адаптеры, date parsing, enrichment matching — чистая логика, быстро
+  - E2E: landing → discover → карточка → share flow — critical path
+  - Рекомендация: **unit first** (скоринг + адаптеры), E2E на critical path потом
+- [ ] Покрыть unit тестами: RecommendationService.scoreCandidate, timeFit, applyDiversity
+- [ ] Покрыть unit тестами: TktGeAdapter.parseShows, BiletebiGeAdapter.parseCategory
+- [ ] Покрыть unit тестами: enrichment matchVenue (locationRestriction, distance check)
+- [ ] E2E smoke: landing → discover → видны карточки → клик → детали
+
+#### 0.4 Frontend optimization
+- [ ] Аудит каждого модуля:
+  - `landing/` — AdLandingComponent: chips, loadExamples, applySelectionsToStore
+  - `discover/` — DiscoverComponent: recommendations fetch, card rendering, filters
+  - `settings/` — SettingsComponent: language, location, preferences
+  - `onboarding/` — WelcomeComponent + OnboardingComponent: flow, ProfileStore sync
+  - `privacy/` — PrivacyComponent: consent banner, Consent Mode v2
+  - `core/layout/` — AppShellComponent: showNav, navigation, language switcher
+  - `core/services/` — ProfileStore, InteractionService, ProfileSyncService
+- [ ] Bundle size analysis (`ng build --stats-json` → webpack-bundle-analyzer)
+- [ ] Lazy loading audit: все feature modules lazy? Правильные preload strategies?
+- [ ] PWA: service worker, offline mode, manifest, icons
+- [ ] Performance: LCP, FID, CLS (Lighthouse audit на проде)
+- [ ] i18n: проверить все 3 локали (ru/en/ka) — пропущенные ключи, encoding
+
+#### 0.5 Documentation
+- [ ] **Решить**: docs локально (markdown в репо) vs Notion vs оба
+  - Локально: version-controlled, рядом с кодом, grep-able, offline
+  - Notion: visual, shareable, non-dev friendly, search
+  - Рекомендация: **код-доки в репо** (API, architecture, decisions), **product/user доки в Notion** (roadmap, specs, analytics)
+- [ ] Актуализировать `docs/` в репо:
+  - `docs/api-endpoints.md` — добавить events/import, import-enrichment
+  - `docs/database.md` — добавить миграции 016-017, event_sources, текущую схему
+  - `docs/scoring.md` — актуальный scoring formula, event vs place weighting
+  - `docs/project-status.md` — обновить с текущими цифрами
+- [ ] `.workbench/` cleanup — удалить устаревшие specs, оставить актуальные
+- [ ] README.md — quick start для нового разработчика (setup, run, deploy)
+
+#### 0.6 Deferred (не делаем пока, зависимости или нужны метрики)
+- [ ] `closesAt` на бэке — парсинг opening_hours.periods → close time в Asia/Tbilisi. Edge cases: 24/7, holidays, без periods. ~2ч. Делать в Batch 3 карточек.
+- [ ] `openingHoursFetchedAt` + `isStale()` — BLOCKED на Phase A.A2 (миграция `enriched_at`). Без неё isStale() не работает. Пока: null → "Часы не подтверждены", без проверки свежести.
+- [ ] `secondaryInterests` маппинг — бек отдаёт `secondaryTags`, нужен обратный lookup через INTEREST_SYNONYMS → interest names. Batch 3.
+- [ ] ×0.95 scoring penalty за неподтверждённые часы — менять скоринг осторожно, затронет всю выдачу. Только после метрик Batch 1-2.
+- [ ] Events rail component — новый компонент, scroll-snap, layout split. Batch 4, после стабилизации карточек.
+- [ ] Tune-block (позиция 6 в сетке мест) — нет спеки что внутри. Уточнить перед реализацией.
+- [ ] Мета-строка text-overflow — при длинной категории + дистанция + рейтинг + "также еда" может переноситься. Нужен `nowrap + ellipsis`.
+- [ ] Bolt такси интеграция — проверить возможность deeplink `bolt://ride?destination_lat=...` рядом с Yandex Go в карточке.
+- [ ] ESC закрывает модалку — детальная карточка места/события должна закрываться на Escape.
+- [ ] Перевод категорий в карточках — проверить что category labels (Museum, Bar, Viewpoint...) переведены на ru/ka.
+- [ ] Лайк в модальном окне — кнопка ♡ save в детальной карточке когда открыта как модалка (сейчас скрыта `@if (!isModal())`).
+- [ ] Убирать прошедшие events — залоканные ивенты с `startsAt < now` не должны показываться. Проверить фронт-фильтрацию + бек cron.
+- [ ] Алгоритм "Реши за меня" — продумать логику выбора: рандом из top-5? Weighted random по скору? Учёт seen/hidden?
+- [ ] Тултип полного имени — если title обрезан ellipsis, показывать полное имя по hover/long-press.
+- [ ] Переводы мест на английский — не у всех venues есть `name_en`. Проверить coverage, запустить translate для недостающих.
+
+### Phase A: Data stabilization (after Phase 0)
 Full spec: `.workbench/specs/data-enrichment-roadmap.md`
+- [x] **A0: tkt.ge + biletebi.ge event ingestion** — DONE. Push-model deployed.
 - [ ] A1: osm_id migration (018) — stable sync key + sync remaining ~500 venues + remove temp endpoint
 - [ ] A2: `enriched_at` timestamp on places — Google 30-day TTL compliance
 - [ ] A3: 30-day refresh cron — re-fetch Enterprise data for stale venues
@@ -121,8 +211,6 @@ Full spec: `.workbench/specs/data-enrichment-roadmap.md`
 - [ ] A5: Atmosphere enrichment on prod (allowsDogs/goodForChildren)
 - [ ] A6: Field mask audit — ensure minimal tier per Google call
 - [ ] A7: Google Cloud budget controls (alerts + hard cap)
-- [ ] Telegram env vars (TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID)
-- [ ] tkt.ge + biletebi.ge proxy solution (Cloudflare bypass)
 
 ### Phase B: Multi-source enrichment (after Phase A + real traffic)
 Full spec: `.workbench/specs/data-enrichment-roadmap.md`

@@ -261,6 +261,9 @@
     "accept": "Accept",
     "decline": "Essentials only"
   },
+  "card": {
+    "hours_unknown": "Hours not confirmed"
+  },
   "loader": {
     "aria": "Finding places and events",
     "caption": "Ideas incoming…"

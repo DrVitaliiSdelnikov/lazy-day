@@ -645,8 +645,14 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
       flex-shrink: 0;
       padding: 0;
       transition: opacity 150ms;
+      animation: decide-pulse 3s ease-in-out infinite;
 
-      &:disabled { opacity: 0.4; cursor: default; }
+      &:disabled { opacity: 0.4; cursor: default; animation: none; }
+    }
+
+    @keyframes decide-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ld-primary) 40%, transparent); }
+      50% { box-shadow: 0 0 0 9px color-mix(in srgb, var(--ld-primary) 0%, transparent); }
     }
 
     .discover__fallback-banner {
@@ -733,8 +739,9 @@ export class DiscoverComponent implements OnInit {
   private translate = inject(TranslateService);
   private interactions = inject(InteractionService);
 
-  sidebarRadius = signal(5);
-  sidebarTime = signal('now');
+  private _sessionFilters = this.loadSessionFilters();
+  sidebarRadius = signal(this._sessionFilters.radius);
+  sidebarTime = signal(this._sessionFilters.time);
 
   timeOptions = [
     { value: 'now', labelKey: 'context.now' },
@@ -763,6 +770,7 @@ export class DiscoverComponent implements OnInit {
 
   onSidebarRadiusChange(event: any) {
     this.sidebarRadius.set(Number(event.target.value));
+    this.saveSessionFilters();
     this.onContextChanged();
   }
 
@@ -776,6 +784,7 @@ export class DiscoverComponent implements OnInit {
     this.activeTypeFilter.set('all');
     this.sidebarRadius.set(5);
     this.sidebarTime.set('now');
+    sessionStorage.removeItem('ld_filters');
     this.loadFeed();
   }
 
@@ -803,7 +812,7 @@ export class DiscoverComponent implements OnInit {
   readonly debugCoords = signal('');
 
   readonly allCards = signal<RecommendationCard[]>([]);
-  readonly activeTypeFilter = signal<'all' | 'place' | 'event'>('all');
+  readonly activeTypeFilter = signal<'all' | 'place' | 'event'>(this._sessionFilters.typeFilter);
   readonly visibleCount = signal(15);
   private navigatedToDetail = false;
   private cachedScrollY = 0;
@@ -830,7 +839,7 @@ export class DiscoverComponent implements OnInit {
   readonly loaded = signal(false);
   readonly feedMeta = signal<DiscoverMeta | undefined>(undefined);
   readonly forcedNow = signal(false);
-  readonly activePreset = signal<string | null>(null);
+  readonly activePreset = signal<string | null>(this._sessionFilters.preset);
   readonly undoableHide = signal<{ card: RecommendationCard; index: number; timer: ReturnType<typeof setTimeout> } | null>(null);
   readonly decideOpen = signal(false);
   readonly decideCards = computed(() => {
@@ -936,7 +945,9 @@ export class DiscoverComponent implements OnInit {
   }
 
   applyPreset(key: string) {
-    this.activePreset.set(this.activePreset() === key ? null : key);
+    const value = this.activePreset() === key ? null : key;
+    this.activePreset.set(value);
+    this.saveSessionFilters();
     this.loadFeed();
   }
 
@@ -951,6 +962,7 @@ export class DiscoverComponent implements OnInit {
 
   setTypeFilter(type: 'all' | 'place' | 'event') {
     this.activeTypeFilter.set(type);
+    this.saveSessionFilters();
     this.visibleCount.set(15);
   }
 
@@ -1017,6 +1029,7 @@ export class DiscoverComponent implements OnInit {
 
   setSidebarTime(value: string) {
     this.sidebarTime.set(value);
+    this.saveSessionFilters();
     this.onContextChanged();
   }
 
@@ -1259,6 +1272,34 @@ export class DiscoverComponent implements OnInit {
   // ── Feed cache (#41 scroll restore + #42 SWR) ──
 
   private readonly FEED_CACHE_KEY = 'ld_feed_cache';
+
+  private loadSessionFilters(): { preset: string | null; typeFilter: 'all' | 'place' | 'event'; radius: number; time: string } {
+    try {
+      const raw = sessionStorage.getItem('ld_filters');
+      if (raw) {
+        const f = JSON.parse(raw);
+        return {
+          preset: f.preset ?? null,
+          typeFilter: f.typeFilter ?? 'all',
+          radius: f.radius ?? 5,
+          time: f.time ?? 'now',
+        };
+      }
+    } catch { /* corrupted — ignore */ }
+    return { preset: null, typeFilter: 'all', radius: 5, time: 'now' };
+  }
+
+  private saveSessionFilters() {
+    const filters = {
+      preset: this.activePreset(),
+      typeFilter: this.activeTypeFilter(),
+      radius: this.sidebarRadius(),
+      time: this.sidebarTime(),
+    };
+    try {
+      sessionStorage.setItem('ld_filters', JSON.stringify(filters));
+    } catch { /* quota exceeded — ignore */ }
+  }
 
   private saveFeedCache() {
     const pos = this.geo.position();
