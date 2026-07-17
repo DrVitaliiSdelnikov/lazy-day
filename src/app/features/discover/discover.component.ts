@@ -254,8 +254,8 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
     }
 
     <!-- Decide for me overlay -->
-    @if (decideOpen() && decideCards().length > 0) {
-      <app-decide-for-me [cards]="decideCards()" (close)="decideOpen.set(false)" />
+    @if (decideOpen() && cards().length > 0) {
+      <app-decide-for-me [cards]="cards()" (close)="decideOpen.set(false)" />
     }
   `,
   styles: `
@@ -1022,9 +1022,9 @@ export class DiscoverComponent implements OnInit {
   }
 
   openDecide() {
-    if (this.decideCards().length > 0) {
+    if (this.cards().length > 0) {
       this.decideOpen.set(true);
-      this.interactions.track({ eventType: 'decide_open', targetType: 'feed', targetId: this.decideCards()[0]?.id });
+      this.interactions.track({ eventType: 'decide_open', targetType: 'feed', targetId: this.cards()[0]?.id });
     }
   }
 

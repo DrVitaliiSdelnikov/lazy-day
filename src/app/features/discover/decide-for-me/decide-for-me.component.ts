@@ -1,4 +1,4 @@
-import { Component, inject, input, output, signal, computed } from '@angular/core';
+import { Component, effect, inject, input, output, signal, computed } from '@angular/core';
 import { TranslatePipe } from '@ngx-translate/core';
 import { RecommendationCard } from '../../../core/models';
 import { LdIconComponent } from '../../../core/components/ld-icon.component';
@@ -243,15 +243,146 @@ export class DecideForMeComponent {
 
   readonly attempt = signal(0);
   readonly maxAttempts = 3;
+  readonly currentPick = signal<RecommendationCard | null>(null);
 
-  readonly current = computed(() => this.cards()[this.attempt()]);
+  // Session state — lives only while modal is open
+  private shownIds = new Set<string>();
+  private shownCards: RecommendationCard[] = [];
+  private skippedCategories = new Set<string>();
+  private impressions = new Map<string, number>();
+
+  readonly current = computed(() => this.currentPick() ?? this.cards()[0]);
   readonly isSaved = computed(() => this.savedStore.isSaved(this.current()?.id));
   readonly canShowAnother = computed(() =>
-    this.attempt() < this.maxAttempts - 1 && this.attempt() < this.cards().length - 1
+    this.attempt() < this.maxAttempts - 1 && this.pool().length > 0
   );
 
+  private pool = computed(() => {
+    const cards = this.cards();
+    return cards.filter(c => !this.shownIds.has(c.id));
+  });
+
+  constructor() {
+    // Pick first on init (afterNextRender equivalent via effect)
+    effect(() => {
+      const cards = this.cards();
+      if (cards.length > 0 && !this.currentPick()) {
+        this.currentPick.set(this.decidePick(0));
+      }
+    });
+  }
+
+  private decidePick(attempt: number): RecommendationCard {
+    const cards = this.cards();
+    const MMR_LAMBDA = 0.6;
+    // Cards are pre-sorted by score on backend. Use position as proxy (0=best).
+
+    // 1. Eligible candidates (not shown yet)
+    const eligible = cards.filter(c => !this.shownIds.has(c.id));
+    if (eligible.length === 0) return cards[0]; // fallback
+
+    // 2. Pool: top ~15% of eligible (position-based band since no score on client)
+    const bandSize = Math.max(4, Math.ceil(eligible.length * 0.25));
+    let pool = eligible.slice(0, bandSize);
+
+    // 3. Apply session penalties — assign effective score based on position + penalties
+    const scored = pool.map((c, i) => ({
+      ...c,
+      _eff: this.applyPenalties(c, 1 - i / pool.length), // 1.0 for first, decays
+    }));
+
+    // 4. Event quota — if events exist and none shown yet, force one
+    const hasEvents = scored.some(c => c.type === 'event');
+    const shownEvent = this.shownCards.some(c => c.type === 'event');
+    const needEvent = hasEvents && !shownEvent && attempt >= 1;
+
+    // 5. MMR re-rank for diversity
+    const ranked = this.mmr(scored, this.shownCards, MMR_LAMBDA);
+
+    // 6. Seeded pick from top tier
+    const seed = this.simpleHash(`${Date.now().toString(36)}-${attempt}`);
+    const rng = this.mulberry32(seed);
+    const tier = needEvent
+      ? ranked.filter((c: any) => c.type === 'event').slice(0, 3)
+      : ranked.slice(0, Math.min(4, ranked.length));
+
+    if (tier.length === 0) return ranked[0] ?? eligible[0];
+    const pick = tier[Math.floor(rng() * tier.length)];
+
+    // Track
+    this.shownIds.add(pick.id);
+    this.shownCards.push(pick);
+    this.impressions.set(pick.id, (this.impressions.get(pick.id) ?? 0) + 1);
+
+    return pick;
+  }
+
+  private applyPenalties(c: RecommendationCard, positionScore: number): number {
+    let score = positionScore;
+    const seen = this.impressions.get(c.id) ?? 0;
+    score *= Math.pow(0.6, seen);
+    if (this.skippedCategories.has(c.category)) score *= 0.85;
+    return score;
+  }
+
+  private mmr(pool: any[], selected: RecommendationCard[], lambda: number): any[] {
+    const out: any[] = [];
+    const cand = [...pool];
+    const sel = [...selected];
+
+    while (cand.length > 0) {
+      let best: any = null;
+      let bestVal = -Infinity;
+
+      for (const c of cand) {
+        const rel = c._eff ?? 0.5;
+        const maxSim = sel.length > 0
+          ? Math.max(...sel.map((s: any) => this.venueSim(c, s)))
+          : 0;
+        const val = lambda * rel - (1 - lambda) * maxSim;
+        if (val > bestVal) { bestVal = val; best = c; }
+      }
+
+      out.push(best);
+      sel.push(best);
+      cand.splice(cand.indexOf(best), 1);
+    }
+
+    return out;
+  }
+
+  private venueSim(a: RecommendationCard, b: RecommendationCard): number {
+    let sim = 0;
+    if (a.category === b.category) sim += 0.5;
+    if (a.type === b.type) sim += 0.2;
+    if (this.distBand(a) === this.distBand(b)) sim += 0.3;
+    return sim;
+  }
+
+  private distBand(c: RecommendationCard): number {
+    return Math.floor((c.distanceM ?? 0) / 500);
+  }
+
+  private mulberry32(seed: number): () => number {
+    return () => {
+      let t = (seed += 0x6D2B79F5);
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  private simpleHash(s: string): number {
+    let hash = 0;
+    for (let i = 0; i < s.length; i++) {
+      hash = ((hash << 5) - hash + s.charCodeAt(i)) | 0;
+    }
+    return Math.abs(hash);
+  }
+
   formatDistance(m: number): string {
-    return m < 1000 ? `${m} m` : `${(m / 1000).toFixed(1)} km`;
+    if (m == null || m <= 0) return '';
+    return m < 1000 ? `${Math.round(m)} м` : `${(m / 1000).toFixed(1)} км`;
   }
 
   onRoute() {
@@ -259,7 +390,7 @@ export class DecideForMeComponent {
     this.interactions.trackRoute(c.type, c.id);
     let url = `https://www.google.com/maps/dir/?api=1&destination=${c.lat},${c.lng}`;
     if ((c as any).googlePlaceId) url += `&destination_place_id=${(c as any).googlePlaceId}`;
-    if (c.distanceM < 2500) url += '&travelmode=walking';
+    if (c.distanceM && c.distanceM < 2500) url += '&travelmode=walking';
     window.open(url, '_blank');
   }
 
@@ -285,13 +416,21 @@ export class DecideForMeComponent {
 
   onAnother() {
     const c = this.current();
-    // Track weak negative — user rejected this recommendation
+
+    // Track weak negative
     this.interactions.track({
       eventType: 'decide_skip',
       targetType: c.type,
       targetId: c.id,
       cardPosition: this.attempt(),
     });
-    this.attempt.update(n => n + 1);
+
+    // Session penalties
+    this.skippedCategories.add(c.category);
+
+    // Next pick
+    const next = this.attempt() + 1;
+    this.attempt.set(next);
+    this.currentPick.set(this.decidePick(next));
   }
 }
