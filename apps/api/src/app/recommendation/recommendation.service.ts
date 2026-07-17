@@ -390,8 +390,8 @@ export class RecommendationService {
         category: c.category,
         lat: c.lat,
         lng: c.lng,
-        distanceM: Math.round(c.distance_m),
-        walkMinutes: Math.round((c.distance_m / WALK_SPEED_M_PER_MIN) * STREET_CURVE_FACTOR),
+        distanceM: c.distance_m != null ? Math.round(c.distance_m) : null,
+        walkMinutes: c.distance_m != null && c.distance_m > 0 ? Math.round((c.distance_m / WALK_SPEED_M_PER_MIN) * STREET_CURVE_FACTOR) : null,
         explanations: this.generateExplanations(c, dto, expandedWeights),
         source: 'canonical',
         address: c.address,
@@ -780,8 +780,8 @@ export class RecommendationService {
     // Open status: NOT added to explanations — openStatus badge already shows it on card.
     // Adding both creates duplicate "Открыто" + "Открыто сейчас" chips.
 
-    // Walk time
-    if (c.distance_m <= 2000) {
+    // Walk time (skip when venue not linked — distance_m is null/0)
+    if (c.distance_m != null && c.distance_m > 0 && c.distance_m <= 2000) {
       const walkMin = Math.round((c.distance_m / WALK_SPEED_M_PER_MIN) * STREET_CURVE_FACTOR);
       explanations.push({ type: 'walk_time', label: lWalkTime(walkMin, locale), priority: 2 });
     }

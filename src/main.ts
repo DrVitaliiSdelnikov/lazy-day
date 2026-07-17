@@ -20,6 +20,12 @@ import { App } from './app/app';
   }
 })();
 
-bootstrapApplication(App, appConfig).catch((err) =>
+bootstrapApplication(App, appConfig).then(() => {
+  const splash = document.querySelector('.ld-splash');
+  if (splash) {
+    splash.classList.add('ld-splash--hide');
+    splash.addEventListener('animationend', () => splash.remove());
+  }
+}).catch((err) =>
   console.error(err)
 );

@@ -92,6 +92,8 @@
       @keyframes ld-breath{0%,100%{transform:scaleX(1);opacity:.5}50%{transform:scaleX(.86);opacity:.34}}
       @keyframes ld-zf{0%{opacity:0;transform:translate(0,8px) scale(.75)}28%{opacity:1}100%{opacity:0;transform:translate(9px,-16px) scale(1.12)}}
       @keyframes ld-hp{0%,100%{opacity:.45}50%{opacity:1}}
+      .ld-splash--hide{animation:ld-fadeout 400ms ease forwards}
+      @keyframes ld-fadeout{to{opacity:0;visibility:hidden}}
       @media(prefers-reduced-motion:reduce){.ld-splash__pin,.ld-splash__shadow,.ld-splash__z,.ld-splash__hint{animation:none}.ld-splash__z{opacity:.9}}
     </style>
     <app-root>
