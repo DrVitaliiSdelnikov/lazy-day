@@ -57,8 +57,7 @@ import { SavedStore } from '../../../core/stores/saved.store';
               <ld-icon name="route" [size]="14" /> {{ 'detail.route' | translate }}
             </button>
             @if (showTaxi()) {
-              <button class="dfm__taxi-btn" (click)="onTaxi('yandex')">Yandex Go</button>
-              <button class="dfm__taxi-btn" (click)="onTaxi('bolt')">Bolt</button>
+              <button class="dfm__taxi-btn" (click)="onTaxi()">YandexGo</button>
             }
             <button class="dfm__icon-btn" (click)="onShare()" [attr.aria-label]="'detail.share' | translate">
               <ld-icon name="share-2" [size]="16" />
@@ -421,14 +420,10 @@ export class DecideForMeComponent {
     window.open(url, '_blank');
   }
 
-  onTaxi(provider: 'yandex' | 'bolt') {
+  onTaxi() {
     const c = this.current();
-    this.interactions.trackTaxi(c.type, c.id, provider);
-    if (provider === 'bolt') {
-      window.location.href = `bolt://ride/?destination_lat=${c.lat}&destination_lng=${c.lng}&destination_name=${encodeURIComponent(c.title)}`;
-    } else {
-      window.location.href = `yandextaxi://route?end-lat=${c.lat}&end-lon=${c.lng}`;
-    }
+    this.interactions.trackTaxi(c.type, c.id, 'yandex');
+    window.location.href = `yandextaxi://route?end-lat=${c.lat}&end-lon=${c.lng}`;
   }
 
   async onShare() {
