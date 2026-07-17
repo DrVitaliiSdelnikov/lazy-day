@@ -140,12 +140,13 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
           [attr.aria-label]="'decide.button' | translate">
           <ld-icon name="compass" [size]="15" />
         </button>
-        <button class="discover__filter-btn" (click)="openFilters()" aria-label="Filters">
+        <!-- Filter button hidden: 0% places have price data. TODO: decide how to use -->
+        <!-- <button class="discover__filter-btn" (click)="openFilters()" aria-label="Filters">
           &#9776;
           @if (activeFilterCount() > 0) {
             <span class="filter-badge">{{ activeFilterCount() }}</span>
           }
-        </button>
+        </button> -->
       </div>
 
       <!-- Type filter: places / events / all -->

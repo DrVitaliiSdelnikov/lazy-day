@@ -134,8 +134,8 @@ See `docs/research/product-differentiation.md` for full analysis and competitive
 - [x] ~~Events "0м"~~ — FIXED. distanceM/walkMinutes=null когда venue не привязан. walk_time explanation скипается.
 - [ ] **Переработка карточек** — полная спека: `.workbench/specs/feed-cards-ui-spec.md`. Batch 1 (удаление дублей, 1ч) → Batch 2 (status slot, 3ч) → Batch 3 (API, blocked on A2) → Batch 4 (events rail, 3ч).
 - [x] ~~Ссылки tkt.ge~~ — FIXED. `/en/show/{showId}/{slug}`. Нужен re-ingestion на проде после деплоя.
-- [ ] **Фильтр цен** — проверить работает ли budgetMax. Фронт отправляет? Бек фильтрует? price_level/price_min покрытие в данных?
-- [ ] **Синхронизация фильтров** — landing chips → discover toolbar не синхронизированы. Выбрал категорию на лендинге → на discover toolbar должен быть активен тот же фильтр. ProfileStore → toolbar state sync.
+- [x] ~~Фильтр цен~~ — HIDDEN. 0% мест с price_level. Кнопка скрыта (не удалена). TODO в deferred: решить как использовать (price_level enrichment или переделать фильтр).
+- [x] ~~Синхронизация фильтров~~ — FIXED. Landing пишет preset в ld_filters sessionStorage → discover читает при init.
 - [ ] **"Реши за меня" алгоритм** — клиентский ре-ранкер: полоса DELTA_BAND 0.15, MMR λ=0.6, квота типа (≥1 событие), сидированный выбор (mulberry32), сессионные штрафы. ~4ч. Спека: `.workbench/specs/decide-for-me-algorithm.md`
 - [ ] События не видны в выдаче (scoring places > events, уходят за лимит 60)
 - [ ] Проверить фильтр "События" на фронте — отделяет ли type=event от type=place
@@ -206,6 +206,7 @@ Vitest via `vitest-angular` (Angular 21 default). Zoneless. ~2 дня total.
 - [ ] "Реши за меня" Фаза 2 — межсессионный impression discounting (Postgres), эвристика причины скипа, интерливинг. Только после метрик Фазы 1.
 - [ ] Тултип полного имени — если title обрезан ellipsis, показывать полное имя по hover/long-press.
 - [ ] Переводы мест на английский — не у всех venues есть `name_en`. Проверить coverage, запустить translate для недостающих.
+- [ ] Кнопка фильтров (discover__filter-btn) — скрыта. Решить: добавить price_level через Google enrichment ($20/1K Enterprise) или переделать фильтр (open now, distance, type). 0% мест с ценами, 88% событий.
 
 ### Phase A: Data stabilization (after Phase 0)
 Full spec: `.workbench/specs/data-enrichment-roadmap.md`
