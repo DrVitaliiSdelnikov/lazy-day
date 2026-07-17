@@ -99,8 +99,16 @@ export class CardsService {
       endsAt: e.endsAt?.toISOString(),
       venueName: v?.name,
       ticketUrl: e.ticketUrl,
+      priceLabel: this.formatEventPrice(e.priceMin, e.priceMax, e.currency),
       address: v?.address,
       description: e.description,
     };
+  }
+
+  private formatEventPrice(min?: number, max?: number, currency = 'GEL'): string | undefined {
+    if (min == null) return undefined;
+    if (min === 0) return 'Бесплатно';
+    if (max != null && max !== min) return `${min}–${max} ${currency}`;
+    return `${min} ${currency}`;
   }
 }

@@ -132,7 +132,11 @@ import { SavedStore } from '../../core/stores/saved.store';
         <div class="detail__sticky-cta">
           <a class="ld-btn ld-btn--primary detail__ticket-btn" [href]="c.ticketUrl || c.externalUrl" target="_blank" rel="noopener">
             <ld-icon name="ticket" [size]="15" />
-            {{ 'detail.tickets_from' | translate }}{{ c.priceLabel ? ' ' + c.priceLabel : '' }}
+            @if (c.priceLabel) {
+              {{ 'detail.tickets_from' | translate }} {{ c.priceLabel }}
+            } @else {
+              {{ 'detail.tickets' | translate }}
+            }
           </a>
         </div>
       }

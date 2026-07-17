@@ -118,7 +118,7 @@ export class TktGeAdapter implements EventSourceAdapter {
         tags: this.enrichTags(baseTags, title, show.tags),
         priceMin: show.minPrice ?? undefined,
         currency: 'GEL',
-        ticketUrl: `${BASE_URL}/en/event/${slug}`,
+        ticketUrl: `${BASE_URL}/en/show/${show.showId}/${slug}`,
         posterUrl: show.mobileImage
           ? `${IMAGE_CDN}/${show.mobileImage}`
           : undefined,
