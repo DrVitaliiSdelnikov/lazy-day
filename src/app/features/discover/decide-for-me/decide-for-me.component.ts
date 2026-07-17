@@ -425,7 +425,7 @@ export class DecideForMeComponent {
     const c = this.current();
     this.interactions.trackTaxi(c.type, c.id, provider);
     if (provider === 'bolt') {
-      window.location.href = `bolt://ride?destination_lat=${c.lat}&destination_lng=${c.lng}`;
+      window.location.href = `https://m.bolt.eu/ride/?destination_lat=${c.lat}&destination_lng=${c.lng}&destination_name=${encodeURIComponent(c.title)}`;
     } else {
       window.location.href = `yandextaxi://route?end-lat=${c.lat}&end-lon=${c.lng}`;
     }
