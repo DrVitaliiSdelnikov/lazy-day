@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
+import { Cron } from '@nestjs/schedule';
 import { Place } from '../database/entities/place.entity';
 
 /**
@@ -119,6 +120,7 @@ export class FacetMapperService {
 
   constructor(
     @InjectRepository(Place) private readonly placeRepo: Repository<Place>,
+    private readonly dataSource: DataSource,
   ) {}
 
   /**
@@ -176,5 +178,56 @@ export class FacetMapperService {
 
     this.logger.log(`Facet mapping done: ${mapped} mapped, ${skipped} skipped. cuisine=${cuisineSet}, format=${formatSet}, price=${priceSet}`);
     return { mapped, skipped, cuisineSet, formatSet, priceSet };
+  }
+
+  /**
+   * Recalculate IDF for all facets.
+   * idf(f) = log(N_venues / (1 + n_venues_with_f))
+   * Runs daily via cron + on-demand via endpoint.
+   */
+  @Cron('0 4 * * *') // 04:00 UTC daily
+  async recalculateIdf(): Promise<{ facets: number }> {
+    const totalResult = await this.dataSource.query('SELECT COUNT(*) as n FROM places');
+    const totalVenues = Number(totalResult[0].n);
+    if (totalVenues === 0) return { facets: 0 };
+
+    let count = 0;
+
+    for (const facetType of ['cuisine', 'format', 'atmosphere', 'occasion']) {
+      const column = `facet_${facetType}`;
+      const rows = await this.dataSource.query(`
+        SELECT val, COUNT(*) as n
+        FROM places, unnest(${column}) AS val
+        WHERE ${column} IS NOT NULL AND array_length(${column}, 1) > 0
+        GROUP BY val
+      `);
+
+      for (const row of rows) {
+        const idf = Math.log(totalVenues / (1 + Number(row.n)));
+        await this.dataSource.query(`
+          INSERT INTO facet_idf (facet_key, idf, updated_at)
+          VALUES ($1, $2, NOW())
+          ON CONFLICT (facet_key) DO UPDATE SET idf = $2, updated_at = NOW()
+        `, [`${facetType}:${row.val}`, idf]);
+        count++;
+      }
+    }
+
+    // Price tier IDF (1-5)
+    for (let tier = 1; tier <= 5; tier++) {
+      const result = await this.dataSource.query(
+        'SELECT COUNT(*) as n FROM places WHERE facet_price_tier = $1', [tier],
+      );
+      const idf = Math.log(totalVenues / (1 + Number(result[0].n)));
+      await this.dataSource.query(`
+        INSERT INTO facet_idf (facet_key, idf, updated_at)
+        VALUES ($1, $2, NOW())
+        ON CONFLICT (facet_key) DO UPDATE SET idf = $2, updated_at = NOW()
+      `, [`price:${tier}`, idf]);
+      count++;
+    }
+
+    this.logger.log(`IDF recalculated: ${count} facets`);
+    return { facets: count };
   }
 }

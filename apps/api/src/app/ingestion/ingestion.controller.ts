@@ -67,6 +67,11 @@ export class IngestionController {
     return this.facetMapper.mapAll();
   }
 
+  @Post('recalculate-idf')
+  async recalculateIdf() {
+    return this.facetMapper.recalculateIdf();
+  }
+
   @Get('events/sources')
   async listEventSources() {
     return this.eventIngestion.listSources();
