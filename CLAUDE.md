@@ -224,8 +224,8 @@ Full spec: `.workbench/specs/phase-A-data-spec.md`
 - [ ] A1: osm_id migration (018) + бэкфилл (3-4ч)
 - [ ] A2: enriched_at timestamp на places (1ч)
 - [x] ~~A5: sync-by-osm~~ — DONE. Replaces coord-based. 1,729/1,729 synced. `tools/sync-atmosphere-to-prod.ts`
-- [ ] A3: 30-day refresh cron (2-3ч, после A2)
-- [ ] A4: UI isStale "часы не подтверждены" (1ч, после A2)
+- [x] ~~A3: enrichment refresh cron~~ — DONE. Sunday 03:00 UTC, 200 stale/week, ~$4/mo. + impression maintenance cron 05:00 UTC.
+- [x] ~~A4: stale hours policy~~ — DONE. enriched_at > 30 days → openStatus=undefined → "Часы не подтверждены".
 - [ ] A7: Google Cloud budget controls (30мин)
 - [ ] A8: Gemini facet enrichment — atmosphere, occasion, gaps (~$3, 6-8ч, после A9)
 - [ ] A10: facet_idf таблица + cron (2ч, после A8+A9)
