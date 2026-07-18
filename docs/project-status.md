@@ -1,6 +1,6 @@
 # LaziGo — Project Status
 
-Last updated: 2026-07-13 (UX-24 fully tested, ready to merge)
+Last updated: 2026-07-18 (Phase 0 stabilization in progress)
 
 ## What It Is
 
@@ -16,11 +16,11 @@ delivers scored recommendations with explanations. Not a map — a decision engi
 
 ```
 Frontend:  lazigo.app                              → Cloudflare Pages (free, CDN global)
-API:       lazy-day-production.up.railway.app       → Railway (~$5/mo, auto-deploy on push)
-DB:        Railway PostgreSQL (14 migrations, Haversine — no PostGIS)
-Analytics: Yandex.Metrika (consent-gated, no webvisor) + interaction_events
+API:       api.lazigo.app                          → Railway (EU West, Node 22, ~$5/mo)
+DB:        Railway PostgreSQL (EU West, 17 migrations, Haversine — no PostGIS)
+Analytics: GA4 (G-8RSG5LFWBC) + Google Ads (AW-18318311908) + Consent Mode v2
 Domain:    lazigo.app (Cloudflare DNS)
-Cost:      ~$5/month
+Cost:      ~$5/month infra + ~$35 one-time Google enrichment on prod
 ```
 
 **Deployed: July 10, 2026** — live, accepting users.
@@ -43,34 +43,43 @@ Cost:      ~$5/month
 
 | What | Count | Source | Last updated |
 |---|---|---|---|
-| Venues | 3,164 | OSM (Tbilisi full bbox incl. Lilo, Orkhevi) | July 10 |
-| Google-enriched | 1,755 (55%) | Google Places API ($74 one-time) | July 8 |
-| Opening hours | 1,794 (57%) | Google + OSM | July 8 |
-| Ratings | 1,755 (55%) | Google | July 8 |
-| allowsDogs | 607 | Google Atmosphere | July 8 |
-| goodForChildren | 1,292 | Google Atmosphere | July 8 |
-| Events | ~55 | 3 sources (see below) | July 11 |
+| Venues | 3,168 | OSM (Tbilisi full bbox incl. Lilo, Orkhevi) | July 10 |
+| Google-enriched (local) | 1,755 (55%) | Google Places API ($74 one-time) | July 8 |
+| Google-enriched (prod) | ~1,256 (40%) | API enrichment + coord sync | July 16 |
+| Opening hours | 1,794 (57%) | Google + OSM (local only) | July 8 |
+| Ratings (prod) | ~1,256 | Enterprise enrichment + coord sync | July 16 |
+| allowsDogs (local) | 524 | Google Atmosphere | July 8 |
+| goodForChildren (local) | 1,210 | Google Atmosphere | July 8 |
+| Atmosphere on prod | 0 | NOT synced yet | — |
+| Events | ~300+ | 5 sources (3 active, 2 push-model) | July 17 |
 | Chains flagged | 258 | OSM brand + 35 known chains | July 11 |
 | Names translated | 285 | Google Translate API (ka→en, ~$0.60) | July 13 |
-| Migrations | 15 | 001-015 (015 = users table for UX-24) | July 13 |
+| Migrations | 17 | 001-017 (016=biletebi, 017=tkt.ge) | July 16 |
+| Google types (unique) | 227 | From google_types[] field | July 18 |
 
-### Event Sources (all working on prod)
+### Event Sources
 
-| Source | Events | Frequency | Cost |
-|---|---|---|---|
-| opera.ge | ~7 | daily cron 06:00 Tbilisi | free |
-| Google Events (SerpApi) | ~17 | daily cron | free tier (100/mo) |
-| YOLO.ge | ~24 | daily cron | free |
-| **Total** | **~48/run** | **daily** | **$0** |
+| Source | Events | Frequency | Cost | Status |
+|---|---|---|---|---|
+| opera.ge | ~4 | daily cron 02:00 UTC | free | ✅ active |
+| Google Events (SerpApi) | ~20 | daily cron | free tier (100/mo) | ✅ active |
+| YOLO.ge | ~24 | daily cron | free | ✅ active |
+| tkt.ge | ~215 | push-model (local/GH Actions) | free | ✅ active (Cloudflare blocks Railway) |
+| biletebi.ge | ~97 | push-model (local/GH Actions) | free | ✅ active (Cloudflare blocks Railway) |
+| **Total** | **~360/run** | **daily** | **$0** | |
 
-All sources were dormant on prod until July 11 (missing `SERPAPI_KEY` env + missing
-`google_events`/`yolo.ge` entries in `event_sources` table — both fixed).
+tkt.ge + biletebi.ge blocked by Cloudflare on Railway IP. Push-model: `tools/fetch-blocked-events.ts` fetches from local/GH Actions → POST to `events/import` endpoint. `.github/workflows/fetch-events.yml` for daily cron.
 
 ## What's Live (features)
 
 ### Killer Feature
-- **"Decide for me" (K1)** — fullscreen top-1 card, Route/Another(×3)/Share
-- Non-chain preferred, graceful degradation (3 tiers)
+- **"Decide for me" (K1)** — MMR-based seeded algorithm, Route/Another(×3)/Share/Save
+- Pool: top 25% eligible cards, MMR λ=0.6 for diversity (category + type + distance band)
+- Event quota: ≥1 event in 3 picks if events exist
+- Anti-repeat: shownIds set, session penalties (impression ×0.6, category skip ×0.85)
+- Seeded PRNG (mulberry32): deterministic within session, fresh between days
+- YandexGo taxi (hidden <500m, desktop hidden)
+- Subtle pulse animation on button (3s cycle)
 - Each "Another one" skip tracked as `decide_skip` (strongest training signal)
 
 ### Core Scoring Engine
@@ -99,14 +108,22 @@ All sources were dormant on prod until July 11 (missing `SERPAPI_KEY` env + miss
 - **Desktop hover hide** — eye-off icon appears on card hover (≥1024px only)
 - **Share** — navigator.share (mobile) / clipboard (desktop) → OG preview endpoint
 - **Route** — Google Maps navigation (walking mode <2.5km, googlePlaceId for named pin)
-- **Yandex Go taxi** — deeplink (mobile only, desktop hidden)
-- **"On map"** — ghost link next to address opens Google Maps view
-- **Address always shown** — fallback "Показать на карте" if no address text
+- **YandexGo taxi** — deeplink (mobile only, desktop hidden, hidden <500m)
+- **Location row** — clickable → Google Maps (combined address + distance)
+- **"Часы не подтверждены"** — shown when openStatus is null (with clock-off icon)
 - **Theme switching** — day/evening/dark, icons only (sun/moon/refresh), auto by Tbilisi time
 - **Theme-color meta** — status bar matches theme from first frame (splash + runtime)
 - **Tab bar hidden** during welcome/onboarding
 - **GPS auto-init** — silent request if permission granted, dev console logs
-- **Route/taxi disabled** without GPS + hint "Включите геолокацию"
+- **Route always active** — Google Maps handles origin. GPS hint shown if no GPS.
+- **Session filter persistence** — preset/typeFilter/radius/time in sessionStorage (ld_filters)
+- **Landing → discover sync** — preset chip selection synced via sessionStorage
+- **Splash fade-out** — 400ms opacity animation (was instant jerk)
+- **Place stripe** — `--ld-primary` left border. Event stripe — `--ld-event`
+- **Feed cards 3-slot** — title+save, meta (category·distance·rating·cross-interest), status (open/closed/hours unknown/event countdown)
+- **Detail card** — removed "Почему это вам" dupe, price dupe, double "на карте", canonical leak
+- **Price filter hidden** — 0% places with price_level. Button commented out
+- **Tag translations** — "Также: bar" → "Также: бар" via lTag() in all locales
 - **Long title overflow** — word-break on detail, ellipsis on cards, overflow hidden on grid
 - **Scroll restore (#41)** — cached feed + scroll position on back-navigation from detail
 - **SWR entry (#42)** — cached feed shown instantly on re-open, silent background revalidate
@@ -168,14 +185,19 @@ Auth (HttpOnly cookie):
   PATCH /v1/auth/me                      — Sync profile/savedIds/hiddenIds/consent
   DELETE /v1/auth/me                     — GDPR delete (anonymize)
 
-Protected (x-admin-token):
+Protected (x-admin-token → ADMIN_SECRET env var):
   POST /v1/health/migrate                — Run DB migrations
   POST /v1/admin/ingestion/osm           — OSM import
   POST /v1/admin/ingestion/fix-chains    — Flag known chains
+  POST /v1/admin/ingestion/translate-names — Google Translate ka→en
   POST /v1/admin/ingestion/events/run    — Run all event sources
   POST /v1/admin/ingestion/events/source/:name — Run single source
+  POST /v1/admin/ingestion/events/import — Push events from external worker
   GET  /v1/admin/ingestion/events/sources — List event sources
-  POST /v1/admin/ingestion/google-enrich — Google Places enrichment
+  POST /v1/admin/ingestion/google-enrich — Google Places Pro enrichment
+  POST /v1/admin/ingestion/google-enrich-enterprise — Ratings, hours
+  POST /v1/admin/ingestion/google-enrich-atmosphere — Dogs, kids, outdoor
+  POST /v1/admin/ingestion/import-enrichment — Coord-based enrichment sync (temp)
 ```
 
 ## Known Debts
@@ -237,38 +259,73 @@ Protected (x-admin-token):
 - Fix: detail save uses SavedStore (favorites work), Georgian titles via resolveTitle + locale, remove coordinates from location panel, sheet above mobile nav, duplicate open_now badge removed
 - api.lazigo.app custom domain — Railway, SSL active, CORS configured
 
-## Next Up
+### Post-deploy week 3 (July 16-17) — Events + Enrichment + UI
+- tkt.ge adapter (8 categories, 224 events) + biletebi.ge adapter (101 events). Cloudflare blocks Railway → push-model
+- Push-model: `tools/fetch-blocked-events.ts` + `events/import` endpoint + GH Actions workflow
+- Telegram monitoring (checkSourceHealth). Body limit 5mb.
+- Landing page as entry point (chips, event cards, ProfileStore sync)
+- Google enrichment on prod: locationRestriction fix (+162), coord sync (+572), total ~1,256 ratings
+- Feed card 3-slot refactor. Detail card: removed dupes. Place/event stripe.
+- "Реши за меня" MMR algorithm (diversity, event quota, anti-repeat, mulberry32)
+- Session filter persistence (ld_filters). Landing→discover sync.
+- Splash fade-out 400ms. Events "0м" fix. openStatus 3 states.
+- tkt.ge ticketUrl fix. Event priceLabel on reload. YandexGo taxi. Bolt removed (no API).
+- Tag translations (lTag). Price filter hidden. Icons (clock-off, car).
 
-| # | Task | Effort | Depends on |
-|---|---|---|---|
-| 🔴 **Merge UX-24** | Branch tested (8/8 API, builds pass). Merge to main → deploy → run migration 015 on prod | 30 min | user approval |
-| **K2-lite** | "Decide together" shared picks | 1-2 days | UX-24 merge |
-| **A4** | UptimeRobot + Sentry | 30 min | user action |
-| **UX-23** | Session refinement | 1-1.5 days | — |
-| **A3** | Opening hours targeted re-enrichment | 2-3 hours | — |
+## Current: Phase 0 — Stabilization (BLOCKER)
 
-## Month 2-3 (v1)
+Full checklist in CLAUDE.md. 9/12 done in 0.1, remaining:
+
+| # | Task | Status |
+|---|---|---|
+| Events visibility | open — scoring places > events, events beyond limit 60 |
+| Фильтр "События" | open — verify type=event filter works |
+| UI flows | open — landing → discover → onboarding full path |
+| QA | open — manual pass on prod |
+| GH Actions test | open — test workflow_dispatch for tkt/biletebi |
+| Daily cron | open — verify 02:00 UTC works (opera, google, yolo) |
+| Vitest setup | open — Phase 0.3 |
+| Frontend audit | open — Phase 0.4 |
+| Documentation | open — Phase 0.5 |
+
+## Next: Phase A — Data Stabilization
+
+| # | Task | Effort |
+|---|---|---|
+| A1 | osm_id migration (018) — stable sync key | 3-4h |
+| A2 | `enriched_at` timestamp — Google 30-day TTL | 1h |
+| A3 | 30-day refresh cron | 2-3h |
+| A4 | "Hours unknown" UI (stale data policy) | 1h |
+| A5 | Atmosphere enrichment on prod | 30min |
+| A6 | Field mask audit (price_level!) | 30min |
+| A7 | Google Cloud budget controls | 30min |
+
+## Later: Phase B — Multi-source Enrichment
 
 | Task | Impact |
 |---|---|
-| K7 Evening digest bot (gate passed if ≥3 events most evenings) | Retention anchor |
-| K4 Telegram Mini App (if K7 shows engagement) | Channel |
-| Data dedup & cross-verification (OSM↔Google matcher) | Quality |
-| Yandex Organizations adapter | Coverage |
-| "Been here" button | Proprietary data |
-| Collections (create, save, share via URL) | Virality |
+| Overture Maps Places (free, GERS ID) | Reconciliation backbone |
+| Foursquare OS Places (free, closure detection) | Gap-fill |
+| 2GIS commercial (best owner-verified for Tbilisi) | Quality |
+| Entity resolution pipeline | Cross-verification |
+
+## v1 — Community Layer
+
+| Task | Impact |
+|---|---|
+| "Been here" button | Ground-truth visited signal (CF prerequisite) |
+| Popularity prior (Bayesian-smoothed) | Hardest baseline to beat |
+| Segment-based Thompson Sampling | First personalization |
 | Search/autocomplete | Usability |
-| TKT.ge parser (if event gap >30%) | Event depth |
+| Collections + "been here" badges | Virality + data moat |
 
-## Month 4-12 (v2)
+## v2 — Personalization + Scale
 
 | Task | Impact |
 |---|---|
-| K5 Locals' choice badge (behavioral signal from ≥5-session users) | Data moat |
-| K3 Lazy Evening journey (auto-composed with dwell-time data) | Perceived value |
-| K2-full Real-time match (upgrade from K2-lite if metrics pass) | Virality |
-| Behavioral re-ranking (from user_preference_aggregates) | Quality |
-| Weather-aware scoring (OpenWeatherMap → indoor boost on rain) | Relevance |
+| Item-item co-occurrence + shrinkage (CF) | Recommendation quality |
+| Behavioral re-ranking | Quality |
+| Weather-aware scoring | Relevance |
 | City expansion (Batumi, Kutaisi via CityConfig) | Scale |
 | Local curator network | Deep moat |
 
@@ -293,33 +350,43 @@ lazigo.app (Cloudflare Pages, free CDN)
       ├── InteractionService (beacon API, 9 event types)
       └── Consent-gated Yandex.Metrika
 
-api.lazigo.app (Railway ~$5/mo)
+api.lazigo.app (Railway EU West, Node 22, ~$5/mo)
   ├── NestJS 11 API
   │   ├── Recommendation engine (9-step pipeline + chain penalty + rotation)
-  │   ├── Cards service (Haversine distance + locale title fallback)
+  │   ├── Cards service (Haversine distance + locale title fallback + priceLabel)
   │   ├── Auth (HttpOnly cookie, idempotent upsert, GDPR delete)
   │   ├── OG preview (dynamic HTML for messengers)
   │   ├── Interaction tracking (batch + single)
   │   ├── Feedback → Telegram forwarding
-  │   ├── Event cron (daily 06:00, 3 sources, health alerts)
-  │   └── Admin endpoints (guarded)
+  │   ├── Event cron (daily 02:00 UTC, 3 active sources, health alerts)
+  │   ├── Event import (push-model for Cloudflare-blocked sources)
+  │   ├── Google enrichment (Pro + Enterprise + Atmosphere, locationRestriction)
+  │   ├── Enrichment sync (coord-based local→prod, temp endpoint)
+  │   └── Admin endpoints (guarded, ADMIN_SECRET)
   └── PostgreSQL
-      ├── 3,164 venues + 1,755 Google-enriched
-      ├── ~55 events (3 sources, daily refresh)
+      ├── 3,168 venues + ~1,256 Google-enriched on prod (1,755 local)
+      ├── ~300+ events (5 sources, daily refresh)
       ├── users (anon identity, profile, saved/hidden, consent)
       ├── interaction_events (behavioral tracking)
+      ├── event_sources (5 sources, enabled/disabled, last_fetched_at)
       ├── feedback table
-      └── 15 migrations
+      └── 17 migrations
+
+External workers:
+  ├── tools/fetch-blocked-events.ts (tkt.ge + biletebi.ge → push to prod)
+  └── .github/workflows/fetch-events.yml (daily cron or manual dispatch)
 ```
 
 ## Cost
 
-| Scale | Railway | SerpApi | Google | Analytics | Total/mo |
+| Scale | Railway | SerpApi | Google Places | Analytics | Total/mo |
 |---|---|---|---|---|---|
-| **MVP (current)** | **$5** | $0 | $0 (done) | $0 | **$5** |
-| v1 (1 city) | $5 | $0 | $0 | $0 | **$5** |
-| 5 cities | $10 | $50 | ~$10 | $0 | **$70** |
-| 20 cities | $20 | $50 | ~$20 | $0 | **$90** |
+| **MVP (current)** | **$5** | $0 | ~$20-50 (30-day refresh) | $0 | **$25-55** |
+| v1 (1 city) | $5 | $0 | ~$20-50 | $0 | **$25-55** |
+| 5 cities | $10 | $50 | ~$100-300 | $0 | **$160-360** |
+| 20 cities | $20 | $50 | ~$500-1500 | $0 | **$570-1570** |
+
+One-time costs: Google enrichment local $74, prod ~$35 (Enterprise).
 
 ## Key Documents
 
@@ -329,12 +396,19 @@ api.lazigo.app (Railway ~$5/mo)
 | `docs/post-deploy-review.md` | Week 1 review, red flags, revised plan |
 | `docs/cheatsheet.md` | Commands, API ref, env vars, kill/scale SQL |
 | `docs/project-status.md` | **This file** — comprehensive current state |
-| `docs/ux-specs/` | 23 UX specs (README.md has index with status) |
-| `docs/ux-specs/ux-22-chain-deprioritization.md` | Chain detection architecture |
-| `docs/ux-specs/ux-23-session-refinement.md` | Scroll-triggered sub-tag refinement |
-| `docs/research/killer-features.md` | K1-K7 strategy, kill metrics per feature |
-| `docs/research/data-dedup-cross-verification.md` | Multi-provider matching spec |
-| `docs/research/carebox-migration-strategy-v2.md` | (unrelated — CB_libs context) |
+| `docs/ux-specs/` | 24 UX specs (README.md has index with status) |
 | `docs/scoring.md` | Scoring formula, all modifiers |
 | `docs/database.md` | Tables, migrations, schema |
-| `CLAUDE.md` | AI session context for lazy-day project |
+| `CLAUDE.md` | AI session context — roadmap, Phase 0/A/B, v1/v2 |
+
+**Workbench specs (local only, not committed):**
+| Spec | What |
+|---|---|
+| `.workbench/specs/feed-cards-ui-spec.md` | Card redesign spec (batched rollout) |
+| `.workbench/specs/decide-for-me-algorithm.md` | K1 MMR algorithm spec |
+| `.workbench/specs/testing-strategy.md` | Vitest + Playwright strategy |
+| `.workbench/specs/cloudflare-event-sources-blocked.md` | Push-model for tkt/biletebi |
+| `.workbench/specs/data-enrichment-roadmap.md` | Phase A/B enrichment plan |
+| `.workbench/specs/prod-enrichment-sync.md` | Local→prod sync spec |
+| `.workbench/specs/collaborative-filtering-strategy.md` | CF roadmap (stages 0-6) |
+| `.workbench/specs/categories-taxonomy-analysis.md` | Google types analysis, taxonomy proposal |
