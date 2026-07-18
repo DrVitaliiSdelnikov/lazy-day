@@ -290,6 +290,8 @@ export class OsmImportService {
         : undefined;
       existing.website = tags['website'] || tags['contact:website'];
       existing.phone = tags['phone'] || tags['contact:phone'];
+      existing.osmId = String(el.id);
+      existing.osmType = el.type as any;
       venue = await this.venueRepo.save(existing);
     } else {
       venue = await this.venueRepo.save(
@@ -305,6 +307,8 @@ export class OsmImportService {
           city: 'tbilisi',
           website: tags['website'] || tags['contact:website'],
           phone: tags['phone'] || tags['contact:phone'],
+          osmId: String(el.id),
+          osmType: el.type as any,
         }),
       );
 
