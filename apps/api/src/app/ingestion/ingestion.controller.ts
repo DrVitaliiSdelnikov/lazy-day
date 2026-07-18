@@ -4,6 +4,7 @@ import { OsmImportService } from './osm-import.service';
 import { GoogleEnrichmentService } from './google-enrichment.service';
 import { EventIngestionService } from './event-ingestion.service';
 import { FacetMapperService } from './facet-mapper.service';
+import { GeminiEnrichmentService } from './gemini-enrichment.service';
 import { AdminGuard } from '../guards/admin.guard';
 
 @Controller('admin/ingestion')
@@ -14,6 +15,7 @@ export class IngestionController {
     private readonly googleEnrich: GoogleEnrichmentService,
     private readonly eventIngestion: EventIngestionService,
     private readonly facetMapper: FacetMapperService,
+    private readonly gemini: GeminiEnrichmentService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -70,6 +72,11 @@ export class IngestionController {
   @Post('recalculate-idf')
   async recalculateIdf() {
     return this.facetMapper.recalculateIdf();
+  }
+
+  @Post('gemini-enrich')
+  async geminiEnrich(@Query('limit') limit?: string) {
+    return this.gemini.enrichBatch(limit ? parseInt(limit, 10) : 100);
   }
 
   @Get('events/sources')

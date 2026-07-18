@@ -44,10 +44,10 @@ export class Venue {
   @Column({ type: 'text', nullable: true })
   googlePlaceId?: string;
 
-  @Column({ type: 'bigint', nullable: true })
+  @Column({ type: 'bigint', nullable: true, name: 'osm_id' })
   osmId?: string;  // bigint → string in TypeORM
 
-  @Column({ type: 'varchar', length: 8, nullable: true })
+  @Column({ type: 'varchar', length: 8, nullable: true, name: 'osm_type' })
   osmType?: string;
 
   @CreateDateColumn({ type: 'timestamptz' })

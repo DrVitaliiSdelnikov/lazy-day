@@ -73,39 +73,39 @@ export class Place {
   chainKey?: string;
 
   // Facets (Phase A)
-  @Column({ type: 'text', array: true, nullable: true })
+  @Column({ type: 'text', array: true, nullable: true, name: 'facet_cuisine' })
   facetCuisine?: string[];
 
-  @Column({ type: 'text', array: true, nullable: true })
+  @Column({ type: 'text', array: true, nullable: true, name: 'facet_format' })
   facetFormat?: string[];
 
-  @Column({ type: 'smallint', nullable: true })
+  @Column({ type: 'smallint', nullable: true, name: 'facet_price_tier' })
   facetPriceTier?: number;
 
-  @Column({ type: 'real', nullable: true })
+  @Column({ type: 'real', nullable: true, name: 'facet_price_conf' })
   facetPriceConf?: number;
 
-  @Column({ type: 'text', array: true, nullable: true })
+  @Column({ type: 'text', array: true, nullable: true, name: 'facet_atmosphere' })
   facetAtmosphere?: string[];
 
-  @Column({ type: 'text', array: true, nullable: true })
+  @Column({ type: 'text', array: true, nullable: true, name: 'facet_occasion' })
   facetOccasion?: string[];
 
   // "Спланируй день" schema (fill now, logic later)
-  @Column({ type: 'smallint', nullable: true })
+  @Column({ type: 'smallint', nullable: true, name: 'typical_duration_min' })
   typicalDurationMin?: number;
 
-  @Column({ type: 'text', array: true, nullable: true })
+  @Column({ type: 'text', array: true, nullable: true, name: 'time_of_day_fit' })
   timeOfDayFit?: string[];
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: 'text', nullable: true, name: 'venue_role' })
   venueRole?: string;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: 'text', nullable: true, name: 'anchor_vs_filler' })
   anchorVsFiller?: string;
 
   // Enrichment freshness
-  @Column({ type: 'timestamptz', nullable: true })
+  @Column({ type: 'timestamptz', nullable: true, name: 'enriched_at' })
   enrichedAt?: Date;
 
   @CreateDateColumn({ type: 'timestamptz' })
