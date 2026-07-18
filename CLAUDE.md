@@ -227,7 +227,7 @@ Full spec: `.workbench/specs/phase-A-data-spec.md`
 - [x] ~~A3: enrichment refresh cron~~ — DONE. Sunday 03:00 UTC, 200 stale/week, ~$4/mo. + impression maintenance cron 05:00 UTC.
 - [x] ~~A4: stale hours policy~~ — DONE. enriched_at > 30 days → openStatus=undefined → "Часы не подтверждены".
 - [x] ~~A7: budget controls~~ — DONE. Prepay set up.
-- [x] ~~A8: Gemini enrichment~~ — DONE. gemini-flash-lite-latest. POST /v1/admin/ingestion/gemini-enrich. Batch running.
+- [x] ~~A8: Gemini enrichment~~ — DONE. 3,168/3,168 enriched (atmosphere 100%, occasion 100%, role 100%). ~$0.30. IDF recalculated: 131 facets.
 - [ ] A10: facet_idf таблица + cron (2ч, после A8+A9)
 Gate: price_tier ≥70%, facet_cuisine ≥50% food, facet_idf computed
 
