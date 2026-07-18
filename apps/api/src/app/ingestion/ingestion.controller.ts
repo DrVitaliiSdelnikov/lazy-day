@@ -77,43 +77,56 @@ export class IngestionController {
     return this.eventIngestion.listSources();
   }
 
-  /** Temporary: import enrichment data from local DB. Matches by coords. Remove after osm_id migration. */
-  @Post('import-enrichment')
-  async importEnrichment(@Body() body: { records: any[] }) {
+  /** Sync enrichment data from local DB by osm_id (stable key). Replaces coord-based import-enrichment. */
+  @Post('sync-by-osm')
+  async syncByOsm(@Body() body: { records: any[] }) {
     let updated = 0, notFound = 0;
 
     for (const r of body.records) {
-      const res = await this.dataSource.query(
-        `UPDATE venues SET
-          google_place_id = COALESCE($1, google_place_id)
-        WHERE ABS(lat - $2) < 0.0000001 AND ABS(lng - $3) < 0.0000001
-          AND google_place_id IS NULL`,
-        [r.google_place_id, r.lat, r.lng],
+      if (!r.osm_id || !r.osm_type) { notFound++; continue; }
+
+      // Find venue by osm_id
+      const venues = await this.dataSource.query(
+        'SELECT id FROM venues WHERE osm_id = $1 AND osm_type = $2 LIMIT 1',
+        [r.osm_id, r.osm_type],
       );
-      if (res[1] > 0) {
-        // Now update the linked place
-        await this.dataSource.query(
-          `UPDATE places SET
-            google_rating = COALESCE($1, google_rating),
-            google_rating_count = COALESCE($2, google_rating_count),
-            opening_hours = COALESCE($3, opening_hours),
-            attributes = COALESCE($4, attributes),
-            google_types = COALESCE($5, google_types),
-            photos = COALESCE($6, photos)
-          WHERE venue_id = (
-            SELECT id FROM venues
-            WHERE ABS(lat - $7) < 0.0000001 AND ABS(lng - $8) < 0.0000001
-            LIMIT 1
-          ) AND google_rating IS NULL`,
-          [r.google_rating, r.google_rating_count,
-           r.opening_hours ? JSON.stringify(r.opening_hours) : null,
-           r.attributes ? JSON.stringify(r.attributes) : null,
-           r.google_types, r.photos, r.lat, r.lng],
-        );
-        updated++;
-      } else {
-        notFound++;
-      }
+      if (venues.length === 0) { notFound++; continue; }
+      const venueId = venues[0].id;
+
+      // Update venue
+      await this.dataSource.query(`
+        UPDATE venues SET
+          google_place_id = COALESCE($1, google_place_id)
+        WHERE id = $2`,
+        [r.google_place_id, venueId],
+      );
+
+      // Update place
+      await this.dataSource.query(`
+        UPDATE places SET
+          google_rating = COALESCE($1, google_rating),
+          google_rating_count = COALESCE($2, google_rating_count),
+          opening_hours = COALESCE($3, opening_hours),
+          attributes = COALESCE($4, attributes),
+          google_types = COALESCE($5, google_types),
+          photos = COALESCE($6, photos),
+          facet_cuisine = COALESCE($7, facet_cuisine),
+          facet_format = COALESCE($8, facet_format),
+          facet_price_tier = COALESCE($9, facet_price_tier),
+          facet_price_conf = COALESCE($10, facet_price_conf),
+          enriched_at = NOW()
+        WHERE venue_id = $11`,
+        [
+          r.google_rating, r.google_rating_count,
+          r.opening_hours ? JSON.stringify(r.opening_hours) : null,
+          r.attributes ? JSON.stringify(r.attributes) : null,
+          r.google_types, r.photos,
+          r.facet_cuisine, r.facet_format,
+          r.facet_price_tier, r.facet_price_conf,
+          venueId,
+        ],
+      );
+      updated++;
     }
 
     return { updated, notFound, total: body.records.length };
