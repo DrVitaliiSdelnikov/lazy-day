@@ -97,6 +97,7 @@ interface CandidateRow {
   google_place_id?: string;
   is_chain?: boolean;
   chain_key?: string;
+  enriched_at?: string;
   // event-specific
   starts_at?: string;
   ends_at?: string;
@@ -399,7 +400,7 @@ export class RecommendationService {
         ratingCount: c.google_rating_count ?? c.rating_count,
         primaryTags: c.primaryTags.length > 0 ? c.primaryTags : undefined,
         secondaryTags: c.secondaryTags.length > 0 ? c.secondaryTags : undefined,
-        openStatus: displayOpenStatus,
+        openStatus: this.resolveOpenStatus(c, displayOpenStatus),
         startsAt: c.starts_at,
         endsAt: c.ends_at,
         venueName: c.venue_name,
@@ -611,7 +612,7 @@ export class RecommendationService {
         v.address, p.rating, p.rating_count, p.indoor, p.price_level,
         p.quality_score, p.status, p.attributes, p.google_types, p.google_rating,
         p.google_rating_count, p.opening_hours, p.photos, v.website, v.google_place_id,
-        p.is_chain, p.chain_key
+        p.is_chain, p.chain_key, p.enriched_at
       FROM places p
       JOIN venues v ON p.venue_id = v.id
       WHERE p.status = 'active'
@@ -873,6 +874,21 @@ export class RecommendationService {
     if (locale === 'en') return 'Tomorrow';
     if (locale === 'ka') return 'ხვალ';
     return 'Завтра';
+  }
+
+  /**
+   * A4: If enriched_at is stale (>30 days) or missing, treat openStatus as unknown.
+   * This ensures we don't show potentially outdated hours as current.
+   */
+  private resolveOpenStatus(c: CandidateRow, displayStatus: string | undefined): string | undefined {
+    if (c.type === 'event') return displayStatus; // events don't have opening hours
+    if (!c.enriched_at) return displayStatus; // no enrichment timestamp — use as-is (legacy)
+    const enrichedAt = new Date(c.enriched_at);
+    const thirtyDays = 30 * 24 * 60 * 60 * 1000;
+    if (Date.now() - enrichedAt.getTime() > thirtyDays) {
+      return undefined; // stale → frontend shows "Часы не подтверждены"
+    }
+    return displayStatus;
   }
 
   private formatPrice(c: CandidateRow): string | undefined {
