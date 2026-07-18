@@ -223,7 +223,7 @@ Full spec: `.workbench/specs/phase-A-data-spec.md`
 - [ ] A9: Google types → facet_cuisine/format маппинг (4ч, бесплатно)
 - [ ] A1: osm_id migration (018) + бэкфилл (3-4ч)
 - [ ] A2: enriched_at timestamp на places (1ч)
-- [ ] A5: Atmosphere sync на прод (2ч, после A1)
+- [x] ~~A5: sync-by-osm~~ — DONE. Replaces coord-based. 1,729/1,729 synced. `tools/sync-atmosphere-to-prod.ts`
 - [ ] A3: 30-day refresh cron (2-3ч, после A2)
 - [ ] A4: UI isStale "часы не подтверждены" (1ч, после A2)
 - [ ] A7: Google Cloud budget controls (30мин)
@@ -282,6 +282,24 @@ Full spec: `.workbench/specs/collaborative-filtering-strategy.md`
 - [ ] City expansion (Batumi, Kutaisi)
 - [ ] Journey planner ("Спланируй день" — schema ready in A8)
 - [ ] Weather-aware, gamification, curator network
+
+### Backend Testing & Documentation (after each phase, before merge)
+- [ ] **Unit tests**: cover every service with Vitest (see `.workbench/specs/testing-strategy.md`)
+  - [ ] RecommendationService: scoreCandidate, timeFit, applyDiversity, generateExplanations
+  - [ ] FacetMapperService: mapAll, recalculateIdf — маппинг + IDF correctness
+  - [ ] GoogleEnrichmentService: matchVenue (locationRestriction), applyEnterpriseDetails (priceLevel)
+  - [ ] EventIngestionService: importEvents, upsertEvent — dedup, date parsing
+  - [ ] TktGeAdapter: parseShows — date filter, URL format, tags enrichment
+  - [ ] BiletebiGeAdapter: parseCategory — HTML parsing, date inference
+  - [ ] CardsService: mapEvent (priceLabel), mapPlace (distance, title fallback)
+  - [ ] Opening hours: checkOpenStatus, checkGooglePeriods — all edge cases (24/7, overnight, holidays)
+  - [ ] [future] TasteProfileService: updateProfile, applyHideNegative, computeCosine
+  - [ ] [future] ImpressionService: recordImpressions, applyDiscount
+- [ ] **Class descriptions**: JSDoc на каждом service/controller с описанием:
+  - Что делает (одно предложение)
+  - Какие endpoints/methods выставляет
+  - От чего зависит (inject)
+  - Кто использует (consumers)
 
 ### Competitive Moat Timeline
 ```
