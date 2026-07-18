@@ -72,6 +72,42 @@ export class Place {
   @Column({ type: 'text', nullable: true })
   chainKey?: string;
 
+  // Facets (Phase A)
+  @Column({ type: 'text', array: true, nullable: true })
+  facetCuisine?: string[];
+
+  @Column({ type: 'text', array: true, nullable: true })
+  facetFormat?: string[];
+
+  @Column({ type: 'smallint', nullable: true })
+  facetPriceTier?: number;
+
+  @Column({ type: 'real', nullable: true })
+  facetPriceConf?: number;
+
+  @Column({ type: 'text', array: true, nullable: true })
+  facetAtmosphere?: string[];
+
+  @Column({ type: 'text', array: true, nullable: true })
+  facetOccasion?: string[];
+
+  // "Спланируй день" schema (fill now, logic later)
+  @Column({ type: 'smallint', nullable: true })
+  typicalDurationMin?: number;
+
+  @Column({ type: 'text', array: true, nullable: true })
+  timeOfDayFit?: string[];
+
+  @Column({ type: 'text', nullable: true })
+  venueRole?: string;
+
+  @Column({ type: 'text', nullable: true })
+  anchorVsFiller?: string;
+
+  // Enrichment freshness
+  @Column({ type: 'timestamptz', nullable: true })
+  enrichedAt?: Date;
+
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt!: Date;
 
