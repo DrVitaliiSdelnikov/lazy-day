@@ -3,6 +3,7 @@ import { DataSource } from 'typeorm';
 import { OsmImportService } from './osm-import.service';
 import { GoogleEnrichmentService } from './google-enrichment.service';
 import { EventIngestionService } from './event-ingestion.service';
+import { FacetMapperService } from './facet-mapper.service';
 import { AdminGuard } from '../guards/admin.guard';
 
 @Controller('admin/ingestion')
@@ -12,6 +13,7 @@ export class IngestionController {
     private readonly osmImport: OsmImportService,
     private readonly googleEnrich: GoogleEnrichmentService,
     private readonly eventIngestion: EventIngestionService,
+    private readonly facetMapper: FacetMapperService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -58,6 +60,11 @@ export class IngestionController {
   @Post('translate-names')
   async translateNames() {
     return this.osmImport.translateGeorgianNames();
+  }
+
+  @Post('map-facets')
+  async mapFacets() {
+    return this.facetMapper.mapAll();
   }
 
   @Get('events/sources')

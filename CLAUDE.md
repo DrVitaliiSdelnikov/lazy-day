@@ -217,6 +217,7 @@ Vitest via `vitest-angular` (Angular 21 default). Zoneless. ~2 дня total.
 
 ### Phase A: Data Foundation (after Phase 0) — ~25ч
 Full spec: `.workbench/specs/phase-A-data-spec.md`
+**⚠️ ПЕРЕД МЕРЖЕМ В MAIN: миграция 018 на прод (`POST /v1/health/migrate`) + re-enrich (Enterprise с priceLevel) + facet mapping + sync atmosphere. Без этого прод БД не совпадает с кодом.**
 - [x] **A0: tkt.ge + biletebi.ge event ingestion** — DONE. Push-model deployed.
 - [ ] A6: price_level в Enterprise field mask (1ч, можно сразу)
 - [ ] A9: Google types → facet_cuisine/format маппинг (4ч, бесплатно)
