@@ -38,7 +38,9 @@ See `docs/research/product-differentiation.md` for full analysis and competitive
 
 ## Core Engine
 
-- **Scoring**: `0.45×interest + 0.25×distance + 0.15×time + 0.10×quality + 0.05×source`
+- **Scoring**: `0.45×interest + 0.25×distance + 0.15×time + 0.10×quality + 0.05×source + personalization(0→0.20) + priceBoost(0→0.06)`
+- **Personalization**: faceted taste profile (IDF-weighted EMA), cosine scoring, ramps over 15 signals
+- **Freshness**: impression discount (0.85^n), session dithering, epsilon exploration (1/8)
 - **Dynamic categories**: venue tags split into primary/secondary per request (same venue = different classification per user)
 - **Interest synonyms**: user says "nature" → engine matches `[outdoor, park, garden, viewpoint]`
 - **Weight semantics**: ≥0.7 = hard filter ("I want this"), 0.3-0.6 = soft boost, <0.3 = ignored
@@ -46,28 +48,43 @@ See `docs/research/product-differentiation.md` for full analysis and competitive
 - **Pet modifier**: fact-based (`allowsDogs` from Google) → proxy fallback (tag-based) + `outdoorSeating` softening
 - **Opening hours**: dual-format parser (OSM raw + Google structured periods), auto-detect
 - **Adaptive radius**: expands ×1.5 if <5 relevant results (up to 2x)
-- **No serendipity pool**: hard filter, not random noise
+- **Explanations**: inline on cards — "Тебе нравится: культура · Высокий рейтинг · Рядом с вами"
 
 ## Data Coverage
 
 | Data | Coverage | Source |
 |---|---|---|
-| Venues | 3,166 | OSM (bbox incl. Lilo, Orkhevi) |
+| Venues | 3,168 | OSM (bbox incl. Lilo, Orkhevi) |
 | Google matched | 1,755 (55%) | Google Places |
 | Opening hours | 1,794 (57%) | Google + OSM |
-| Ratings | 1,755 local / ~1,256 prod (40%) | Google |
-| allowsDogs | 607 | Google Atmosphere |
-| goodForChildren | 1,292 | Google Atmosphere |
-| Events | ~68 (4 opera.ge + 20 Google Events + 24 YOLO.ge + tkt.ge/biletebi.ge disabled) | 5 adapters (3 active) |
+| Ratings | ~1,256 prod (40%) | Google |
+| Facet atmosphere | 1,729 prod (55%) | Gemini Flash-Lite |
+| Facet occasion | 1,729 prod (55%) | Gemini Flash-Lite |
+| Facet cuisine/format | 69 facets mapped | Google types |
+| IDF values | 83 facets | Computed |
+| allowsDogs | 524 (synced to prod) | Google Atmosphere |
+| goodForChildren | 1,210 (synced to prod) | Google Atmosphere |
+| Events | ~68 (opera.ge + Google Events + YOLO.ge + tkt.ge/biletebi.ge disabled) | 5 adapters (3 active) |
 | Localization | en: ~74%, ka: ~54% | OSM name_en/name_ka |
 
 ## Docs
 
-### Technical
-- `docs/scoring.md` — scoring formula, all modifiers, explanations table
+### Structured (laziGoDocs/)
+- `laziGoDocs/personalization/flow.md` — full user journey: cold start to learned profile
+- `laziGoDocs/architecture/scoring-pipeline.md` — 17-step pipeline, signal weights
+- `laziGoDocs/architecture/system-overview.md` — stack, modules, stores
+- `laziGoDocs/data/enrichment-pipeline.md` — Google + Gemini + OSM, migrations
+- `laziGoDocs/api/endpoints.md` — all REST endpoints + DTOs
+- `laziGoDocs/deploy/railway.md` — prod deployment checklist
+- `laziGoDocs/dev-tools/reco-lab.md` — Reco Lab v2 guide
+- `laziGoDocs/product/brief.md` — product overview
+- `laziGoDocs/ux/onboarding-flow.md` — user journey, no-gate design
+
+### Legacy (docs/)
+- `docs/scoring.md` — scoring formula (partially outdated — see laziGoDocs)
 - `docs/data-quality.md` — OSM pipeline, tag vocabulary, venue status
-- `docs/api-endpoints.md` — API reference
-- `docs/database.md` — tables, migrations (001-012)
+- `docs/api-endpoints.md` — API reference (partially outdated — see laziGoDocs)
+- `docs/database.md` — tables, migrations 001-012 (see laziGoDocs for 013-019)
 - `docs/project-status.md` — full project state, decisions, roadmap
 
 ### Research
@@ -181,19 +198,11 @@ Vitest via `vitest-angular` (Angular 21 default). Zoneless. ~2 дня total.
 - [ ] Performance: LCP, FID, CLS (Lighthouse audit на проде)
 - [ ] i18n: проверить все 3 локали (ru/en/ka) — пропущенные ключи, encoding
 
-#### 0.5 Documentation
-- [ ] **Решить**: docs локально (markdown в репо) vs Notion vs оба
-  - Локально: version-controlled, рядом с кодом, grep-able, offline
-  - Notion: visual, shareable, non-dev friendly, search
-  - Рекомендация: **код-доки в репо** (API, architecture, decisions), **product/user доки в Notion** (roadmap, specs, analytics)
-- [ ] Актуализировать `docs/` в репо:
-  - `docs/api-endpoints.md` — добавить events/import, import-enrichment
-  - `docs/database.md` — добавить миграции 016-017, event_sources, текущую схему
-  - `docs/scoring.md` — актуальный scoring formula, event vs place weighting
-  - `docs/project-status.md` — обновить с текущими цифрами
+#### 0.5 Documentation — PARTIALLY DONE
+- [x] **laziGoDocs/** created — structured by topic (9 docs, 7 sections)
 - [ ] `.workbench/` cleanup — удалить устаревшие specs, оставить актуальные
 - [ ] README.md — quick start для нового разработчика (setup, run, deploy)
-- [ ] Notion MCP интеграция — подключить Claude Code к Notion для спек и доков. `@notionhq/notion-mcp-server` + API key. После стабилизации.
+- [ ] Notion MCP интеграция (after stabilization)
 
 #### 0.6 Deferred (не делаем пока, зависимости или нужны метрики)
 - [ ] `closesAt` на бэке — парсинг opening_hours.periods → close time в Asia/Tbilisi. Edge cases: 24/7, holidays, без periods. ~2ч. Делать в Batch 3 карточек.
@@ -215,21 +224,20 @@ Vitest via `vitest-angular` (Angular 21 default). Zoneless. ~2 дня total.
 - [ ] Bolt такси — нет public API/deeplink. Идея: кнопка "Такси" → копирует адрес в clipboard + открывает приложение. Универсально для любого такси-провайдера.
 - [ ] Такси UX улучшение — вместо отдельных кнопок провайдеров: одна кнопка "Такси" → копирует адрес/координаты → toast "Адрес скопирован" → открывает выбранное такси-приложение. Работает для Bolt, Yandex, любого.
 
-### Phase A: Data Foundation — ✅ COMPLETE (11/11)
+### Phase A: Data Foundation — ✅ COMPLETE + DEPLOYED (2026-07-19)
 Full spec: `.workbench/specs/phase-A-data-spec.md`
-**⚠️ ПЕРЕД МЕРЖЕМ В MAIN: миграция 018 на прод + osm_id backfill + re-enrich Enterprise (priceLevel) + map-facets + gemini-enrich + sync-by-osm + recalculate-idf. Без этого прод БД не совпадает с кодом.**
-- [x] **A0: tkt.ge + biletebi.ge event ingestion** — DONE. Push-model deployed.
-- [ ] A6: price_level в Enterprise field mask (1ч, можно сразу)
-- [ ] A9: Google types → facet_cuisine/format маппинг (4ч, бесплатно)
-- [ ] A1: osm_id migration (018) + бэкфилл (3-4ч)
-- [ ] A2: enriched_at timestamp на places (1ч)
-- [x] ~~A5: sync-by-osm~~ — DONE. Replaces coord-based. 1,729/1,729 synced. `tools/sync-atmosphere-to-prod.ts`
-- [x] ~~A3: enrichment refresh cron~~ — DONE. Sunday 03:00 UTC, 200 stale/week, ~$4/mo. + impression maintenance cron 05:00 UTC.
-- [x] ~~A4: stale hours policy~~ — DONE. enriched_at > 30 days → openStatus=undefined → "Часы не подтверждены".
-- [x] ~~A7: budget controls~~ — DONE. Prepay set up.
-- [x] ~~A8: Gemini enrichment~~ — DONE. 3,168/3,168 enriched (atmosphere 100%, occasion 100%, role 100%). ~$0.30. IDF recalculated: 131 facets.
-- [ ] A10: facet_idf таблица + cron (2ч, после A8+A9)
-Gate: price_tier ≥70%, facet_cuisine ≥50% food, facet_idf computed
+**DEPLOYED TO PROD**: migration 018+019, osm_id backfill (3168/3168), map-facets (69), gemini sync (1729), IDF (83 facets).
+- [x] A0: tkt.ge + biletebi.ge event ingestion — push-model
+- [x] A1: osm_id migration (018) + backfill (3168/3168)
+- [x] A2: enriched_at timestamp on places
+- [x] A3: enrichment refresh cron (Sunday 03:00 UTC)
+- [x] A4: stale hours policy (30-day TTL)
+- [x] A5: sync-by-osm (1729 venues synced to prod)
+- [x] A7: budget controls (prepay)
+- [x] A8: Gemini enrichment (3168/3168, atmosphere+occasion 100%)
+- [x] A9: Google types → facet mapping (69 facets)
+- [x] A10: facet_idf table + daily cron (83 facets on prod)
+- [ ] A6: price_level в Enterprise field mask (deferred — low coverage)
 
 ### Phase F1: Freshness & Venue Negative — ✅ COMPLETE
 Full spec: `.workbench/specs/phase-F1-freshness-spec.md`
@@ -265,7 +273,7 @@ Full spec: `.workbench/specs/collaborative-filtering-strategy.md`
 - [ ] Journey planner ("Спланируй день" — schema ready in A8)
 - [ ] Weather-aware, gamification, curator network
 
-### Personalization Validation — ✅ GATE PASSED (16/16 green)
+### Personalization Validation — ✅ GATE PASSED (16/16 green) + DEPLOYED
 Full spec: `.workbench/specs/personalization-validation-spec.md`
 - [x] Fixture venue set (15 venues) + IDF values
 - [x] Seed injection (fixedSeed on dithering/epsilon, /explain only)
@@ -273,7 +281,11 @@ Full spec: `.workbench/specs/personalization-validation-spec.md`
 - [x] McDonald's acceptance test (5/5): outranks, not zero, category floor, w_personal ramp
 - [x] Preference-recovery (2/2): monotonic convergence, upscale>cheap cosine
 - [x] Invariant suite (9/9): monotonic-aggregate, hide-locality×2, determinism, distinct-users, IDF, cold-start×2, price-tier
-- [ ] Dev dashboard `/dev/reco-lab` (deferred — tests sufficient for merge)
+- [x] Dev dashboard `/dev/reco-lab` — DONE: 5 action types, company/pet/localType, pipeline parity
+- [x] Explain endpoint parity with discover() — budget, interest, availability, impression, diversity filters
+- [x] Identity consistency audit — 5 fixes (hash algorithm, race condition, interceptor, landing page)
+- [x] Migration 019 — interaction_action enum (route, taxi, card_click, decide_open)
+- [x] Explanations on cards — inline compact text
 
 ### Backend Testing & Documentation (after each phase, before merge)
 - [ ] **Unit tests**: cover every service with Vitest (see `.workbench/specs/testing-strategy.md`)
@@ -336,12 +348,14 @@ Run order: Pro → Enterprise → Atmosphere (each phase needs the previous).
 
 **Important**: limit=100-200 max from external URL (Railway proxy timeout). From Railway Console use `node -e "fetch('http://localhost:3000/...', {method:'POST'}).then(r=>r.json()).then(console.log)"` (no curl in container).
 
-**Prod status (2026-07-16)**:
-- Pro matched: ~684 (via API) + 572 (via coord sync) = **~1,256 venues with ratings**
-- Local: 1,755. Gap: ~500 (venues with coord collisions or no match)
-- Atmosphere: NOT run (allowsDogs/goodForChildren = 0 on prod)
-- `locationRestriction` fix deployed — future enrichment runs on prod directly
-- Coord-based sync done — `import-enrichment` endpoint works, remove after osm_id migration
+**Prod status (2026-07-19)**:
+- Pro matched: ~1,256 venues with ratings
+- Facets synced: 1,729 venues (atmosphere, occasion via Gemini sync)
+- IDF computed: 83 facets
+- osm_id backfill: 3,168/3,168
+- Migrations: 001-019 all applied
+- Personalization: LIVE — taste profiles, impression discount, explanations on cards
+- Atmosphere: 524 allowsDogs + 1,210 goodForChildren synced via attributes JSONB
 
 ## Cost Tracking
 
