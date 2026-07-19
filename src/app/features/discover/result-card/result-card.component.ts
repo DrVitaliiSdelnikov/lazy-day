@@ -305,7 +305,7 @@ export class ResultCardComponent {
   }
 
   crossInterest(): string | null {
-    const expl = this.card().explanations;
+    const expl = this.card().explanations ?? [];
     const also = expl.find(e => e.type === 'also_has');
     return also?.label ?? null;
   }

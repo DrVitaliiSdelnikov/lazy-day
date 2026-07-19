@@ -962,10 +962,9 @@ export class RecommendationService {
       return locale === 'ka' ? 'შესაფერისია' : locale === 'en' ? 'Great fit' : 'Подходит';
     }
 
-    // High interest match
-    if (c.interestScore > 0.6) {
-      return locale === 'ka' ? 'ემთხვევა ინტერესებს' : locale === 'en' ? 'Matches your interest' : 'Совпадает с интересом';
-    }
+    // High interest match — only show when no active preset filter
+    // (otherwise every card says "matches interest" which is noise)
+    // Skip this label — let vibe/company/nearby handle it
 
     // Nearby
     if (c.distance_m != null && c.distance_m < 500) {
