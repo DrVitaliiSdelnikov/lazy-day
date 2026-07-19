@@ -51,9 +51,9 @@ import { LdIconComponent } from '../../../core/components/ld-icon.component';
           }
         </p>
 
-        <!-- Why label (personalized context) -->
-        @if (card().whyLabel) {
-          <p class="card__why">{{ card().whyLabel }}</p>
+        <!-- Explanations (compact inline) -->
+        @if (explanationLine()) {
+          <p class="card__why">{{ explanationLine() }}</p>
         }
 
         <!-- Slot 3: status (always one line) -->
@@ -308,6 +308,20 @@ export class ResultCardComponent {
     const expl = this.card().explanations ?? [];
     const also = expl.find(e => e.type === 'also_has');
     return also?.label ?? null;
+  }
+
+  /** Compact one-liner from explanations. Skips walk_time (already in meta) and also_has (in meta). */
+  explanationLine(): string | null {
+    const expl = this.card().explanations ?? [];
+    const skip = new Set(['walk_time', 'also_has']);
+    const parts = expl.filter(e => !skip.has(e.type)).map(e => e.label);
+    if (!parts.length) {
+      return this.card().whyLabel ?? null;
+    }
+    const line = this.card().whyLabel
+      ? [this.card().whyLabel, ...parts].join(' · ')
+      : parts.join(' · ');
+    return line;
   }
 
   statusTone(): string {
