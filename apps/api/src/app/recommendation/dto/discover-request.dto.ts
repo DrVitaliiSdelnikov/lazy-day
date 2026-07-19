@@ -36,6 +36,10 @@ class ProfileDto {
   @IsNumber()
   @Min(0)
   budgetMax?: number;
+
+  @IsOptional()
+  @IsEnum(['tourist', 'first_time', 'visitor', 'local'])
+  localType?: string;
 }
 
 export class DiscoverRequestDto {

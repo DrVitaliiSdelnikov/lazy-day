@@ -214,7 +214,11 @@ export class RecommendationService {
   ) {}
 
   async discover(dto: DiscoverRequestDto) {
-    const baseRadiusM = dto.radiusM ?? 5000;
+    // F3.5: Tourist/local modifiers
+    const isTourist = dto.profile.localType === 'tourist' || dto.profile.localType === 'first_time';
+    const isLocal = dto.profile.localType === 'local';
+    const radiusMultiplier = isTourist ? 1.3 : isLocal ? 0.8 : 1.0;
+    const baseRadiusM = Math.round((dto.radiusM ?? 5000) * radiusMultiplier);
     const hiddenIds = dto.hiddenIds ?? [];
     const interests = dto.profile.interests;
     // Build expanded interest->tag maps once for the entire request
@@ -607,7 +611,9 @@ export class RecommendationService {
     const quality = Number(c.quality_score) || 0.5;
     const source = 0.6;
 
-    const CHAIN_SCORE_MULTIPLIER = 0.85;
+    // F3.5: Tourist softer on chains, local stricter
+    const lt = dto.profile.localType;
+    const CHAIN_SCORE_MULTIPLIER = (lt === 'tourist' || lt === 'first_time') ? 0.90 : lt === 'local' ? 0.80 : 0.85;
 
     let score =
       WEIGHTS.interestMatch * interestScore +

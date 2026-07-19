@@ -129,6 +129,7 @@ import { ThemeService, ThemeName } from '../../core/services/theme.service';
       <!-- Links -->
       <section class="settings__card">
         <button class="settings__link" (click)="openFeedback()">{{ 'settings.feedback' | translate }}</button>
+        <button class="settings__link" (click)="howItWorksOpen.set(true)">{{ 'settings.how_it_works' | translate }}</button>
         <a routerLink="/privacy" class="settings__link">{{ 'settings.privacy' | translate }}</a>
         <div class="settings__link settings__link--muted">{{ 'settings.about' | translate }}</div>
       </section>
@@ -153,6 +154,20 @@ import { ThemeService, ThemeName } from '../../core/services/theme.service';
             (input)="feedbackContact.set($any($event.target).value)" style="width:100%;margin-bottom:12px" />
           <button class="ld-btn ld-btn--primary" style="width:100%" [disabled]="!canSubmitFeedback()"
             (click)="submitFeedback()">{{ 'feedback.submit' | translate }}</button>
+        </div>
+      }
+
+      <!-- How it works (F3.3) -->
+      @if (howItWorksOpen()) {
+        <div class="ld-sheet-backdrop ld-sheet-backdrop--visible" (click)="howItWorksOpen.set(false)"></div>
+        <div class="ld-sheet ld-sheet--visible">
+          <div class="ld-sheet__handle"></div>
+          <h3 style="margin: 0 0 12px; font-size: 16px">{{ 'how.title' | translate }}</h3>
+          <p class="how__line">{{ 'how.learn' | translate }}</p>
+          <p class="how__line">{{ 'how.explore' | translate }}</p>
+          <p class="how__line">{{ 'how.hidden' | translate }}</p>
+          <p class="how__line">{{ 'how.edit' | translate }}</p>
+          <p class="how__line">{{ 'how.local' | translate }}</p>
         </div>
       }
 
@@ -338,6 +353,13 @@ import { ThemeService, ThemeName } from '../../core/services/theme.service';
       gap: 6px;
     }
 
+    .how__line {
+      font-size: 13px;
+      color: var(--ld-text-2);
+      margin: 0 0 8px;
+      line-height: 1.5;
+    }
+
     @media (min-width: 1024px) {
       .settings {
         display: grid;
@@ -359,6 +381,8 @@ export class SettingsComponent implements OnInit {
   categories = signal<CategoryNode[]>([]);
   editingInterests = signal(false);
   budgetValue = signal(0);
+
+  howItWorksOpen = signal(false);
 
   // Taste profile (F3.2)
   tasteLoaded = signal(false);

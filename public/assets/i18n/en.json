@@ -100,7 +100,8 @@
     "taste_title": "Your taste",
     "taste_likes": "You seem to like:",
     "taste_dislikes": "Steering away from:",
-    "taste_reset": "Reset taste"
+    "taste_reset": "Reset taste",
+    "how_it_works": "How it works"
   },
   "company": {
     "solo": "Solo",
@@ -264,6 +265,14 @@
     "learn_more": "Learn more",
     "accept": "Accept",
     "decline": "Essentials only"
+  },
+  "how": {
+    "title": "How LaziGo picks for you",
+    "learn": "• We learn from your taps, saves, and routes",
+    "explore": "• We mix in new places — you might discover something unexpected",
+    "hidden": "• Hidden places won't appear again",
+    "edit": "• Your taste is visible and editable in your profile",
+    "local": "• Everything is stored on your device"
   },
   "card": {
     "hours_unknown": "Hours not confirmed"
