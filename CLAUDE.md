@@ -231,16 +231,10 @@ Full spec: `.workbench/specs/phase-A-data-spec.md`
 - [ ] A10: facet_idf таблица + cron (2ч, после A8+A9)
 Gate: price_tier ≥70%, facet_cuisine ≥50% food, facet_idf computed
 
-### Phase F1: Freshness & Venue Negative (parallel with A) — ~12ч
+### Phase F1: Freshness & Venue Negative — ✅ COMPLETE
 Full spec: `.workbench/specs/phase-F1-freshness-spec.md`
-- [ ] F1.1: impression_agg таблица (one row per user+venue, UPDATE)
-- [ ] F1.2: impression discount (0.85^unengaged, 24h gate ×0.6)
-- [ ] F1.3: session dithering (log(rank) + noise, top-2 stable)
-- [ ] F1.4: epsilon explore (1/8 slots, cold venue bonus, "новое место рядом")
-- [ ] F1.5: favorite exception (saved не топятся, re-surface 7-10 дней)
-- [ ] F1.6: adaptive radius при exhausted pool
-- [ ] F1.7: venue-level negative (hide → unengaged=100)
-Gate: top-1 repeat between sessions <30%
+ImpressionService: `apps/api/src/app/recommendation/impression.service.ts`
+All 7 tasks done: impression_agg, discount (0.85^n), dithering, epsilon (1/8), favorites, adaptive radius, venue negative (hide→100).
 
 ### Phase F2: Faceted Personalization (after A + F1) — ~12ч
 Full spec: `.workbench/specs/phase-F2-personalization-spec.md`
