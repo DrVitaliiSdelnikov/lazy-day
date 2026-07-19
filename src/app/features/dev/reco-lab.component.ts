@@ -50,11 +50,18 @@ interface ExplainResponse {
       <!-- Controls -->
       <div class="lab__controls">
         <select (change)="setInterest($event)">
+          <option value="">All (no filter)</option>
           <option value="food">Food</option>
           <option value="nightlife">Nightlife</option>
           <option value="culture">Culture</option>
           <option value="nature">Nature</option>
-          <option value="">All (no filter)</option>
+          <option value="spa">Spa / Bath</option>
+          <option value="gym">Gym</option>
+          <option value="sports">Sports</option>
+          <option value="shopping">Shopping</option>
+          <option value="entertainment">Entertainment</option>
+          <option value="family">Family</option>
+          <option value="active">Active</option>
         </select>
         <button class="lab__btn" (click)="load()">Load</button>
         <button class="lab__btn lab__btn--danger" (click)="resetProfile()">Reset Profile</button>
@@ -91,13 +98,14 @@ interface ExplainResponse {
               <tr>
                 <th>#</th>
                 <th>Name</th>
-                <th>Score</th>
-                <th>Int</th>
-                <th>Dist</th>
-                <th>Time</th>
-                <th>Pers</th>
-                <th>Price</th>
-                <th>Atmosphere</th>
+                <th title="Final weighted score = sum of all components">Score</th>
+                <th title="Interest match (0.45): how well venue tags match selected category">Int</th>
+                <th title="Distance decay (0.25): closer = higher, 0 at radius edge">Dist</th>
+                <th title="Time fit (0.15): open now = 1.0, closes soon = partial, closed = 0">Time</th>
+                <th title="Personalization (0→0.20): cosine similarity of venue facets vs your taste profile. Grows with signals.">Pers</th>
+                <th title="Price boost: gaussian match between venue price tier and your preferred price">Price</th>
+                <th title="Atmosphere facets from Gemini enrichment">Atmosphere</th>
+                <th title="Why this venue ranks high — top matching facets from your profile">Why</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -105,17 +113,23 @@ interface ExplainResponse {
               @for (r of data()!.results.slice(0, 30); track r.venueId) {
                 <tr [class.lab__row--explore]="r.flags.isExplore" [class.lab__row--chain]="r.flags.isChain">
                   <td>{{ r.rank }}</td>
-                  <td class="lab__name">{{ r.name }}</td>
-                  <td class="lab__score">{{ r.finalScore.toFixed(3) }}</td>
-                  <td>{{ r.components.interest.toFixed(3) }}</td>
+                  <td class="lab__name" [title]="r.category + ' | ' + (r.facets.cuisine?.join(', ') || '-')">{{ r.name }}</td>
+                  <td class="lab__score" [title]="'Category: ' + r.category + (r.flags.isExplore ? ' | EXPLORE slot' : '') + (r.flags.isChain ? ' | chain ×0.85' : '')">{{ r.finalScore.toFixed(3) }}</td>
+                  <td [title]="'Tags matched to interest category'">{{ r.components.interest.toFixed(3) }}</td>
                   <td>{{ r.components.distance.toFixed(3) }}</td>
-                  <td>{{ r.components.time.toFixed(3) }}</td>
-                  <td class="lab__pers">{{ r.components.personalization.toFixed(3) }}</td>
-                  <td>{{ r.components.priceBoost.toFixed(3) }}</td>
-                  <td class="lab__atm">{{ r.facets.atmosphere?.join(', ') || '-' }}</td>
+                  <td [title]="r.components.time.toFixed(3) === '0.000' ? 'Closed or no hours data' : 'Open / opening soon'">{{ r.components.time.toFixed(3) }}</td>
+                  <td class="lab__pers" [title]="facetMatchTooltip(r)">{{ r.components.personalization.toFixed(3) }}</td>
+                  <td [title]="'Price tier: ' + (r.facets.priceTier ?? 'unknown')">{{ r.components.priceBoost.toFixed(3) }}</td>
+                  <td class="lab__atm" [title]="(r.facets.atmosphere?.join(', ') || '-') + ' | ' + (r.facets.occasion?.join(', ') || '-')">{{ r.facets.atmosphere?.join(', ') || '-' }}</td>
+                  <td class="lab__why">
+                    @for (reason of topReasons(r); track reason.label) {
+                      <span class="lab__reason" [class.lab__reason--neg]="reason.weight < 0">{{ reason.label }}</span>
+                    }
+                    @if (!topReasons(r).length) { <span class="lab__reason lab__reason--none">—</span> }
+                  </td>
                   <td>
-                    <button class="lab__action" (click)="simulateLike(r.venueId)">♡</button>
-                    <button class="lab__action lab__action--hide" (click)="simulateHide(r.venueId)">✕</button>
+                    <button class="lab__action" [class.lab__action--liked]="likedIds().has(r.venueId)" (click)="simulateLike(r.venueId)">{{ likedIds().has(r.venueId) ? '♥' : '♡' }}</button>
+                    <button class="lab__action lab__action--hide" [class.lab__action--hidden]="hiddenIds().has(r.venueId)" (click)="simulateHide(r.venueId)">✕</button>
                   </td>
                 </tr>
               }
@@ -162,7 +176,16 @@ interface ExplainResponse {
     .lab__action {
       border: none; background: none; cursor: pointer; font-size: 14px; padding: 2px 4px;
     }
+    .lab__why { max-width: 200px; }
+    .lab__reason {
+      display: inline-block; background: #e3f2fd; color: #1565c0; padding: 1px 5px;
+      border-radius: 3px; font-size: 10px; margin: 1px 2px;
+    }
+    .lab__reason--neg { background: #ffebee; color: #c62828; }
+    .lab__reason--none { background: transparent; color: #ccc; }
+    .lab__action--liked { color: #e91e63; }
     .lab__action--hide { color: red; }
+    .lab__action--hidden { color: #999; }
   `,
 })
 export class RecoLabComponent implements OnInit {
@@ -172,9 +195,11 @@ export class RecoLabComponent implements OnInit {
 
   readonly loading = signal(false);
   readonly data = signal<ExplainResponse | null>(null);
+  readonly likedIds = signal<Set<string>>(new Set());
+  readonly hiddenIds = signal<Set<string>>(new Set());
   readonly Math = Math;
 
-  private interest = 'food';
+  private interest = '';
   private readonly devDeviceId = 'dev-reco-lab';
   private devDeviceHash = '';
   private readonly headers = { 'x-device-id': this.devDeviceId };
@@ -191,6 +216,7 @@ export class RecoLabComponent implements OnInit {
 
   setInterest(event: Event) {
     this.interest = (event.target as HTMLSelectElement).value;
+    this.load();
   }
 
   load() {
@@ -226,15 +252,22 @@ export class RecoLabComponent implements OnInit {
   }
 
   simulateLike(venueId: string) {
+    const s = new Set(this.likedIds());
+    s.add(venueId);
+    this.likedIds.set(s);
+
     this.http.post(`${this.baseUrl}/interactions`, {
       sessionId: 'dev', cardType: 'place', cardId: venueId, action: 'save',
     }, { headers: this.headers }).subscribe(() => {
-      // Reload after taste profile update (give backend time)
       setTimeout(() => this.load(), 500);
     });
   }
 
   simulateHide(venueId: string) {
+    const s = new Set(this.hiddenIds());
+    s.add(venueId);
+    this.hiddenIds.set(s);
+
     this.http.post(`${this.baseUrl}/interactions`, {
       sessionId: 'dev', cardType: 'place', cardId: venueId, action: 'hide',
     }, { headers: this.headers }).subscribe(() => {
@@ -242,7 +275,22 @@ export class RecoLabComponent implements OnInit {
     });
   }
 
+  topReasons(r: ExplainResult): Array<{ label: string; weight: number }> {
+    return Object.entries(r.facetMatch || {})
+      .map(([k, v]) => ({ label: k.split(':')[1] || k, weight: v as number }))
+      .sort((a, b) => Math.abs(b.weight) - Math.abs(a.weight))
+      .slice(0, 3);
+  }
+
+  facetMatchTooltip(r: ExplainResult): string {
+    const entries = Object.entries(r.facetMatch || {});
+    if (!entries.length) return 'No profile yet';
+    return entries.map(([k, v]) => `${k}: ${(v as number).toFixed(2)}`).join('\n');
+  }
+
   resetProfile() {
+    this.likedIds.set(new Set());
+    this.hiddenIds.set(new Set());
     this.http.patch(`${this.baseUrl}/recommendations/taste-profile`, { reset: true }, { headers: this.headers })
       .subscribe(() => this.load());
   }

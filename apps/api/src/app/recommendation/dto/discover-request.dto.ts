@@ -78,4 +78,8 @@ export class DiscoverRequestDto {
   @IsOptional()
   @IsBoolean()
   forcedNow?: boolean;
+
+  @IsOptional()
+  @IsString()
+  deviceIdHash?: string;
 }

@@ -491,6 +491,7 @@ export class AdLandingComponent implements OnInit {
       profile: { interests, company: companyVal, hasPet: this.selectedPet() },
       hiddenIds: [],
       locale: this.currentLang(),
+      deviceIdHash: this.profileStore.deviceIdHash() || undefined,
     }).subscribe(res => {
       this.exampleCards.set(res.cards.filter(c => c.type === 'place' && !c.isChain).slice(0, 6));
       this.eventCards.set(res.cards.filter(c => c.type === 'event').slice(0, 3));

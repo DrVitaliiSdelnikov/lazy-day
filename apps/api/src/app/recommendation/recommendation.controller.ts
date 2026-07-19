@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, Headers, Param, Patch, Post } from '@nestjs/common';
+import { createHash } from 'crypto';
 import { RecommendationService } from './recommendation.service';
 import { TasteProfileService } from './taste-profile.service';
 import { DiscoverRequestDto } from './dto/discover-request.dto';
@@ -26,10 +27,14 @@ export class RecommendationController {
     return this.service.more(sessionId);
   }
 
+  private hashDeviceId(deviceId: string): string {
+    return createHash('sha256').update(deviceId).digest('hex').slice(0, 16);
+  }
+
   /** F3.2: Get user's taste profile for settings UI */
   @Get('taste-profile')
   async getTasteProfile(@Headers('x-device-id') deviceId: string) {
-    const profile = await this.tasteProfile.loadProfile(deviceId);
+    const profile = await this.tasteProfile.loadProfile(this.hashDeviceId(deviceId));
     if (!profile) return { facets: {}, price: {}, signalCount: 0 };
 
     // Flatten weights for UI: [{type, value, weight}] sorted by weight desc
@@ -56,19 +61,20 @@ export class RecommendationController {
     @Body() body: { removeFacet?: { type: string; value: string }; removeNegative?: { type: string; value: string }; reset?: boolean },
   ) {
     if (!deviceId) return { error: 'device-id required' };
+    const hash = this.hashDeviceId(deviceId);
 
     if (body.reset) {
-      await this.tasteProfile.resetProfile(deviceId);
+      await this.tasteProfile.resetProfile(hash);
       return { status: 'reset' };
     }
 
     if (body.removeFacet) {
-      await this.tasteProfile.removeFacetWeight(deviceId, body.removeFacet.type, body.removeFacet.value);
+      await this.tasteProfile.removeFacetWeight(hash, body.removeFacet.type, body.removeFacet.value);
       return { status: 'removed' };
     }
 
     if (body.removeNegative) {
-      await this.tasteProfile.removeNegative(deviceId, body.removeNegative.type, body.removeNegative.value);
+      await this.tasteProfile.removeNegative(hash, body.removeNegative.type, body.removeNegative.value);
       return { status: 'removed' };
     }
 

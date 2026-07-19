@@ -1,5 +1,6 @@
 import { inject, Injectable, isDevMode } from '@angular/core';
 import { UtmService } from './utm.service';
+import { ProfileStore } from '../stores/profile.store';
 
 export interface TrackEvent {
   eventType: string;
@@ -13,7 +14,7 @@ export interface TrackEvent {
 export class InteractionService {
   private buffer: TrackEvent[] = [];
   private readonly sessionId = crypto.randomUUID();
-  private readonly deviceId = this.getOrCreateDeviceId();
+  private readonly profileStore = inject(ProfileStore);
   private readonly utm = inject(UtmService);
   private readonly acquisition = this.loadAcquisition();
   private flushTimer: ReturnType<typeof setInterval>;
@@ -78,7 +79,8 @@ export class InteractionService {
     this.buffer = [];
 
     const consentState = localStorage.getItem('ld_consent') || 'pending';
-    const body = JSON.stringify({ sessionId: this.sessionId, deviceId: this.deviceId, consentState, events });
+    const deviceId = this.profileStore.deviceId();
+    const body = JSON.stringify({ sessionId: this.sessionId, deviceId, consentState, events });
 
     if (isDevMode()) {
       console.log(`[Track] Flushing ${events.length} events`, events.map(e => e.eventType));
@@ -95,7 +97,7 @@ export class InteractionService {
       // Fallback: fetch with keepalive
       fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-device-id': this.deviceId },
+        headers: { 'Content-Type': 'application/json', 'x-device-id': deviceId },
         body,
         keepalive: true,
       }).catch(() => {});
@@ -109,17 +111,4 @@ export class InteractionService {
     } catch { return null; }
   }
 
-  private getOrCreateDeviceId(): string {
-    // Prefer server-issued uid (stable across ITP)
-    const serverUid = localStorage.getItem('ld_server_uid');
-    if (serverUid) return serverUid;
-
-    const key = 'ld_device_id';
-    let id = localStorage.getItem(key);
-    if (!id) {
-      id = crypto.randomUUID();
-      localStorage.setItem(key, id);
-    }
-    return id;
-  }
 }

@@ -160,7 +160,7 @@ import { ThemeService, ThemeName } from '../../core/services/theme.service';
       <!-- How it works (F3.3) -->
       @if (howItWorksOpen()) {
         <div class="ld-sheet-backdrop ld-sheet-backdrop--visible" (click)="howItWorksOpen.set(false)"></div>
-        <div class="ld-sheet ld-sheet--visible">
+        <div class="ld-sheet ld-sheet--open">
           <div class="ld-sheet__handle"></div>
           <h3 style="margin: 0 0 12px; font-size: 16px">{{ 'how.title' | translate }}</h3>
           <p class="how__line">{{ 'how.learn' | translate }}</p>

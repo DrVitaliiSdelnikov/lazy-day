@@ -28,7 +28,7 @@ export class ProfileSyncService {
       localStorage.setItem('ld_server_uid', localUid);
 
       const oldDeviceId = localStorage.getItem('ld_device_id');
-      const deviceIdHash = oldDeviceId ? this.hashDeviceId(oldDeviceId) : undefined;
+      const deviceIdHash = oldDeviceId ? await this.hashDeviceId(oldDeviceId) : undefined;
 
       const state = this.profileStore.snapshot();
 
@@ -128,12 +128,8 @@ export class ProfileSyncService {
     });
   }
 
-  private hashDeviceId(id: string): string {
-    // Simple hash for linking old device_id to server user
-    let hash = 0;
-    for (let i = 0; i < id.length; i++) {
-      hash = ((hash << 5) - hash + id.charCodeAt(i)) | 0;
-    }
-    return Math.abs(hash).toString(16).slice(0, 16);
+  private async hashDeviceId(id: string): Promise<string> {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(id));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
   }
 }

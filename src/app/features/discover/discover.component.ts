@@ -1082,6 +1082,7 @@ export class DiscoverComponent implements OnInit {
         hiddenIds: this.profileStore.hiddenIds(),
         locale: this.profileStore.locale(),
         forcedNow: this.forcedNow() || undefined,
+        deviceIdHash: this.profileStore.deviceIdHash() || undefined,
       })
       .subscribe({
         next: (res) => {
@@ -1356,6 +1357,7 @@ export class DiscoverComponent implements OnInit {
         profile: { interests, company, hasPet: this.profileStore.hasPet() || undefined },
         hiddenIds: this.profileStore.hiddenIds(),
         locale: this.profileStore.locale(),
+        deviceIdHash: this.profileStore.deviceIdHash() || undefined,
       })
       .subscribe({
         next: (res) => {

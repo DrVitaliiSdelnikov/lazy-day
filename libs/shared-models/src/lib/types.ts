@@ -75,6 +75,7 @@ export interface DiscoverRequest {
   hiddenIds: string[];
   locale: Locale;
   forcedNow?: boolean;
+  deviceIdHash?: string;
 }
 
 export interface DiscoverMeta {

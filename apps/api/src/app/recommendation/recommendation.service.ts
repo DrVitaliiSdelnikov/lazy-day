@@ -495,6 +495,16 @@ export class RecommendationService {
 
     const scored = candidates.map((c) => this.scoreCandidate(c, dto, baseRadiusM, expandedWeights));
 
+    // F2: Apply personalization + price boost BEFORE sorting (same as discover())
+    if (wPersonal > 0 && userProfile) {
+      for (const c of scored) {
+        const venueFacets = this.tasteProfile.extractFacetsFromCandidate(c);
+        const personalScore = this.tasteProfile.computePersonalizationScore(userProfile, venueFacets);
+        c.score += wPersonal * personalScore;
+        c.score += this.tasteProfile.priceTierBoost(userProfile, (c as any).facet_price_tier);
+      }
+    }
+
     // Build decomposition for each
     const results = scored
       .sort((a, b) => b.score - a.score)
@@ -513,9 +523,19 @@ export class RecommendationService {
           }
         }
 
+        const isGeorgian = (s: string) => /[\u10A0-\u10FF]/.test(s);
+        let localName: string;
+        if (dto.locale === 'ka') {
+          localName = c.title_ka ?? c.title;
+        } else if (dto.locale === 'en') {
+          localName = c.title_en ?? (isGeorgian(c.title) ? c.title_en ?? c.title : c.title);
+        } else {
+          localName = (!isGeorgian(c.title) ? c.title : null) ?? c.title_en ?? c.title;
+        }
+
         return {
           venueId: c.id,
-          name: c.title,
+          name: localName,
           type: c.type,
           category: c.category,
           rank: rank + 1,
