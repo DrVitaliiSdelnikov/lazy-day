@@ -265,6 +265,17 @@ Full spec: `.workbench/specs/collaborative-filtering-strategy.md`
 - [ ] Journey planner ("Спланируй день" — schema ready in A8)
 - [ ] Weather-aware, gamification, curator network
 
+### Personalization Validation (before merge)
+Full spec: `.workbench/specs/personalization-validation-spec.md`
+- [ ] Fixture venue set (15 venues, hand-assigned facets)
+- [ ] Seed injection (only on /explain, not main DTO)
+- [ ] Score-breakdown endpoint (`POST /recommendations/explain`)
+- [ ] McDonald's acceptance test (3 fine_dining likes → outranks McDonald's + category floor)
+- [ ] Preference-recovery test (IDF-adjusted hidden vector, monotonic convergence)
+- [ ] Invariant suite (7 tests: monotonic-aggregate, hide-locality, determinism, distinct-users, IDF rare>common, cold-start, price-tier)
+- [ ] Dev dashboard `/dev/reco-lab` (optional, after tests green)
+Gate: all tests green → merge to main
+
 ### Backend Testing & Documentation (after each phase, before merge)
 - [ ] **Unit tests**: cover every service with Vitest (see `.workbench/specs/testing-strategy.md`)
   - [ ] RecommendationService: scoreCandidate, timeFit, applyDiversity, generateExplanations
