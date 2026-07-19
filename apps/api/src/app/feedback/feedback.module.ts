@@ -6,9 +6,13 @@ import { FeedbackService } from './feedback.service';
 import { Interaction } from '../database/entities/interaction.entity';
 import { InteractionEvent } from '../database/entities/interaction-event.entity';
 import { Feedback } from '../database/entities/feedback.entity';
+import { RecommendationModule } from '../recommendation/recommendation.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Interaction, InteractionEvent, Feedback])],
+  imports: [
+    TypeOrmModule.forFeature([Interaction, InteractionEvent, Feedback]),
+    RecommendationModule,
+  ],
   controllers: [FeedbackController, UserFeedbackController],
   providers: [FeedbackService],
 })
