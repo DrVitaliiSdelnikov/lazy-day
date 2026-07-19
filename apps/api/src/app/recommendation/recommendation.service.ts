@@ -439,6 +439,7 @@ export class RecommendationService {
         photoUrl: c.photos?.[0],
         googlePlaceId: c.google_place_id,
         isChain: c.is_chain || false,
+        whyLabel: this.resolveWhyLabel(c, userProfile, wPersonal, dto.locale),
       };
     });
 
@@ -913,6 +914,59 @@ export class RecommendationService {
     if (locale === 'en') return 'Tomorrow';
     if (locale === 'ka') return 'ხვალ';
     return 'Завтра';
+  }
+
+  /**
+   * F3.1: Contextual "why" label — explains why this venue is shown.
+   * Priority: explore > saved > vibe match > company > interest > nearby.
+   */
+  private resolveWhyLabel(
+    c: ScoredCandidate,
+    profile: any,
+    wPersonal: number,
+    locale: string,
+  ): string | undefined {
+    // Explore slot
+    if ((c as any)._isExplore) {
+      return locale === 'ka' ? 'ახალი ადგილი ახლოს' : locale === 'en' ? 'New place nearby' : 'Новое место рядом';
+    }
+
+    // Personalized vibe match
+    if (profile && wPersonal > 0.05) {
+      const venueFacets = this.tasteProfile.extractFacetsFromCandidate(c);
+      const score = this.tasteProfile.computePersonalizationScore(profile, venueFacets);
+      if (score > 0.5) {
+        // Find top matching facet
+        const weights = profile.facet_weights ?? {};
+        let topFacet = '';
+        let topWeight = 0;
+        for (const { type, value } of venueFacets) {
+          const w = weights[type]?.[value] ?? 0;
+          if (w > topWeight) { topWeight = w; topFacet = value; }
+        }
+        if (topFacet) {
+          const facetLabel = lInterest(topFacet, locale) || topFacet;
+          return locale === 'ka' ? `თქვენი ვაიბი: ${facetLabel}` : locale === 'en' ? `Your vibe: ${facetLabel}` : `Ваш вайб: ${facetLabel}`;
+        }
+      }
+    }
+
+    // Company fit
+    if (c.companyFit === 'boosted') {
+      return locale === 'ka' ? 'შესაფერისია' : locale === 'en' ? 'Great fit' : 'Подходит';
+    }
+
+    // High interest match
+    if (c.interestScore > 0.6) {
+      return locale === 'ka' ? 'ემთხვევა ინტერესებს' : locale === 'en' ? 'Matches your interest' : 'Совпадает с интересом';
+    }
+
+    // Nearby
+    if (c.distance_m != null && c.distance_m < 500) {
+      return locale === 'ka' ? 'ახლოს თქვენთან' : locale === 'en' ? 'Near you' : 'Рядом с вами';
+    }
+
+    return undefined;
   }
 
   /**

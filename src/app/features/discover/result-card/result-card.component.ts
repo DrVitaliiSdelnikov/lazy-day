@@ -51,6 +51,11 @@ import { LdIconComponent } from '../../../core/components/ld-icon.component';
           }
         </p>
 
+        <!-- Why label (personalized context) -->
+        @if (card().whyLabel) {
+          <p class="card__why">{{ card().whyLabel }}</p>
+        }
+
         <!-- Slot 3: status (always one line) -->
         <div class="card__status" [class]="'card__status--' + statusTone()">
           @if (card().type === 'event') {
@@ -201,6 +206,15 @@ import { LdIconComponent } from '../../../core/components/ld-icon.component';
     .card__cross {
       color: var(--ld-text-3);
       font-style: italic;
+    }
+
+    .card__why {
+      font-size: 11px;
+      color: var(--ld-secondary);
+      margin: 4px 0 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .card__status {
