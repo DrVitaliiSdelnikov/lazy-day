@@ -152,10 +152,10 @@ export class ImpressionService {
    * F1.3: Session dithering — adds noise to ranks for variety.
    * Top-2 stable, rest get log-rank + seeded noise.
    */
-  applySessionDithering(scored: any[], deviceIdHash: string): void {
+  applySessionDithering(scored: any[], deviceIdHash: string, fixedSeed?: number): void {
     if (scored.length <= 2) return;
 
-    const seed = this.simpleHash(
+    const seed = fixedSeed ?? this.simpleHash(
       deviceIdHash + new Date().toISOString().slice(0, 13) + 'dither'
     );
     const rng = this.mulberry32(seed);
@@ -185,6 +185,7 @@ export class ImpressionService {
     allCandidates: any[],
     discountMap: Map<string, number>,
     deviceIdHash: string,
+    fixedSeed?: number,
   ): void {
     const slotIndex = Math.floor(1 / EPSILON_RATE); // position ~8
     if (cards.length < slotIndex) return;
@@ -206,7 +207,7 @@ export class ImpressionService {
     if (exploreCandidates.length === 0) return;
 
     // Seeded pick from top-5 explore candidates
-    const seed = this.simpleHash(deviceIdHash + Date.now().toString(36) + 'explore');
+    const seed = fixedSeed ?? this.simpleHash(deviceIdHash + Date.now().toString(36) + 'explore');
     const rng = this.mulberry32(seed);
     const tier = exploreCandidates.slice(0, Math.min(5, exploreCandidates.length));
     const pick = tier[Math.floor(rng() * tier.length)];
