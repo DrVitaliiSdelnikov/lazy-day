@@ -1,6 +1,6 @@
 # LaziGo — Project Status
 
-Last updated: 2026-07-18 (Phase 0 stabilization in progress)
+Last updated: 2026-07-19 (Personalization system complete, testing)
 
 ## What It Is
 
@@ -44,18 +44,28 @@ Cost:      ~$5/month infra + ~$35 one-time Google enrichment on prod
 | What | Count | Source | Last updated |
 |---|---|---|---|
 | Venues | 3,168 | OSM (Tbilisi full bbox incl. Lilo, Orkhevi) | July 10 |
+| osm_id coverage | 3,168/3,168 (100%) | Backfill from source_refs | July 19 |
 | Google-enriched (local) | 1,755 (55%) | Google Places API ($74 one-time) | July 8 |
 | Google-enriched (prod) | ~1,256 (40%) | API enrichment + coord sync | July 16 |
 | Opening hours | 1,794 (57%) | Google + OSM (local only) | July 8 |
 | Ratings (prod) | ~1,256 | Enterprise enrichment + coord sync | July 16 |
 | allowsDogs (local) | 524 | Google Atmosphere | July 8 |
 | goodForChildren (local) | 1,210 | Google Atmosphere | July 8 |
-| Atmosphere on prod | 0 | NOT synced yet | — |
+| Atmosphere on prod | 0 | NOT synced yet (sync-by-osm ready) | — |
+| **Facet: atmosphere** | **3,168 (100%)** | **Gemini Flash-Lite (~$0.30)** | **July 19** |
+| **Facet: occasion** | **3,168 (100%)** | **Gemini Flash-Lite** | **July 19** |
+| **Facet: cuisine** | **438** | **Google types mapping** | **July 19** |
+| **Facet: format** | **813** | **Google types mapping** | **July 19** |
+| **Facet: price_tier** | **1,710 (54%)** | **Gemini + Google price_level** | **July 19** |
+| **Facet: venue_role** | **3,168 (100%)** | **Gemini** | **July 19** |
+| **Facet: duration** | **3,168 (100%)** | **Gemini** | **July 19** |
+| **IDF facets** | **131** | **Cron-computed** | **July 19** |
 | Events | ~300+ | 5 sources (3 active, 2 push-model) | July 17 |
 | Chains flagged | 258 | OSM brand + 35 known chains | July 11 |
 | Names translated | 285 | Google Translate API (ka→en, ~$0.60) | July 13 |
-| Migrations | 17 | 001-017 (016=biletebi, 017=tkt.ge) | July 16 |
+| Migrations | 18 | 001-018 (018=facets+osm_id+impressions+taste) | July 19 |
 | Google types (unique) | 227 | From google_types[] field | July 18 |
+| Address coverage | 629/3,168 (20%) | OSM addr:street | — |
 
 ### Event Sources
 
@@ -300,6 +310,85 @@ Full checklist in CLAUDE.md. 9/12 done in 0.1, remaining:
 | A6 | Field mask audit (price_level!) | 30min |
 | A7 | Google Cloud budget controls | 30min |
 
+## DONE: Personalization System (feature/personalization branch, NOT merged)
+
+**31 tasks across 4 phases, ~30 commits, all on `feature/personalization` branch.**
+
+### Phase A — Data Foundation ✅ (11/11)
+- Migration 018: 15 new columns + 3 tables (facet_idf, impression_agg, user_taste_profile)
+- osm_id: 3,168/3,168 (100%) — stable sync key
+- Google types → facet_cuisine (438) + facet_format (813) — free mapping
+- Gemini Flash-Lite enrichment: atmosphere/occasion/role/duration 100% (~$0.30)
+- price_level in Enterprise field mask (ready for re-enrich)
+- enriched_at + 30-day refresh cron (Sunday 03:00 UTC)
+- Stale hours policy: enriched_at > 30d → "Часы не подтверждены"
+- IDF: 131 facets computed, daily cron
+- sync-by-osm endpoint (replaces coord-based)
+- Budget controls (prepay set up)
+
+### Phase F1 — Freshness ✅ (7/7)
+ImpressionService (`recommendation/impression.service.ts`):
+- impression_agg: one row per (user, venue), UPDATE not INSERT
+- Impression discount: 0.85^unengaged, 24h recency gate ×0.6
+- Session dithering: log(rank) + noise, top-2 stable
+- Epsilon explore: 1/8 slots, cold venue bonus, "Новое место рядом"
+- Favorite exception: saved venues skip discount
+- Adaptive radius: expand when pool exhausted
+- Venue-level negative: hide → unengaged=100 (≈ suppressed)
+
+### Phase F2 — Faceted Personalization ✅ (7/7)
+TasteProfileService (`recommendation/taste-profile.service.ts`):
+- user_taste_profile: JSONB weights + price_pref + neg_counters
+- Profile update: IDF-weighted EMA (decay 0.9), signal weights (save=1.0, route=0.7, click=0.3)
+- personalizationScore = cosine(profile, venue_facets), w_personal 0→0.20 ramp over 15 signals
+- Facet-level negative: hide → IDF attribution, threshold ≥2, floor -0.5
+- Price tier gaussian boost: β=0.06, never hard-exclude
+- Anti-bubble: streak + epsilon (no calibration on thin profiles)
+- Steck calibration: GATED for signal_count ≥ 10
+
+### Phase F3 — Transparency & Onboarding ✅ (6/6)
+- whyLabel on cards: resolveWhyLabel() — explore/vibe/company/nearby (6 templates, 3 locales)
+- Scrollable taste profile in settings: GET/PATCH /v1/recommendations/taste-profile
+- "How it works" info bottomsheet (5 bullets, i18n)
+- No-gate onboarding: discover shows feed immediately, no redirect
+- Tourist/local modifiers: radius ×1.3/×0.8, chain penalty 0.90/0.80
+- Tune card baseline at position 5 (existing FeedTuneBlock)
+
+### Scoring Pipeline (17 steps, post-personalization)
+```
+1. fetch candidates (places + events, bbox + haversine)
+2. hard filter (hidden, budget)
+3. base score (0.45×interest + 0.25×distance + 0.15×time + 0.10×quality + 0.05×source)
+   + company modifier + pet modifier × chain penalty
+3.5 + w_personal × cosine(profile, venue_facets)          [F2]
+3.6 + price_tier gaussian boost                            [F2]
+4. interest hard filter (strict/soft)
+5. availability filter (closed excluded)
+6. adaptive radius (expand if <5 or pool exhausted)
+7. × impression_discount (0.85^unengaged, 24h gate)       [F1]
+8. sort by score desc
+9. favorite re-surface                                     [F1]
+10. session dithering (log rank + noise)                   [F1]
+11. daily rotation (date-seed swap |Δ|<0.05)
+12. diversity filter (category streak, chain dedup)
+13. epsilon explore slot (1/8)                              [F1]
+14. build cards + whyLabel                                  [F3]
+15. record impressions async                                [F1]
+16. night fallback (tomorrow mode)
+```
+
+### Bugs Found During Testing (5 fixed, 3 known)
+See `.workbench/specs/personalization-bugs-found.md`
+
+### ⚠️ Before Merge to Main
+1. `POST /v1/health/migrate` on prod (migration 018)
+2. `npx tsx tools/backfill-osm-id.ts` on prod (osm_id)
+3. Re-enrich Enterprise with priceLevel
+4. `POST /v1/admin/ingestion/map-facets`
+5. `GEMINI_API_KEY` env var on Railway + `POST /v1/admin/ingestion/gemini-enrich`
+6. `npx tsx tools/sync-atmosphere-to-prod.ts` (atmosphere + facets)
+7. `POST /v1/admin/ingestion/recalculate-idf`
+
 ## Later: Phase B — Multi-source Enrichment
 
 | Task | Impact |
@@ -313,21 +402,18 @@ Full checklist in CLAUDE.md. 9/12 done in 0.1, remaining:
 
 | Task | Impact |
 |---|---|
-| "Been here" button | Ground-truth visited signal (CF prerequisite) |
-| Popularity prior (Bayesian-smoothed) | Hardest baseline to beat |
-| Segment-based Thompson Sampling | First personalization |
+| "Been here" button | Ground-truth visited signal |
 | Search/autocomplete | Usability |
-| Collections + "been here" badges | Virality + data moat |
+| Collections + badges | Virality + data moat |
 
-## v2 — Personalization + Scale
+## v2 — Scale
 
 | Task | Impact |
 |---|---|
 | Item-item co-occurrence + shrinkage (CF) | Recommendation quality |
-| Behavioral re-ranking | Quality |
-| Weather-aware scoring | Relevance |
-| City expansion (Batumi, Kutaisi via CityConfig) | Scale |
-| Local curator network | Deep moat |
+| City expansion (Batumi, Kutaisi) | Scale |
+| Journey planner ("Спланируй день" — schema ready) | Perceived value |
+| Weather-aware, gamification, curator network | Moat |
 
 ## Kill / Scale Criteria (deploy + 2 months)
 
@@ -352,16 +438,22 @@ lazigo.app (Cloudflare Pages, free CDN)
 
 api.lazigo.app (Railway EU West, Node 22, ~$5/mo)
   ├── NestJS 11 API
-  │   ├── Recommendation engine (9-step pipeline + chain penalty + rotation)
+  │   ├── Recommendation engine (17-step pipeline with personalization)
+  │   │   ├── ImpressionService (freshness: discount, dithering, epsilon, favorites)
+  │   │   └── TasteProfileService (cosine scoring, IDF-weighted profile, facet negative)
   │   ├── Cards service (Haversine distance + locale title fallback + priceLabel)
   │   ├── Auth (HttpOnly cookie, idempotent upsert, GDPR delete)
   │   ├── OG preview (dynamic HTML for messengers)
   │   ├── Interaction tracking (batch + single)
   │   ├── Feedback → Telegram forwarding
   │   ├── Event cron (daily 02:00 UTC, 3 active sources, health alerts)
+  │   ├── Enrichment refresh cron (Sunday 03:00 UTC, stale venues)
+  │   ├── Impression maintenance cron (daily 05:00 UTC, prune/decay)
   │   ├── Event import (push-model for Cloudflare-blocked sources)
   │   ├── Google enrichment (Pro + Enterprise + Atmosphere, locationRestriction)
-  │   ├── Enrichment sync (coord-based local→prod, temp endpoint)
+  │   ├── FacetMapperService (Google types → cuisine/format + IDF cron)
+  │   ├── GeminiEnrichmentService (atmosphere/occasion/role via Flash-Lite)
+  │   ├── Enrichment sync (osm_id-based local→prod)
   │   └── Admin endpoints (guarded, ADMIN_SECRET)
   └── PostgreSQL
       ├── 3,168 venues + ~1,256 Google-enriched on prod (1,755 local)
@@ -369,8 +461,11 @@ api.lazigo.app (Railway EU West, Node 22, ~$5/mo)
       ├── users (anon identity, profile, saved/hidden, consent)
       ├── interaction_events (behavioral tracking)
       ├── event_sources (5 sources, enabled/disabled, last_fetched_at)
+      ├── **impression_agg** (per user+venue freshness tracking)
+      ├── **user_taste_profile** (faceted preferences, IDF-weighted)
+      ├── **facet_idf** (131 facet weights, daily cron)
       ├── feedback table
-      └── 17 migrations
+      └── 18 migrations (018 = personalization schema)
 
 External workers:
   ├── tools/fetch-blocked-events.ts (tkt.ge + biletebi.ge → push to prod)
