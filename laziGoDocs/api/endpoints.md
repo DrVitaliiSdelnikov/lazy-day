@@ -75,3 +75,7 @@ Base URL: `https://api.lazigo.app/v1` (prod) / `http://localhost:3000/v1` (dev)
 }
 ```
 Actions: `save`, `hide`, `route`, `share`, `taxi`, `ticket_click`, `card_click`, `decide_open`
+
+Legacy actions (logged but don't update taste profile): `impression`, `click`, `clickout`
+
+DB: PostgreSQL enum `interaction_action` — extended in migration 019.

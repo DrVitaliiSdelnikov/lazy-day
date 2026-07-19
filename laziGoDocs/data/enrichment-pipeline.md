@@ -78,6 +78,7 @@ Stored in `facet_idf` table. Recalculated daily at 04:00 UTC by `FacetMapperServ
 | 016 | biletebi.ge event source |
 | 017 | tkt.ge event source |
 | 018 | Facets + personalization (facet columns, facet_idf, impression_agg, user_taste_profile, osm_id) |
+| 019 | Extend interaction_action enum (route, taxi, ticket_click, card_click, decide_open) |
 
 ## Cost
 

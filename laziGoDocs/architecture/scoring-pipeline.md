@@ -4,25 +4,43 @@
 
 ## Pipeline Steps
 
+Both `discover()` and `discoverWithExplanation()` share the same pipeline:
+
 ```
-1.  Fetch places (PostGIS radius query)
+1.  Fetch places (PostGIS radius query, bbox filter)
 2.  Fetch events (time window + radius)
 3.  Merge candidates
-4.  Filter hidden IDs
+4.  Filter hidden IDs + budget filter
 5.  Build expanded interest weights (INTEREST_SYNONYMS)
 6.  Score each candidate (interestMatch + distance + time + quality + source)
 7.  Apply company modifiers (couple/family/friends boost/penalty)
 8.  Apply pet modifier (allowsDogs fact-based + tag proxy)
 9.  Apply chain penalty (x0.80..0.90 depending on localType)
-10. Load taste profile (user_taste_profile table)
-11. Apply personalization (cosine similarity * w_personal)
-12. Apply price boost (gaussian match)
-13. Sort by score descending
-14. Apply impression discount (0.85^unengaged, 24h recency gate)
-15. Session dithering (deterministic noise)
-16. Epsilon exploration (1/8 random slot)
+10. Interest hard filter (strict >= 0.7 must match tag)
+11. Availability filter (exclude confirmed-closed places)
+12. Load taste profile (user_taste_profile table)
+13. Apply personalization (cosine similarity * w_personal)
+14. Apply price boost (gaussian match)
+15. Apply impression discount (0.85^unengaged, 24h recency gate)
+16. Sort by score descending
 17. Diversity filter (max 1 per chain_key in top 20)
 ```
+
+discover() additionally applies: adaptive radius expansion, session dithering, epsilon exploration, daily rotation, night fallback.
+
+## Signal Weights (taste profile update)
+
+| Action | Weight | Description |
+|---|---|---|
+| `been_here` | 1.0 | Visited (ground truth) |
+| `save` | 1.0 | Saved to favorites |
+| `route` | 0.7 | Built route |
+| `taxi` | 0.7 | Called taxi |
+| `share` | 0.7 | Shared venue |
+| `ticket_click` | 0.7 | Clicked ticket link |
+| `decide_open` | 0.5 | Opened in "decide for me" |
+| `card_click` | 0.3 | Opened card detail |
+| `hide` | negative | Facet-level negative (threshold >= 2) |
 
 ## Weights
 
