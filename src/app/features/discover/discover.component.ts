@@ -1061,11 +1061,11 @@ export class DiscoverComponent implements OnInit {
 
     let finalRadius = f?.walkMax20 ? 1600 : radiusM;
 
-    // Mood preset overrides interests, company, radius
+    // Mood preset overrides interests and company, NOT radius
+    // User's chosen radius (sidebar/context bar) always wins
     const mood = preset ? this.MOOD_PRESETS[preset] : null;
     const interests = mood?.interests ?? this.profileStore.interests();
     const company = (mood?.company ?? this.profileStore.company() ?? undefined) as any;
-    if (mood?.radiusM) finalRadius = mood.radiusM;
 
     this.api
       .discover({
