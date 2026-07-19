@@ -3,6 +3,7 @@ import { DataSource } from 'typeorm';
 import { DiscoverRequestDto } from './dto/discover-request.dto';
 import { checkOpenStatus, getOpenLabel } from './opening-hours';
 import { ImpressionService } from './impression.service';
+import { TasteProfileService } from './taste-profile.service';
 
 const WEIGHTS = {
   interestMatch: 0.45,
@@ -209,6 +210,7 @@ export class RecommendationService {
   constructor(
     private readonly dataSource: DataSource,
     private readonly impressionService: ImpressionService,
+    private readonly tasteProfile: TasteProfileService,
   ) {}
 
   async discover(dto: DiscoverRequestDto) {
@@ -275,8 +277,22 @@ export class RecommendationService {
       this.logger.log(`Adaptive fill: only ${scored.length} relevant results, expanding radius to ${radiusM}m`);
     }
 
-    // F1.2: Apply impression discount (repeated venues sink)
+    // F2: Load taste profile once (reused for all candidates)
     const deviceIdHash = (dto as any).deviceIdHash;
+    const userProfile = await this.tasteProfile.loadProfile(deviceIdHash);
+    const wPersonal = this.tasteProfile.getPersonalWeight(userProfile);
+
+    // F2.3 + F2.5: Apply personalization + price boost
+    if (wPersonal > 0 && userProfile) {
+      for (const c of scored) {
+        const venueFacets = this.tasteProfile.extractFacetsFromCandidate(c);
+        const personalScore = this.tasteProfile.computePersonalizationScore(userProfile, venueFacets);
+        c.score += wPersonal * personalScore;
+        c.score += this.tasteProfile.priceTierBoost(userProfile, (c as any).facet_price_tier);
+      }
+    }
+
+    // F1.2: Apply impression discount (repeated venues sink)
     const discountMap = await this.impressionService.getDiscountMap(deviceIdHash);
     const savedIds = new Set<string>((dto as any).savedIds ?? []);
     this.impressionService.applyDiscount(scored, discountMap, savedIds);
@@ -634,7 +650,8 @@ export class RecommendationService {
         v.address, p.rating, p.rating_count, p.indoor, p.price_level,
         p.quality_score, p.status, p.attributes, p.google_types, p.google_rating,
         p.google_rating_count, p.opening_hours, p.photos, v.website, v.google_place_id,
-        p.is_chain, p.chain_key, p.enriched_at
+        p.is_chain, p.chain_key, p.enriched_at,
+        p.facet_cuisine, p.facet_format, p.facet_atmosphere, p.facet_occasion, p.facet_price_tier
       FROM places p
       JOIN venues v ON p.venue_id = v.id
       WHERE p.status = 'active'
