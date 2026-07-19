@@ -10,10 +10,11 @@ export class InteractionDto {
   @IsUUID()
   cardId!: string;
 
-  @IsEnum(['impression', 'click', 'save', 'hide', 'share', 'clickout'])
+  @IsEnum(['impression', 'click', 'save', 'hide', 'share', 'clickout', 'route', 'taxi', 'ticket_click', 'card_click', 'decide_open'])
   action!: string;
 
   @IsOptional()
   @IsObject()
   context?: Record<string, unknown>;
 }
+// trigger

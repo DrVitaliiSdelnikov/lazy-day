@@ -11,7 +11,7 @@ import { ProfileStore } from './core/stores/profile.store';
 function deviceIdInterceptor(req: HttpRequest<unknown>, next: HttpHandlerFn) {
   const store = inject(ProfileStore);
   const id = store.deviceId();
-  if (id && req.url.includes('/v1/')) {
+  if (id && req.url.includes('/v1/') && !req.headers.has('x-device-id')) {
     return next(req.clone({ setHeaders: { 'x-device-id': id } }));
   }
   return next(req);

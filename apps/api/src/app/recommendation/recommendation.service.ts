@@ -488,14 +488,36 @@ export class RecommendationService {
       ? this.buildExpandedWeights(dto.profile.interests)
       : new Map<string, number>();
 
+    // Hard filters (hidden, budget) — same as discover()
     let candidates = [...places, ...events].filter((c) => {
       if ((dto.hiddenIds ?? []).includes(c.id)) return false;
+      if (dto.profile.budgetMax != null) {
+        if ((c as any).price_min != null && (c as any).price_min > dto.profile.budgetMax) return false;
+        if ((c as any).price_level != null && (c as any).price_level > this.budgetToLevel(dto.profile.budgetMax)) return false;
+      }
       return true;
     });
 
-    const scored = candidates.map((c) => this.scoreCandidate(c, dto, baseRadiusM, expandedWeights));
+    let scored = candidates.map((c) => this.scoreCandidate(c, dto, baseRadiusM, expandedWeights));
 
-    // F2: Apply personalization + price boost BEFORE sorting (same as discover())
+    // Interest hard filter — same as discover()
+    const hasStrictInterests = [...expandedWeights.values()].some((w) => w >= 0.7);
+    const hasInterests = expandedWeights.size > 0;
+    if (hasStrictInterests) {
+      scored = scored.filter((c) => c.hasStrictMatch);
+    } else if (hasInterests) {
+      scored = scored.filter((c) => c.primaryTags.length > 0);
+    }
+
+    // Availability filter — same as discover()
+    const timeMid = new Date((new Date(dto.timeWindow.from).getTime() + new Date(dto.timeWindow.to).getTime()) / 2);
+    scored = scored.filter((c) => {
+      if (c.type === 'event') return true;
+      const status = checkOpenStatus(c.opening_hours, timeMid);
+      return status !== 'closed';
+    });
+
+    // F2: Apply personalization + price boost — same as discover()
     if (wPersonal > 0 && userProfile) {
       for (const c of scored) {
         const venueFacets = this.tasteProfile.extractFacetsFromCandidate(c);
@@ -505,9 +527,17 @@ export class RecommendationService {
       }
     }
 
+    // F1.2: Impression discount — same as discover()
+    const discountMap = await this.impressionService.getDiscountMap(deviceIdHash);
+    const savedIds = new Set<string>((dto as any).savedIds ?? []);
+    this.impressionService.applyDiscount(scored, discountMap, savedIds);
+
+    // Sort + diversity — same as discover()
+    scored.sort((a, b) => b.score - a.score);
+    const diversified = this.applyDiversity(scored);
+
     // Build decomposition for each
-    const results = scored
-      .sort((a, b) => b.score - a.score)
+    const results = diversified
       .slice(0, 60)
       .map((c, rank) => {
         const venueFacets = this.tasteProfile.extractFacetsFromCandidate(c);

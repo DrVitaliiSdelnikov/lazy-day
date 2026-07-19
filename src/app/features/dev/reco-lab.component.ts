@@ -296,7 +296,7 @@ export class RecoLabComponent implements OnInit {
       profile,
       hiddenIds: [],
       locale: 'ru',
-    }).subscribe({
+    }, { headers: this.headers }).subscribe({
       next: (d) => { this.data.set(d); this.loading.set(false); },
       error: () => this.loading.set(false),
     });
