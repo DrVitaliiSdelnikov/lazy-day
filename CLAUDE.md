@@ -245,10 +245,10 @@ All done: profile update (IDF+EMA), cosine scoring (w_personal 0→0.20), facet 
 Full spec: `.workbench/specs/phase-F3-transparency-onboarding-spec.md`
 - [x] ~~F3.1: "почему" строка~~ — DONE. resolveWhyLabel (explore/vibe/company/interest/nearby). whyLabel in card model.
 - [x] ~~F3.2: скрутируемый профиль~~ — DONE. GET/PATCH taste-profile endpoints. Settings UI with chips + reset.
-- [ ] F3.3: "правила игры" info карточка
-- [ ] F3.4: онбординг-рефрейм (мгновенные результаты, no gate)
-- [ ] F3.5: турист/местный модификаторы в scoring (need DTO + ProfileStore change)
-- [ ] F3.6: уточняющая карточка в ленте (позиция 5-6, композитный триггер)
+- [x] ~~F3.3: "правила игры"~~ — DONE. Bottomsheet in settings, 5 bullets, i18n.
+- [ ] F3.4: онбординг-рефрейм (мгновенные результаты, no gate) — frontend routing refactor
+- [x] ~~F3.5: турист/местный~~ — DONE. localType in DTO, radius ×1.3/×0.8, chain penalty 0.90/0.80.
+- [x] ~~F3.6: уточняющая карточка~~ — BASELINE EXISTS (FeedTuneBlock at position 5). Facet-based upgrade deferred.
 Gate: time to first recommendation <3 sec, onboarding optional
 
 ### Phase F4: Optional (validate before investing)
