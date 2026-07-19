@@ -175,8 +175,17 @@ export class RecoLabComponent implements OnInit {
   readonly Math = Math;
 
   private interest = 'food';
+  private readonly devDeviceId = 'dev-reco-lab';
+  private devDeviceHash = '';
+  private readonly headers = { 'x-device-id': this.devDeviceId };
 
-  ngOnInit() {
+  async ngOnInit() {
+    // Compute SHA-256 hash matching backend FeedbackService
+    const encoder = new TextEncoder();
+    const data = encoder.encode(this.devDeviceId);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    this.devDeviceHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
     this.load();
   }
 
@@ -190,6 +199,7 @@ export class RecoLabComponent implements OnInit {
     if (this.interest) interests[this.interest] = 1.0;
 
     this.http.post<ExplainResponse>(`${this.baseUrl}/recommendations/explain`, {
+      deviceIdHash: this.devDeviceHash,
       lat: 41.749, lng: 44.786, radiusM: 5000,
       timeWindow: {
         from: new Date().toISOString(),
@@ -218,7 +228,7 @@ export class RecoLabComponent implements OnInit {
   simulateLike(venueId: string) {
     this.http.post(`${this.baseUrl}/interactions`, {
       sessionId: 'dev', cardType: 'place', cardId: venueId, action: 'save',
-    }).subscribe(() => {
+    }, { headers: this.headers }).subscribe(() => {
       // Reload after taste profile update (give backend time)
       setTimeout(() => this.load(), 500);
     });
@@ -227,13 +237,13 @@ export class RecoLabComponent implements OnInit {
   simulateHide(venueId: string) {
     this.http.post(`${this.baseUrl}/interactions`, {
       sessionId: 'dev', cardType: 'place', cardId: venueId, action: 'hide',
-    }).subscribe(() => {
+    }, { headers: this.headers }).subscribe(() => {
       setTimeout(() => this.load(), 500);
     });
   }
 
   resetProfile() {
-    this.http.patch(`${this.baseUrl}/recommendations/taste-profile`, { reset: true })
+    this.http.patch(`${this.baseUrl}/recommendations/taste-profile`, { reset: true }, { headers: this.headers })
       .subscribe(() => this.load());
   }
 }
