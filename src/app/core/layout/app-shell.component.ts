@@ -1,9 +1,10 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, isDevMode, OnInit, signal } from '@angular/core';
 import { NavigationEnd, Router, RouterModule } from '@angular/router';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { ConsentBannerComponent } from '../components/consent-banner.component';
 import { LdIconComponent } from '../components/ld-icon.component';
 import { ProfileStore } from '../stores/profile.store';
+import { ApiService } from '../services/api.service';
 import { Locale } from '../models';
 
 @Component({
@@ -12,6 +13,21 @@ import { Locale } from '../models';
   imports: [RouterModule, TranslatePipe, ConsentBannerComponent, LdIconComponent],
   template: `
     <div class="shell">
+      <!-- Dev strip: taste profile indicator (dev only) -->
+      @if (devMode && devProfile()) {
+        <div class="dev-strip">
+          <span class="dev-strip__label">🧪</span>
+          <span>signals: {{ devProfile()!.signalCount }}</span>
+          <span>w: {{ devProfile()!.wPersonal }}</span>
+          @for (f of devProfile()!.topFacets; track f) {
+            <span class="dev-strip__facet">{{ f }}</span>
+          }
+          @if (devProfile()!.negFacets.length) {
+            <span class="dev-strip__neg">⊘ {{ devProfile()!.negFacets.join(', ') }}</span>
+          }
+        </div>
+      }
+
       <!-- Desktop top nav (≥1024) — hidden during onboarding -->
       @if (showNav()) {
         <header class="shell__topnav">
@@ -56,6 +72,29 @@ import { Locale } from '../models';
     </div>
   `,
   styles: `
+    .dev-strip {
+      background: #1a1a2e;
+      color: #0f0;
+      font-family: monospace;
+      font-size: 11px;
+      padding: 4px 12px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      z-index: 9999;
+    }
+    .dev-strip__label { font-size: 14px; }
+    .dev-strip__facet {
+      background: #0f03;
+      padding: 1px 6px;
+      border-radius: 4px;
+      color: #4f4;
+    }
+    .dev-strip__neg {
+      color: #f44;
+    }
+
     .shell {
       display: flex;
       flex-direction: column;
@@ -171,11 +210,15 @@ import { Locale } from '../models';
     }
   `,
 })
-export class AppShellComponent {
+export class AppShellComponent implements OnInit {
   private router = inject(Router);
   private translate = inject(TranslateService);
   private profileStore = inject(ProfileStore);
+  private api = inject(ApiService, { optional: true });
   private currentUrl = signal(this.router.url);
+
+  readonly devMode = isDevMode();
+  readonly devProfile = signal<{ signalCount: number; wPersonal: string; topFacets: string[]; negFacets: string[] } | null>(null);
 
   langs = [
     { code: 'ru', label: 'RU' },
@@ -186,7 +229,28 @@ export class AppShellComponent {
 
   constructor() {
     this.router.events.subscribe(e => {
-      if (e instanceof NavigationEnd) this.currentUrl.set(e.urlAfterRedirects);
+      if (e instanceof NavigationEnd) {
+        this.currentUrl.set(e.urlAfterRedirects);
+        // Refresh dev strip on navigation
+        if (this.devMode) this.loadDevProfile();
+      }
+    });
+  }
+
+  ngOnInit() {
+    if (this.devMode) this.loadDevProfile();
+  }
+
+  private loadDevProfile() {
+    this.api?.getTasteProfile().subscribe({
+      next: (data: any) => {
+        const top = (data.positives ?? []).slice(0, 5).map((f: any) => f.value);
+        const neg = (data.negatives ?? []).slice(0, 3).map((f: any) => f.value);
+        const sc = data.signalCount ?? 0;
+        const w = (0.20 * Math.min(1, sc / 15)).toFixed(3);
+        this.devProfile.set({ signalCount: sc, wPersonal: w, topFacets: top, negFacets: neg });
+      },
+      error: () => this.devProfile.set(null),
     });
   }
 
