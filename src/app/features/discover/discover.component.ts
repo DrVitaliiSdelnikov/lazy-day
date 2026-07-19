@@ -914,13 +914,9 @@ export class DiscoverComponent implements OnInit {
   }
 
   ngOnInit() {
-    if (!this.profileStore.onboardingCompleted()) {
-      // If user saw landing but didn't finish onboarding → resume onboarding
-      // If user never saw landing → send to landing
-      const welcomeDone = localStorage.getItem('ld_welcome_done');
-      this.router.navigate([welcomeDone ? '/discover/onboarding' : '/'], { replaceUrl: true });
-      return;
-    }
+    // F3.4: No gate — show feed immediately with popularity fallback.
+    // Onboarding is optional (accessible from settings).
+    // If no interests → loadFeed uses empty interests → backend returns popularity-sorted results.
     this.geoVersion = this.geo.updated();
 
     // #41: Restore from cache on back-navigation from detail
