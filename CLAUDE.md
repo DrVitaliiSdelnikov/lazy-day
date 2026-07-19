@@ -215,9 +215,9 @@ Vitest via `vitest-angular` (Angular 21 default). Zoneless. ~2 дня total.
 - [ ] Bolt такси — нет public API/deeplink. Идея: кнопка "Такси" → копирует адрес в clipboard + открывает приложение. Универсально для любого такси-провайдера.
 - [ ] Такси UX улучшение — вместо отдельных кнопок провайдеров: одна кнопка "Такси" → копирует адрес/координаты → toast "Адрес скопирован" → открывает выбранное такси-приложение. Работает для Bolt, Yandex, любого.
 
-### Phase A: Data Foundation (after Phase 0) — ~25ч
+### Phase A: Data Foundation — ✅ COMPLETE (11/11)
 Full spec: `.workbench/specs/phase-A-data-spec.md`
-**⚠️ ПЕРЕД МЕРЖЕМ В MAIN: миграция 018 на прод (`POST /v1/health/migrate`) + re-enrich (Enterprise с priceLevel) + facet mapping + sync atmosphere. Без этого прод БД не совпадает с кодом.**
+**⚠️ ПЕРЕД МЕРЖЕМ В MAIN: миграция 018 на прод + osm_id backfill + re-enrich Enterprise (priceLevel) + map-facets + gemini-enrich + sync-by-osm + recalculate-idf. Без этого прод БД не совпадает с кодом.**
 - [x] **A0: tkt.ge + biletebi.ge event ingestion** — DONE. Push-model deployed.
 - [ ] A6: price_level в Enterprise field mask (1ч, можно сразу)
 - [ ] A9: Google types → facet_cuisine/format маппинг (4ч, бесплатно)
