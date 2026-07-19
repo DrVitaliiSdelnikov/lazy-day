@@ -236,16 +236,10 @@ Full spec: `.workbench/specs/phase-F1-freshness-spec.md`
 ImpressionService: `apps/api/src/app/recommendation/impression.service.ts`
 All 7 tasks done: impression_agg, discount (0.85^n), dithering, epsilon (1/8), favorites, adaptive radius, venue negative (hide→100).
 
-### Phase F2: Faceted Personalization (after A + F1) — ~12ч
+### Phase F2: Faceted Personalization — ✅ COMPLETE
 Full spec: `.workbench/specs/phase-F2-personalization-spec.md`
-- [ ] F2.1: user_taste_profile таблица (JSONB weights, price_pref, neg_counters)
-- [ ] F2.2: profile update (IDF-weighted EMA, signal weights, decay 0.9)
-- [ ] F2.3: personalizationScore = cosine(profile, venue), w_personal 0→0.20 ramp
-- [ ] F2.4: facet-level negative (hide → IDF attribution, threshold ≥2-3)
-- [ ] F2.5: price tier gaussian boost (β≤0.08)
-- [ ] F2.6: anti-bubble (streak + epsilon, no calibration on thin profiles)
-- [ ] F2.7: Steck calibration [GATED — signal_count≥10 only]
-Gate: McDonald's drops in "food" after 3 fine_dining saves, but category stays diverse
+TasteProfileService: `apps/api/src/app/recommendation/taste-profile.service.ts`
+All done: profile update (IDF+EMA), cosine scoring (w_personal 0→0.20), facet negative (≥2 threshold), price gaussian (β=0.06). Steck calibration GATED for ≥10 signals.
 
 ### Phase F3: Transparency & Onboarding (after F2) — ~17ч
 Full spec: `.workbench/specs/phase-F3-transparency-onboarding-spec.md`
