@@ -98,6 +98,15 @@ export class MockApiService extends ApiService {
     return of({ ok: true }).pipe(delay(500));
   }
 
+  getTasteProfile(): Observable<any> {
+    return of({ positives: [], negatives: [], price: {}, signalCount: 0 }).pipe(delay(200));
+  }
+
+  updateTasteProfile(data: any): Observable<any> {
+    console.log('[Mock] Update taste:', data);
+    return of({ status: 'ok' }).pipe(delay(200));
+  }
+
   private interestScore(
     card: RecommendationCard,
     interests: Record<string, number>

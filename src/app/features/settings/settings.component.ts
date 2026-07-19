@@ -96,6 +96,36 @@ import { ThemeService, ThemeName } from '../../core/services/theme.service';
         </div>
       </section>
 
+      <!-- Taste profile (F3.2) -->
+      @if (tasteLoaded() && (tastePositives().length > 0 || tasteNegatives().length > 0)) {
+        <section class="settings__card">
+          <p class="settings__label">{{ 'settings.taste_title' | translate }}</p>
+          @if (tastePositives().length > 0) {
+            <p class="settings__sub">{{ 'settings.taste_likes' | translate }}</p>
+            <div class="settings__chips">
+              @for (f of tastePositives(); track f.value) {
+                <button class="ld-chip ld-chip--active" (click)="removeTasteFacet(f)">
+                  {{ f.value }} ×
+                </button>
+              }
+            </div>
+          }
+          @if (tasteNegatives().length > 0) {
+            <p class="settings__sub" style="margin-top: 10px">{{ 'settings.taste_dislikes' | translate }}</p>
+            <div class="settings__chips">
+              @for (f of tasteNegatives(); track f.value) {
+                <button class="ld-chip" (click)="removeTasteNegative(f)">
+                  {{ f.value }} ×
+                </button>
+              }
+            </div>
+          }
+          <button class="settings__link settings__link--danger" style="margin-top: 12px" (click)="resetTaste()">
+            {{ 'settings.taste_reset' | translate }}
+          </button>
+        </section>
+      }
+
       <!-- Links -->
       <section class="settings__card">
         <button class="settings__link" (click)="openFeedback()">{{ 'settings.feedback' | translate }}</button>
@@ -298,6 +328,16 @@ import { ThemeService, ThemeName } from '../../core/services/theme.service';
       font-size: 12px;
     }
 
+    .settings__link--danger {
+      color: var(--ld-danger);
+    }
+
+    .settings__chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
     @media (min-width: 1024px) {
       .settings {
         display: grid;
@@ -319,6 +359,11 @@ export class SettingsComponent implements OnInit {
   categories = signal<CategoryNode[]>([]);
   editingInterests = signal(false);
   budgetValue = signal(0);
+
+  // Taste profile (F3.2)
+  tasteLoaded = signal(false);
+  tastePositives = signal<Array<{ type: string; value: string; weight: number }>>([]);
+  tasteNegatives = signal<Array<{ type: string; value: string; weight: number }>>([]);
 
   // Feedback
   feedbackOpen = signal(false);
@@ -355,6 +400,37 @@ export class SettingsComponent implements OnInit {
   ngOnInit() {
     this.api.getCategories().subscribe((cats) => this.categories.set(cats));
     this.budgetValue.set(this.profileStore.budgetMax() ?? 0);
+    this.loadTasteProfile();
+  }
+
+  private loadTasteProfile() {
+    this.api.getTasteProfile().subscribe({
+      next: (data: any) => {
+        this.tastePositives.set(data.positives ?? []);
+        this.tasteNegatives.set(data.negatives ?? []);
+        this.tasteLoaded.set(true);
+      },
+      error: () => this.tasteLoaded.set(true),
+    });
+  }
+
+  removeTasteFacet(f: { type: string; value: string }) {
+    this.api.updateTasteProfile({ removeFacet: f }).subscribe(() => {
+      this.tastePositives.update(arr => arr.filter(x => x.value !== f.value));
+    });
+  }
+
+  removeTasteNegative(f: { type: string; value: string }) {
+    this.api.updateTasteProfile({ removeNegative: f }).subscribe(() => {
+      this.tasteNegatives.update(arr => arr.filter(x => x.value !== f.value));
+    });
+  }
+
+  resetTaste() {
+    this.api.updateTasteProfile({ reset: true }).subscribe(() => {
+      this.tastePositives.set([]);
+      this.tasteNegatives.set([]);
+    });
   }
 
   interestEntries() {

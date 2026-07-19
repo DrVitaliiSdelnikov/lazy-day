@@ -96,7 +96,11 @@
     "delete_confirm": "This will delete your profile, saved places, and history. This cannot be undone.",
     "feedback": "Feedback",
     "privacy": "Privacy",
-    "about": "About · LaziGo v0.1"
+    "about": "About · LaziGo v0.1",
+    "taste_title": "Your taste",
+    "taste_likes": "You seem to like:",
+    "taste_dislikes": "Steering away from:",
+    "taste_reset": "Reset taste"
   },
   "company": {
     "solo": "Solo",

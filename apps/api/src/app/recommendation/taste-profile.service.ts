@@ -204,6 +204,37 @@ export class TasteProfileService {
     return facets;
   }
 
+  /** F3.2: Reset entire taste profile */
+  async resetProfile(deviceIdHash: string): Promise<void> {
+    await this.dataSource.query(
+      'DELETE FROM user_taste_profile WHERE device_id_hash = $1',
+      [deviceIdHash],
+    );
+  }
+
+  /** F3.2: Remove a single positive facet weight (user correction) */
+  async removeFacetWeight(deviceIdHash: string, type: string, value: string): Promise<void> {
+    const profile = await this.loadOrCreate(deviceIdHash);
+    if (profile.facet_weights[type]) {
+      delete profile.facet_weights[type][value];
+    }
+    await this.save(deviceIdHash, profile);
+  }
+
+  /** F3.2: Remove a negative (clear penalty for a facet) */
+  async removeNegative(deviceIdHash: string, type: string, value: string): Promise<void> {
+    const profile = await this.loadOrCreate(deviceIdHash);
+    const key = `${type}:${value}`;
+    delete profile.neg_counters[key];
+    if (profile.facet_weights[type]) {
+      // Reset to 0 instead of negative
+      if ((profile.facet_weights[type][value] ?? 0) < 0) {
+        profile.facet_weights[type][value] = 0;
+      }
+    }
+    await this.save(deviceIdHash, profile);
+  }
+
   // --- Private ---
 
   private extractFacets(place: Place): Array<{ type: string; value: string }> {
