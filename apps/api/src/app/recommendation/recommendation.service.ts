@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { DiscoverRequestDto } from './dto/discover-request.dto';
 import { checkOpenStatus, getOpenLabel } from './opening-hours';
+import { ImpressionService } from './impression.service';
 
 const WEIGHTS = {
   interestMatch: 0.45,
@@ -205,7 +206,10 @@ interface ScoredCandidate extends CandidateRow {
 export class RecommendationService {
   private readonly logger = new Logger(RecommendationService.name);
 
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    private readonly dataSource: DataSource,
+    private readonly impressionService: ImpressionService,
+  ) {}
 
   async discover(dto: DiscoverRequestDto) {
     const baseRadiusM = dto.radiusM ?? 5000;
@@ -271,8 +275,18 @@ export class RecommendationService {
       this.logger.log(`Adaptive fill: only ${scored.length} relevant results, expanding radius to ${radiusM}m`);
     }
 
+    // F1.2: Apply impression discount (repeated venues sink)
+    const deviceIdHash = (dto as any).deviceIdHash;
+    const discountMap = await this.impressionService.getDiscountMap(deviceIdHash);
+    const savedIds = new Set<string>((dto as any).savedIds ?? []);
+    this.impressionService.applyDiscount(scored, discountMap, savedIds);
+
     // Sort + daily rotation (tie-breaker for similar scores, top-3 untouched)
     scored.sort((a, b) => b.score - a.score);
+
+    // F1.3: Session dithering (variety between sessions)
+    this.impressionService.applySessionDithering(scored, deviceIdHash ?? '');
+
     this.applyDailyRotation(scored);
     let diversified = this.applyDiversity(scored);
 
@@ -412,11 +426,19 @@ export class RecommendationService {
       };
     });
 
+    // F1.4: Inject epsilon-explore slot
+    this.impressionService.injectEpsilonSlot(cards, scored, discountMap, deviceIdHash ?? '');
+
     const sessionId = crypto.randomUUID();
 
     this.logger.log(
       `Discover: ${scored.length} relevant → ${cards.length} cards (radius=${radiusM}m${radiusM !== baseRadiusM ? ', expanded' : ''})`,
     );
+
+    // F1.1: Record impressions async (non-blocking)
+    if (deviceIdHash) {
+      this.impressionService.recordImpressions(deviceIdHash, cards.map((c: any) => c.id)).catch(() => {});
+    }
 
     return { sessionId, cards, hasMore: diversified.length > 60, meta };
   }
