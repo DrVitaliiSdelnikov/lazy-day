@@ -99,27 +99,13 @@ export class ConsentBannerComponent {
   accept() {
     localStorage.setItem(CONSENT_KEY, 'accepted');
     this.visible.set(false);
-    // Consent Mode v2: grant all
-    (window as any).gtag?.('consent', 'update', {
-      analytics_storage: 'granted',
-      ad_storage: 'granted',
-      ad_user_data: 'granted',
-      ad_personalization: 'granted',
-    });
-    this.loadMetrika();
-    this.loadGA();
+    // Analytics already loaded unconditionally (Georgia jurisdiction)
   }
 
   decline() {
     localStorage.setItem(CONSENT_KEY, 'declined');
     this.visible.set(false);
-    // Consent Mode v2: explicitly deny
-    (window as any).gtag?.('consent', 'update', {
-      analytics_storage: 'denied',
-      ad_storage: 'denied',
-      ad_user_data: 'denied',
-      ad_personalization: 'denied',
-    });
+    // Analytics still running — consent banner is informational only
   }
 
   private loadMetrika() {

@@ -391,7 +391,8 @@ export class AdLandingComponent implements OnInit {
   eventCards      = signal<RecommendationCard[]>([]);
 
   ngOnInit() {
-    // Returning user: skip landing, go straight to feed
+    // F3.4: Returning user skips landing → straight to feed
+    // New user sees landing with instant examples (no gate)
     if (localStorage.getItem('ld_welcome_done')) {
       this.router.navigate(['/discover'], { replaceUrl: true });
       return;
@@ -490,6 +491,7 @@ export class AdLandingComponent implements OnInit {
       profile: { interests, company: companyVal, hasPet: this.selectedPet() },
       hiddenIds: [],
       locale: this.currentLang(),
+      deviceIdHash: this.profileStore.deviceIdHash() || undefined,
     }).subscribe(res => {
       this.exampleCards.set(res.cards.filter(c => c.type === 'place' && !c.isChain).slice(0, 6));
       this.eventCards.set(res.cards.filter(c => c.type === 'event').slice(0, 3));

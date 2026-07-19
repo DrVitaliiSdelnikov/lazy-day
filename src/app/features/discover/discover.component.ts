@@ -914,13 +914,9 @@ export class DiscoverComponent implements OnInit {
   }
 
   ngOnInit() {
-    if (!this.profileStore.onboardingCompleted()) {
-      // If user saw landing but didn't finish onboarding → resume onboarding
-      // If user never saw landing → send to landing
-      const welcomeDone = localStorage.getItem('ld_welcome_done');
-      this.router.navigate([welcomeDone ? '/discover/onboarding' : '/'], { replaceUrl: true });
-      return;
-    }
+    // F3.4: No gate — show feed immediately with popularity fallback.
+    // Onboarding is optional (accessible from settings).
+    // If no interests → loadFeed uses empty interests → backend returns popularity-sorted results.
     this.geoVersion = this.geo.updated();
 
     // #41: Restore from cache on back-navigation from detail
@@ -1065,11 +1061,11 @@ export class DiscoverComponent implements OnInit {
 
     let finalRadius = f?.walkMax20 ? 1600 : radiusM;
 
-    // Mood preset overrides interests, company, radius
+    // Mood preset overrides interests and company, NOT radius
+    // User's chosen radius (sidebar/context bar) always wins
     const mood = preset ? this.MOOD_PRESETS[preset] : null;
     const interests = mood?.interests ?? this.profileStore.interests();
     const company = (mood?.company ?? this.profileStore.company() ?? undefined) as any;
-    if (mood?.radiusM) finalRadius = mood.radiusM;
 
     this.api
       .discover({
@@ -1086,6 +1082,7 @@ export class DiscoverComponent implements OnInit {
         hiddenIds: this.profileStore.hiddenIds(),
         locale: this.profileStore.locale(),
         forcedNow: this.forcedNow() || undefined,
+        deviceIdHash: this.profileStore.deviceIdHash() || undefined,
       })
       .subscribe({
         next: (res) => {
@@ -1360,6 +1357,7 @@ export class DiscoverComponent implements OnInit {
         profile: { interests, company, hasPet: this.profileStore.hasPet() || undefined },
         hiddenIds: this.profileStore.hiddenIds(),
         locale: this.profileStore.locale(),
+        deviceIdHash: this.profileStore.deviceIdHash() || undefined,
       })
       .subscribe({
         next: (res) => {

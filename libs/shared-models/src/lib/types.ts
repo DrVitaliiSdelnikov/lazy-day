@@ -40,6 +40,7 @@ export interface RecommendationCard {
   secondaryTags?: string[];
   googlePlaceId?: string;
   isChain?: boolean;
+  whyLabel?: string;
   source: string;
 }
 
@@ -74,6 +75,7 @@ export interface DiscoverRequest {
   hiddenIds: string[];
   locale: Locale;
   forcedNow?: boolean;
+  deviceIdHash?: string;
 }
 
 export interface DiscoverMeta {

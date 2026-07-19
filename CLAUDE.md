@@ -114,7 +114,7 @@ See `docs/research/product-differentiation.md` for full analysis and competitive
 - ~~Push-model event ingestion~~ — DONE (325 events: tkt.ge 224 + biletebi.ge 101). `tools/fetch-blocked-events.ts` + `events/import` endpoint + GH Actions workflow.
 - ~~Body limit fix~~ — DONE (`json({ limit: '5mb' })` in main.ts)
 
-### Post-MVP — done in 2026-07-17 session (COMMITTED + DEPLOYED)
+### Post-MVP — done in 2026-07-16 + 2026-07-17 sessions (COMMITTED + DEPLOYED)
 - ~~Feed card refactor~~ — 3-slot structure (title, meta, status). Removed: badges, walk_time chip, "тебе нравится" chip, separate rating line.
 - ~~Detail card refactor~~ — removed "Почему это вам" block, price dupe, double "на карте", `canonical` leak. Added: info rows, "часы не подтверждены", taxi hidden <500m.
 - ~~Place/event stripe~~ — places get `--ld-primary` stripe, events keep `--ld-event` stripe.
@@ -125,19 +125,24 @@ See `docs/research/product-differentiation.md` for full analysis and competitive
 - ~~tkt.ge ticketUrl fix~~ — `/en/event/{slug}` → `/en/show/{showId}/{slug}` (was 404).
 - ~~Event price on reload~~ — `cards.service.mapEvent` now returns `priceLabel`.
 - ~~Ticket button label~~ — "Билеты" when no price, "Билеты от X" when price exists.
+- ~~Splash fade-out~~ — 400ms opacity animation on bootstrap (was instant jerk).
+- ~~Events "0м"~~ — distanceM/walkMinutes=null when venue not linked. walk_time explanation skipped.
+- ~~openStatus~~ — 3 states work: open (green), unknown → "Часы не подтверждены" (gray), closed filtered from feed.
+- ~~Filter sync~~ — landing preset → sessionStorage → discover toolbar active.
+- ~~Price filter hidden~~ — 0% places with price_level, button commented out.
+- ~~"Реши за меня" algorithm~~ — MMR λ=0.6, position band, event quota, anti-repeat, session penalties, mulberry32.
+- ~~Taxi~~ — Yandex Go only (Bolt removed — no public API). Hidden <500m.
 
 ### Phase 0: Stabilize what we built (BLOCKER — nothing else until done)
 
-#### 0.1 Critical bugs & flows
-- [x] ~~Global loader/pin~~ — FIXED. Плавный fade-out 400ms при bootstrap.
-- [x] ~~openStatus~~ — PARTIAL. 3 состояния работают: Открыто (зелёный), unknown → "Часы не подтверждены" (серый), Закрыто отфильтрован из выдачи. "Открыто до 22:00" / "Закрывается скоро" → deferred (closesAt, Phase A).
-- [x] ~~Events "0м"~~ — FIXED. distanceM/walkMinutes=null когда venue не привязан. walk_time explanation скипается.
-- [ ] **Переработка карточек** — полная спека: `.workbench/specs/feed-cards-ui-spec.md`. Batch 1 (удаление дублей, 1ч) → Batch 2 (status slot, 3ч) → Batch 3 (API, blocked on A2) → Batch 4 (events rail, 3ч).
-- [x] ~~Ссылки tkt.ge~~ — FIXED. `/en/show/{showId}/{slug}`. Нужен re-ingestion на проде после деплоя.
-- [x] ~~Фильтр цен~~ — HIDDEN. 0% мест с price_level. Кнопка скрыта (не удалена). TODO в deferred: решить как использовать (price_level enrichment или переделать фильтр).
-- [x] ~~Синхронизация фильтров~~ — FIXED. Landing пишет preset в ld_filters sessionStorage → discover читает при init.
-- [ ] **"Реши за меня" алгоритм** — клиентский ре-ранкер: полоса DELTA_BAND 0.15, MMR λ=0.6, квота типа (≥1 событие), сидированный выбор (mulberry32), сессионные штрафы. ~4ч. Спека: `.workbench/specs/decide-for-me-algorithm.md`
-- [ ] События не видны в выдаче (scoring places > events, уходят за лимит 60)
+#### 0.1 Critical bugs & flows — ✅ CLOSED
+All critical bugs fixed. Remaining items moved to 0.1b and deferred.
+
+#### 0.1b Card logic refactor (before 0.2)
+Full spec: `.workbench/specs/feed-cards-ui-spec.md`
+- [ ] **Batch 3: API changes** — closesAt на бэке, secondaryInterests маппинг (blocked on A2)
+- [ ] **Batch 4: Events rail** — горизонтальный scroll-snap рельс событий отдельно от сетки мест (~3ч)
+- [ ] События не видны в выдаче — scoring places > events, нужен events rail или буст
 - [ ] Проверить фильтр "События" на фронте — отделяет ли type=event от type=place
 - [ ] UI flows: landing → discover, onboarding, chips → ProfileStore, language switcher
 - [ ] QA: полный пользовательский путь на проде (landing → discover → карточка → share)
@@ -198,7 +203,7 @@ Vitest via `vitest-angular` (Angular 21 default). Zoneless. ~2 дня total.
 - [ ] Events rail component — новый компонент, scroll-snap, layout split. Batch 4, после стабилизации карточек.
 - [ ] Tune-block (позиция 6 в сетке мест) — нет спеки что внутри. Уточнить перед реализацией.
 - [ ] Мета-строка text-overflow — при длинной категории + дистанция + рейтинг + "также еда" может переноситься. Нужен `nowrap + ellipsis`.
-- [ ] Bolt такси интеграция — проверить возможность deeplink `bolt://ride?destination_lat=...` рядом с Yandex Go в карточке.
+- [x] ~~Bolt такси~~ — DONE. Yandex Go + Bolt в decide-for-me и detail card. Hidden <500m и на desktop.
 - [ ] ESC закрывает модалку — детальная карточка места/события должна закрываться на Escape.
 - [ ] Перевод категорий в карточках — проверить что category labels (Museum, Bar, Viewpoint...) переведены на ru/ka.
 - [ ] Лайк в модальном окне — кнопка ♡ save в детальной карточке когда открыта как модалка (сейчас скрыта `@if (!isModal())`).
@@ -207,45 +212,86 @@ Vitest via `vitest-angular` (Angular 21 default). Zoneless. ~2 дня total.
 - [ ] Тултип полного имени — если title обрезан ellipsis, показывать полное имя по hover/long-press.
 - [ ] Переводы мест на английский — не у всех venues есть `name_en`. Проверить coverage, запустить translate для недостающих.
 - [ ] Кнопка фильтров (discover__filter-btn) — скрыта. Решить: добавить price_level через Google enrichment ($20/1K Enterprise) или переделать фильтр (open now, distance, type). 0% мест с ценами, 88% событий.
+- [ ] Bolt такси — нет public API/deeplink. Идея: кнопка "Такси" → копирует адрес в clipboard + открывает приложение. Универсально для любого такси-провайдера.
+- [ ] Такси UX улучшение — вместо отдельных кнопок провайдеров: одна кнопка "Такси" → копирует адрес/координаты → toast "Адрес скопирован" → открывает выбранное такси-приложение. Работает для Bolt, Yandex, любого.
 
-### Phase A: Data stabilization (after Phase 0)
-Full spec: `.workbench/specs/data-enrichment-roadmap.md`
+### Phase A: Data Foundation — ✅ COMPLETE (11/11)
+Full spec: `.workbench/specs/phase-A-data-spec.md`
+**⚠️ ПЕРЕД МЕРЖЕМ В MAIN: миграция 018 на прод + osm_id backfill + re-enrich Enterprise (priceLevel) + map-facets + gemini-enrich + sync-by-osm + recalculate-idf. Без этого прод БД не совпадает с кодом.**
 - [x] **A0: tkt.ge + biletebi.ge event ingestion** — DONE. Push-model deployed.
-- [ ] A1: osm_id migration (018) — stable sync key + sync remaining ~500 venues + remove temp endpoint
-- [ ] A2: `enriched_at` timestamp on places — Google 30-day TTL compliance
-- [ ] A3: 30-day refresh cron — re-fetch Enterprise data for stale venues
-- [ ] A4: "Hours unknown" UI policy — don't show stale hours
-- [ ] A5: Atmosphere enrichment on prod (allowsDogs/goodForChildren)
-- [ ] A6: Field mask audit — ensure minimal tier per Google call
-- [ ] A7: Google Cloud budget controls (alerts + hard cap)
+- [ ] A6: price_level в Enterprise field mask (1ч, можно сразу)
+- [ ] A9: Google types → facet_cuisine/format маппинг (4ч, бесплатно)
+- [ ] A1: osm_id migration (018) + бэкфилл (3-4ч)
+- [ ] A2: enriched_at timestamp на places (1ч)
+- [x] ~~A5: sync-by-osm~~ — DONE. Replaces coord-based. 1,729/1,729 synced. `tools/sync-atmosphere-to-prod.ts`
+- [x] ~~A3: enrichment refresh cron~~ — DONE. Sunday 03:00 UTC, 200 stale/week, ~$4/mo. + impression maintenance cron 05:00 UTC.
+- [x] ~~A4: stale hours policy~~ — DONE. enriched_at > 30 days → openStatus=undefined → "Часы не подтверждены".
+- [x] ~~A7: budget controls~~ — DONE. Prepay set up.
+- [x] ~~A8: Gemini enrichment~~ — DONE. 3,168/3,168 enriched (atmosphere 100%, occasion 100%, role 100%). ~$0.30. IDF recalculated: 131 facets.
+- [ ] A10: facet_idf таблица + cron (2ч, после A8+A9)
+Gate: price_tier ≥70%, facet_cuisine ≥50% food, facet_idf computed
+
+### Phase F1: Freshness & Venue Negative — ✅ COMPLETE
+Full spec: `.workbench/specs/phase-F1-freshness-spec.md`
+ImpressionService: `apps/api/src/app/recommendation/impression.service.ts`
+All 7 tasks done: impression_agg, discount (0.85^n), dithering, epsilon (1/8), favorites, adaptive radius, venue negative (hide→100).
+
+### Phase F2: Faceted Personalization — ✅ COMPLETE
+Full spec: `.workbench/specs/phase-F2-personalization-spec.md`
+TasteProfileService: `apps/api/src/app/recommendation/taste-profile.service.ts`
+All done: profile update (IDF+EMA), cosine scoring (w_personal 0→0.20), facet negative (≥2 threshold), price gaussian (β=0.06). Steck calibration GATED for ≥10 signals.
+
+### Phase F3: Transparency & Onboarding — ✅ COMPLETE
+Full spec: `.workbench/specs/phase-F3-transparency-onboarding-spec.md`
+All 6 tasks done: whyLabel on cards, scrollable taste profile, how-it-works, no-gate onboarding, tourist/local modifiers, tune block baseline.
+
+### Phase F4: Optional (validate before investing)
+- [ ] F4.1: структурный поиск (Claude → JSON-фасеты, if analytics show demand)
+- [ ] F4.2: occasion-conditional profiles (when enough data per user)
 
 ### Phase B: Multi-source enrichment (after Phase A + real traffic)
 Full spec: `.workbench/specs/data-enrichment-roadmap.md`
-- [ ] B1: Overture Maps Places (free, GERS ID, confidence score)
-- [ ] B2: Foursquare OS Places (free, closure detection)
-- [ ] B3: OSM improvement (check_date, Wikidata QID)
-- [ ] B4: owner_maintenance_score as ranking feature
-- [ ] B5: Entity resolution pipeline (conflation engine)
-- [ ] B6: 2GIS commercial (best owner-verified for Tbilisi)
-- [ ] B7: Yandex Maps (if 2GIS gaps, $2,750/yr minimum)
+- [ ] B1-B7: Overture, FSQ, OSM, 2GIS, Yandex (see spec)
 
-### v1 — Community Layer + Data Quality (the moat)
-1. ~~Events: TKT.ge~~ — DONE (adapter ready, blocked by Cloudflare)
-2. **Phase A: Data stabilization** (osm_id, 30-day refresh, "hours unknown", budget controls)
-3. **Phase B: Multi-source enrichment** (Overture, FSQ, 2GIS — after traffic)
-4. Micro-tips + collections + "been here" badges
-5. Search/autocomplete
-6. Conversational discovery (one smart question per session)
-7. Compact API + offline cache
-8. Share button, behavioral tracking
+### v1 — Community Layer
+- [ ] "Been here" button — ground-truth visited signal
+- [ ] Micro-tips + collections + badges
+- [ ] Search/autocomplete
 
-### v2 — Personalization + Scale
-9. Behavioral re-ranking (from accumulated user data)
-10. Gamification (exploration badges, streaks)
-11. Journey planner
-12. Weather-aware
-13. City expansion via CityConfig (needs osm_id + Phase B)
-14. Local curator network
+### v2 — Scale
+Full spec: `.workbench/specs/collaborative-filtering-strategy.md`
+- [ ] Popularity prior → segments → item-item co-occurrence
+- [ ] City expansion (Batumi, Kutaisi)
+- [ ] Journey planner ("Спланируй день" — schema ready in A8)
+- [ ] Weather-aware, gamification, curator network
+
+### Personalization Validation — ✅ GATE PASSED (16/16 green)
+Full spec: `.workbench/specs/personalization-validation-spec.md`
+- [x] Fixture venue set (15 venues) + IDF values
+- [x] Seed injection (fixedSeed on dithering/epsilon, /explain only)
+- [x] Score-breakdown endpoint (`POST /recommendations/explain`)
+- [x] McDonald's acceptance test (5/5): outranks, not zero, category floor, w_personal ramp
+- [x] Preference-recovery (2/2): monotonic convergence, upscale>cheap cosine
+- [x] Invariant suite (9/9): monotonic-aggregate, hide-locality×2, determinism, distinct-users, IDF, cold-start×2, price-tier
+- [ ] Dev dashboard `/dev/reco-lab` (deferred — tests sufficient for merge)
+
+### Backend Testing & Documentation (after each phase, before merge)
+- [ ] **Unit tests**: cover every service with Vitest (see `.workbench/specs/testing-strategy.md`)
+  - [ ] RecommendationService: scoreCandidate, timeFit, applyDiversity, generateExplanations
+  - [ ] FacetMapperService: mapAll, recalculateIdf — маппинг + IDF correctness
+  - [ ] GoogleEnrichmentService: matchVenue (locationRestriction), applyEnterpriseDetails (priceLevel)
+  - [ ] EventIngestionService: importEvents, upsertEvent — dedup, date parsing
+  - [ ] TktGeAdapter: parseShows — date filter, URL format, tags enrichment
+  - [ ] BiletebiGeAdapter: parseCategory — HTML parsing, date inference
+  - [ ] CardsService: mapEvent (priceLabel), mapPlace (distance, title fallback)
+  - [ ] Opening hours: checkOpenStatus, checkGooglePeriods — all edge cases (24/7, overnight, holidays)
+  - [ ] [future] TasteProfileService: updateProfile, applyHideNegative, computeCosine
+  - [ ] [future] ImpressionService: recordImpressions, applyDiscount
+- [ ] **Class descriptions**: JSDoc на каждом service/controller с описанием:
+  - Что делает (одно предложение)
+  - Какие endpoints/methods выставляет
+  - От чего зависит (inject)
+  - Кто использует (consumers)
 
 ### Competitive Moat Timeline
 ```

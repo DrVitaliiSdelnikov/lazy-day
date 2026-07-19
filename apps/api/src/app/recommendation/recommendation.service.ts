@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { DiscoverRequestDto } from './dto/discover-request.dto';
 import { checkOpenStatus, getOpenLabel } from './opening-hours';
+import { ImpressionService } from './impression.service';
+import { TasteProfileService } from './taste-profile.service';
 
 const WEIGHTS = {
   interestMatch: 0.45,
@@ -97,6 +99,7 @@ interface CandidateRow {
   google_place_id?: string;
   is_chain?: boolean;
   chain_key?: string;
+  enriched_at?: string;
   // event-specific
   starts_at?: string;
   ends_at?: string;
@@ -204,10 +207,18 @@ interface ScoredCandidate extends CandidateRow {
 export class RecommendationService {
   private readonly logger = new Logger(RecommendationService.name);
 
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    private readonly dataSource: DataSource,
+    private readonly impressionService: ImpressionService,
+    private readonly tasteProfile: TasteProfileService,
+  ) {}
 
   async discover(dto: DiscoverRequestDto) {
-    const baseRadiusM = dto.radiusM ?? 5000;
+    // F3.5: Tourist/local modifiers
+    const isTourist = dto.profile.localType === 'tourist' || dto.profile.localType === 'first_time';
+    const isLocal = dto.profile.localType === 'local';
+    const radiusMultiplier = isTourist ? 1.3 : isLocal ? 0.8 : 1.0;
+    const baseRadiusM = Math.round((dto.radiusM ?? 5000) * radiusMultiplier);
     const hiddenIds = dto.hiddenIds ?? [];
     const interests = dto.profile.interests;
     // Build expanded interest->tag maps once for the entire request
@@ -270,8 +281,32 @@ export class RecommendationService {
       this.logger.log(`Adaptive fill: only ${scored.length} relevant results, expanding radius to ${radiusM}m`);
     }
 
+    // F2: Load taste profile once (reused for all candidates)
+    const deviceIdHash = (dto as any).deviceIdHash;
+    const userProfile = await this.tasteProfile.loadProfile(deviceIdHash);
+    const wPersonal = this.tasteProfile.getPersonalWeight(userProfile);
+
+    // F2.3 + F2.5: Apply personalization + price boost
+    if (wPersonal > 0 && userProfile) {
+      for (const c of scored) {
+        const venueFacets = this.tasteProfile.extractFacetsFromCandidate(c);
+        const personalScore = this.tasteProfile.computePersonalizationScore(userProfile, venueFacets);
+        c.score += wPersonal * personalScore;
+        c.score += this.tasteProfile.priceTierBoost(userProfile, (c as any).facet_price_tier);
+      }
+    }
+
+    // F1.2: Apply impression discount (repeated venues sink)
+    const discountMap = await this.impressionService.getDiscountMap(deviceIdHash);
+    const savedIds = new Set<string>((dto as any).savedIds ?? []);
+    this.impressionService.applyDiscount(scored, discountMap, savedIds);
+
     // Sort + daily rotation (tie-breaker for similar scores, top-3 untouched)
     scored.sort((a, b) => b.score - a.score);
+
+    // F1.3: Session dithering (variety between sessions)
+    this.impressionService.applySessionDithering(scored, deviceIdHash ?? '');
+
     this.applyDailyRotation(scored);
     let diversified = this.applyDiversity(scored);
 
@@ -399,7 +434,7 @@ export class RecommendationService {
         ratingCount: c.google_rating_count ?? c.rating_count,
         primaryTags: c.primaryTags.length > 0 ? c.primaryTags : undefined,
         secondaryTags: c.secondaryTags.length > 0 ? c.secondaryTags : undefined,
-        openStatus: displayOpenStatus,
+        openStatus: this.resolveOpenStatus(c, displayOpenStatus),
         startsAt: c.starts_at,
         endsAt: c.ends_at,
         venueName: c.venue_name,
@@ -408,8 +443,12 @@ export class RecommendationService {
         photoUrl: c.photos?.[0],
         googlePlaceId: c.google_place_id,
         isChain: c.is_chain || false,
+        whyLabel: this.resolveWhyLabel(c, userProfile, wPersonal, dto.locale),
       };
     });
+
+    // F1.4: Inject epsilon-explore slot
+    this.impressionService.injectEpsilonSlot(cards, scored, discountMap, deviceIdHash ?? '');
 
     const sessionId = crypto.randomUUID();
 
@@ -417,7 +456,156 @@ export class RecommendationService {
       `Discover: ${scored.length} relevant → ${cards.length} cards (radius=${radiusM}m${radiusM !== baseRadiusM ? ', expanded' : ''})`,
     );
 
+    // F1.1: Record impressions async (non-blocking)
+    if (deviceIdHash) {
+      this.impressionService.recordImpressions(deviceIdHash, cards.map((c: any) => c.id)).catch(() => {});
+    }
+
     return { sessionId, cards, hasMore: diversified.length > 60, meta };
+  }
+
+  /**
+   * Dev-only: same as discover() but returns full score decomposition per venue.
+   * Accepts optional seed for deterministic replay.
+   * Does NOT record impressions (dev tool, not real usage).
+   */
+  async discoverWithExplanation(dto: DiscoverRequestDto) {
+    const deviceIdHash = (dto as any).deviceIdHash;
+    const seed = (dto as any).seed as number | undefined;
+
+    // Load profile
+    const userProfile = await this.tasteProfile.loadProfile(deviceIdHash);
+    const wPersonal = this.tasteProfile.getPersonalWeight(userProfile);
+
+    // Run normal pipeline up to scoring
+    const baseRadiusM = dto.radiusM ?? 5000;
+    const [places, events] = await Promise.all([
+      this.fetchPlaces(dto.lat, dto.lng, baseRadiusM),
+      this.fetchEvents(dto.lat, dto.lng, baseRadiusM, dto.timeWindow),
+    ]);
+
+    const expandedWeights = dto.profile.interests
+      ? this.buildExpandedWeights(dto.profile.interests)
+      : new Map<string, number>();
+
+    // Hard filters (hidden, budget) — same as discover()
+    let candidates = [...places, ...events].filter((c) => {
+      if ((dto.hiddenIds ?? []).includes(c.id)) return false;
+      if (dto.profile.budgetMax != null) {
+        if ((c as any).price_min != null && (c as any).price_min > dto.profile.budgetMax) return false;
+        if ((c as any).price_level != null && (c as any).price_level > this.budgetToLevel(dto.profile.budgetMax)) return false;
+      }
+      return true;
+    });
+
+    let scored = candidates.map((c) => this.scoreCandidate(c, dto, baseRadiusM, expandedWeights));
+
+    // Interest hard filter — same as discover()
+    const hasStrictInterests = [...expandedWeights.values()].some((w) => w >= 0.7);
+    const hasInterests = expandedWeights.size > 0;
+    if (hasStrictInterests) {
+      scored = scored.filter((c) => c.hasStrictMatch);
+    } else if (hasInterests) {
+      scored = scored.filter((c) => c.primaryTags.length > 0);
+    }
+
+    // Availability filter — same as discover()
+    const timeMid = new Date((new Date(dto.timeWindow.from).getTime() + new Date(dto.timeWindow.to).getTime()) / 2);
+    scored = scored.filter((c) => {
+      if (c.type === 'event') return true;
+      const status = checkOpenStatus(c.opening_hours, timeMid);
+      return status !== 'closed';
+    });
+
+    // F2: Apply personalization + price boost — same as discover()
+    if (wPersonal > 0 && userProfile) {
+      for (const c of scored) {
+        const venueFacets = this.tasteProfile.extractFacetsFromCandidate(c);
+        const personalScore = this.tasteProfile.computePersonalizationScore(userProfile, venueFacets);
+        c.score += wPersonal * personalScore;
+        c.score += this.tasteProfile.priceTierBoost(userProfile, (c as any).facet_price_tier);
+      }
+    }
+
+    // F1.2: Impression discount — same as discover()
+    const discountMap = await this.impressionService.getDiscountMap(deviceIdHash);
+    const savedIds = new Set<string>((dto as any).savedIds ?? []);
+    this.impressionService.applyDiscount(scored, discountMap, savedIds);
+
+    // Sort + diversity — same as discover()
+    scored.sort((a, b) => b.score - a.score);
+    const diversified = this.applyDiversity(scored);
+
+    // Build decomposition for each
+    const results = diversified
+      .slice(0, 60)
+      .map((c, rank) => {
+        const venueFacets = this.tasteProfile.extractFacetsFromCandidate(c);
+        const personalScore = this.tasteProfile.computePersonalizationScore(userProfile, venueFacets);
+        const priceBoost = this.tasteProfile.priceTierBoost(userProfile, (c as any).facet_price_tier);
+
+        // Facet match details
+        const facetMatch: Record<string, number> = {};
+        if (userProfile) {
+          for (const { type, value } of venueFacets) {
+            const w = userProfile.facet_weights?.[type]?.[value];
+            if (w) facetMatch[`${type}:${value}`] = w;
+          }
+        }
+
+        const isGeorgian = (s: string) => /[\u10A0-\u10FF]/.test(s);
+        let localName: string;
+        if (dto.locale === 'ka') {
+          localName = c.title_ka ?? c.title;
+        } else if (dto.locale === 'en') {
+          localName = c.title_en ?? (isGeorgian(c.title) ? c.title_en ?? c.title : c.title);
+        } else {
+          localName = (!isGeorgian(c.title) ? c.title : null) ?? c.title_en ?? c.title;
+        }
+
+        return {
+          venueId: c.id,
+          name: localName,
+          type: c.type,
+          category: c.category,
+          rank: rank + 1,
+          finalScore: Math.round(c.score * 1000) / 1000,
+          components: {
+            interest: Math.round(WEIGHTS.interestMatch * c.interestScore * 1000) / 1000,
+            distance: Math.round(WEIGHTS.distanceDecay * (c.distance_m === null ? 0.5 : Math.max(0, 1 - c.distance_m / baseRadiusM)) * 1000) / 1000,
+            time: Math.round(WEIGHTS.timeFit * this.timeFit(c, dto.timeWindow) * 1000) / 1000,
+            quality: Math.round(WEIGHTS.cardQuality * (Number(c.quality_score) || 0.5) * 1000) / 1000,
+            source: Math.round(WEIGHTS.sourceConfidence * 0.6 * 1000) / 1000,
+            personalization: Math.round(wPersonal * personalScore * 1000) / 1000,
+            priceBoost: Math.round(priceBoost * 1000) / 1000,
+          },
+          facetMatch,
+          facets: {
+            cuisine: (c as any).facet_cuisine ?? [],
+            format: (c as any).facet_format ?? [],
+            atmosphere: (c as any).facet_atmosphere ?? [],
+            occasion: (c as any).facet_occasion ?? [],
+            priceTier: (c as any).facet_price_tier,
+          },
+          flags: {
+            isExplore: !!(c as any)._isExplore,
+            isChain: c.is_chain || false,
+            companyFit: c.companyFit,
+          },
+        };
+      });
+
+    return {
+      profileSnapshot: {
+        facet_weights: userProfile?.facet_weights ?? {},
+        price_pref: userProfile?.price_pref ?? {},
+        signal_count: userProfile?.signal_count ?? 0,
+        w_personal: Math.round(wPersonal * 1000) / 1000,
+      },
+      seed: seed ?? null,
+      totalCandidates: scored.length,
+      results,
+    };
   }
 
   async more(sessionId: string) {
@@ -567,7 +755,9 @@ export class RecommendationService {
     const quality = Number(c.quality_score) || 0.5;
     const source = 0.6;
 
-    const CHAIN_SCORE_MULTIPLIER = 0.85;
+    // F3.5: Tourist softer on chains, local stricter
+    const lt = dto.profile.localType;
+    const CHAIN_SCORE_MULTIPLIER = (lt === 'tourist' || lt === 'first_time') ? 0.90 : lt === 'local' ? 0.80 : 0.85;
 
     let score =
       WEIGHTS.interestMatch * interestScore +
@@ -611,7 +801,8 @@ export class RecommendationService {
         v.address, p.rating, p.rating_count, p.indoor, p.price_level,
         p.quality_score, p.status, p.attributes, p.google_types, p.google_rating,
         p.google_rating_count, p.opening_hours, p.photos, v.website, v.google_place_id,
-        p.is_chain, p.chain_key
+        p.is_chain, p.chain_key, p.enriched_at,
+        p.facet_cuisine, p.facet_format, p.facet_atmosphere, p.facet_occasion, p.facet_price_tier
       FROM places p
       JOIN venues v ON p.venue_id = v.id
       WHERE p.status = 'active'
@@ -873,6 +1064,69 @@ export class RecommendationService {
     if (locale === 'en') return 'Tomorrow';
     if (locale === 'ka') return 'ხვალ';
     return 'Завтра';
+  }
+
+  /**
+   * F3.1: Contextual "why" label — explains why this venue is shown.
+   * Priority: explore > saved > vibe match > company > interest > nearby.
+   */
+  private resolveWhyLabel(
+    c: ScoredCandidate,
+    profile: any,
+    wPersonal: number,
+    locale: string,
+  ): string | undefined {
+    // Explore slot
+    if ((c as any)._isExplore) {
+      return locale === 'ka' ? 'ახალი ადგილი ახლოს' : locale === 'en' ? 'New place nearby' : 'Новое место рядом';
+    }
+
+    // Personalized vibe match
+    if (profile && wPersonal > 0.05) {
+      const venueFacets = this.tasteProfile.extractFacetsFromCandidate(c);
+      const score = this.tasteProfile.computePersonalizationScore(profile, venueFacets);
+      if (score > 0.5) {
+        // Find top matching facet
+        const weights = profile.facet_weights ?? {};
+        let topFacet = '';
+        let topWeight = 0;
+        for (const { type, value } of venueFacets) {
+          const w = weights[type]?.[value] ?? 0;
+          if (w > topWeight) { topWeight = w; topFacet = value; }
+        }
+        if (topFacet) {
+          const facetLabel = lInterest(topFacet, locale) || topFacet;
+          return locale === 'ka' ? `თქვენი ვაიბი: ${facetLabel}` : locale === 'en' ? `Your vibe: ${facetLabel}` : `Ваш вайб: ${facetLabel}`;
+        }
+      }
+    }
+
+    // Company fit
+    if (c.companyFit === 'boosted') {
+      return locale === 'ka' ? 'შესაფერისია' : locale === 'en' ? 'Great fit' : 'Подходит';
+    }
+
+    // Nearby
+    if (c.distance_m != null && c.distance_m > 0 && c.distance_m < 500) {
+      return locale === 'ka' ? 'ახლოს თქვენთან' : locale === 'en' ? 'Near you' : 'Рядом с вами';
+    }
+
+    return undefined;
+  }
+
+  /**
+   * A4: If enriched_at is stale (>30 days) or missing, treat openStatus as unknown.
+   * This ensures we don't show potentially outdated hours as current.
+   */
+  private resolveOpenStatus(c: CandidateRow, displayStatus: string | undefined): string | undefined {
+    if (c.type === 'event') return displayStatus; // events don't have opening hours
+    if (!c.enriched_at) return displayStatus; // no enrichment timestamp — use as-is (legacy)
+    const enrichedAt = new Date(c.enriched_at);
+    const thirtyDays = 30 * 24 * 60 * 60 * 1000;
+    if (Date.now() - enrichedAt.getTime() > thirtyDays) {
+      return undefined; // stale → frontend shows "Часы не подтверждены"
+    }
+    return displayStatus;
   }
 
   private formatPrice(c: CandidateRow): string | undefined {

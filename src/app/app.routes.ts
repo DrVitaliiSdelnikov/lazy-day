@@ -50,6 +50,11 @@ export const appRoutes: Route[] = [
       import('./features/privacy/privacy.component').then((m) => m.PrivacyComponent),
   },
   {
+    path: 'dev/reco-lab',
+    loadComponent: () =>
+      import('./features/dev/reco-lab.component').then((m) => m.RecoLabComponent),
+  },
+  {
     path: '**',
     redirectTo: 'discover',
   },

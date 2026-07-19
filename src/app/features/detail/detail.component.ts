@@ -462,7 +462,11 @@ export class DetailComponent implements OnInit {
   }
 
   onHide() {
-    // TODO: implement hide with undo toast
+    const c = this.card();
+    if (!c) return;
+    this.profileStore.addHidden(c.id);
+    this.interactions.track({ eventType: 'hide', targetType: c.type, targetId: c.id });
+    this.goBack();
   }
 
   formatRatingCount(count: number): string {

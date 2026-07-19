@@ -54,6 +54,26 @@ const defaults: ProfileState = {
 export class ProfileStore {
   private state = signal<ProfileState>({ ...defaults, ...loadFromStorage() });
 
+  /** SHA-256 hash of deviceId (first 16 hex chars), matching backend FeedbackService.
+   *  Cached in localStorage to avoid async race on first request. */
+  readonly deviceIdHash = signal(localStorage.getItem('ld_device_hash') || '');
+
+  constructor() {
+    this.ensureHash();
+  }
+
+  private async ensureHash() {
+    const cached = localStorage.getItem('ld_device_hash');
+    const id = this.state().deviceId;
+    // Recompute if missing or deviceId changed
+    if (cached && localStorage.getItem('ld_device_hash_src') === id) return;
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(id));
+    const hash = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
+    localStorage.setItem('ld_device_hash', hash);
+    localStorage.setItem('ld_device_hash_src', id);
+    this.deviceIdHash.set(hash);
+  }
+
   // Selectors
   readonly deviceId = computed(() => this.state().deviceId);
   readonly interests = computed(() => this.state().interests);

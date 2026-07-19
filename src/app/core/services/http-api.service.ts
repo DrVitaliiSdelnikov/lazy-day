@@ -44,4 +44,12 @@ export class HttpApiService extends ApiService {
   submitFeedback(data: { category: string; text: string; contact?: string; meta?: Record<string, unknown> }): Observable<{ ok: boolean }> {
     return this.http.post<{ ok: boolean }>(`${this.baseUrl}/feedback`, data);
   }
+
+  getTasteProfile(): Observable<any> {
+    return this.http.get(`${this.baseUrl}/recommendations/taste-profile`);
+  }
+
+  updateTasteProfile(data: any): Observable<any> {
+    return this.http.patch(`${this.baseUrl}/recommendations/taste-profile`, data);
+  }
 }

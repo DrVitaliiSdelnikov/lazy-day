@@ -51,6 +51,11 @@ import { LdIconComponent } from '../../../core/components/ld-icon.component';
           }
         </p>
 
+        <!-- Explanations (compact inline) -->
+        @if (explanationLine()) {
+          <p class="card__why">{{ explanationLine() }}</p>
+        }
+
         <!-- Slot 3: status (always one line) -->
         <div class="card__status" [class]="'card__status--' + statusTone()">
           @if (card().type === 'event') {
@@ -203,6 +208,15 @@ import { LdIconComponent } from '../../../core/components/ld-icon.component';
       font-style: italic;
     }
 
+    .card__why {
+      font-size: 11px;
+      color: var(--ld-secondary);
+      margin: 4px 0 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
     .card__status {
       display: flex;
       align-items: center;
@@ -291,9 +305,23 @@ export class ResultCardComponent {
   }
 
   crossInterest(): string | null {
-    const expl = this.card().explanations;
+    const expl = this.card().explanations ?? [];
     const also = expl.find(e => e.type === 'also_has');
     return also?.label ?? null;
+  }
+
+  /** Compact one-liner from explanations. Skips walk_time (already in meta) and also_has (in meta). */
+  explanationLine(): string | null {
+    const expl = this.card().explanations ?? [];
+    const skip = new Set(['walk_time', 'also_has']);
+    const parts = expl.filter(e => !skip.has(e.type)).map(e => e.label);
+    if (!parts.length) {
+      return this.card().whyLabel ?? null;
+    }
+    const line = this.card().whyLabel
+      ? [this.card().whyLabel, ...parts].join(' · ')
+      : parts.join(' · ');
+    return line;
   }
 
   statusTone(): string {

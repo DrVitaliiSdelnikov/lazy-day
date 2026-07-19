@@ -239,7 +239,7 @@ export class GoogleEnrichmentService {
     const response = await fetch(`${GOOGLE_PLACES_BASE}/places/${placeId}`, {
       headers: {
         'X-Goog-Api-Key': apiKey,
-        'X-Goog-FieldMask': 'regularOpeningHours,rating,userRatingCount',
+        'X-Goog-FieldMask': 'regularOpeningHours,rating,userRatingCount,priceLevel',
       },
     });
 
@@ -265,6 +265,20 @@ export class GoogleEnrichmentService {
 
     if (details.userRatingCount != null) {
       place.googleRatingCount = details.userRatingCount;
+    }
+
+    if (details.priceLevel != null) {
+      // Google: PRICE_LEVEL_FREE/INEXPENSIVE/MODERATE/EXPENSIVE/VERY_EXPENSIVE
+      const PRICE_MAP: Record<string, number> = {
+        'PRICE_LEVEL_FREE': 0,
+        'PRICE_LEVEL_INEXPENSIVE': 1,
+        'PRICE_LEVEL_MODERATE': 2,
+        'PRICE_LEVEL_EXPENSIVE': 3,
+        'PRICE_LEVEL_VERY_EXPENSIVE': 4,
+      };
+      place.priceLevel = typeof details.priceLevel === 'string'
+        ? PRICE_MAP[details.priceLevel] ?? null
+        : details.priceLevel;
     }
 
     await this.placeRepo.save(place);

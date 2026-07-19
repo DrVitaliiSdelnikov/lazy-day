@@ -4,10 +4,11 @@ import { DataSource } from 'typeorm';
 import { EventIngestionService } from './event-ingestion.service';
 
 /**
- * Daily event refresh cron.
- * Runs all enabled event sources once per day at 06:00 Tbilisi time (02:00 UTC).
- * Also marks past events as 'past'.
- * After run: checks source freshness, alerts via Telegram if stale.
+ * Daily cron jobs:
+ * - 02:00 UTC: event refresh (all sources, mark past, health alerts)
+ * - 03:00 UTC (Sunday): enrichment refresh (stale Google data, 30-day TTL)
+ * - 05:00 UTC: impression_agg prune (>30 days) + decay (>14 days)
+ * - GC: empty anonymous users (>90 days)
  */
 @Injectable()
 export class EventCronService {
@@ -17,6 +18,135 @@ export class EventCronService {
     private readonly eventIngestion: EventIngestionService,
     private readonly dataSource: DataSource,
   ) {}
+
+  /**
+   * A3: Weekly enrichment refresh for stale Google data.
+   * Re-fetches Enterprise details (rating, hours, priceLevel) for venues
+   * where enriched_at > 30 days. Uses existing googlePlaceId (Place Details, not Text Search).
+   * Budget: ~200 venues/week × $20/1K = ~$4/month.
+   */
+  @Cron('0 3 * * 0') // Sunday 03:00 UTC = 07:00 Tbilisi
+  async weeklyEnrichmentRefresh() {
+    const apiKey = process.env['GOOGLE_PLACES_API_KEY'];
+    if (!apiKey) {
+      this.logger.warn('GOOGLE_PLACES_API_KEY not set — skipping enrichment refresh');
+      return;
+    }
+
+    this.logger.log('Weekly enrichment refresh starting...');
+
+    const stale = await this.dataSource.query(`
+      SELECT v.id as venue_id, v.google_place_id
+      FROM venues v
+      JOIN places p ON p.venue_id = v.id
+      WHERE v.google_place_id IS NOT NULL
+        AND (p.enriched_at IS NULL OR p.enriched_at < NOW() - INTERVAL '30 days')
+      ORDER BY p.enriched_at ASC NULLS FIRST
+      LIMIT 200
+    `);
+
+    this.logger.log(`Found ${stale.length} stale venues to refresh`);
+
+    let refreshed = 0, errors = 0;
+    for (const row of stale) {
+      try {
+        const response = await fetch(`https://places.googleapis.com/v1/places/${row.google_place_id}`, {
+          headers: {
+            'X-Goog-Api-Key': apiKey,
+            'X-Goog-FieldMask': 'regularOpeningHours,rating,userRatingCount,priceLevel',
+          },
+        });
+
+        if (!response.ok) {
+          errors++;
+          continue;
+        }
+
+        const details = await response.json();
+
+        const updates: string[] = [];
+        const params: any[] = [];
+        let paramIdx = 1;
+
+        if (details.rating != null) {
+          updates.push(`google_rating = $${paramIdx++}`);
+          params.push(details.rating);
+        }
+        if (details.userRatingCount != null) {
+          updates.push(`google_rating_count = $${paramIdx++}`);
+          params.push(details.userRatingCount);
+        }
+        if (details.regularOpeningHours) {
+          updates.push(`opening_hours = $${paramIdx++}`);
+          params.push(JSON.stringify(details.regularOpeningHours));
+        }
+        if (details.priceLevel != null) {
+          const PRICE_MAP: Record<string, number> = {
+            PRICE_LEVEL_FREE: 0, PRICE_LEVEL_INEXPENSIVE: 1,
+            PRICE_LEVEL_MODERATE: 2, PRICE_LEVEL_EXPENSIVE: 3, PRICE_LEVEL_VERY_EXPENSIVE: 4,
+          };
+          updates.push(`price_level = $${paramIdx++}`);
+          params.push(typeof details.priceLevel === 'string' ? PRICE_MAP[details.priceLevel] ?? null : details.priceLevel);
+        }
+
+        if (updates.length > 0) {
+          updates.push(`enriched_at = NOW()`);
+          params.push(row.venue_id);
+          await this.dataSource.query(
+            `UPDATE places SET ${updates.join(', ')} WHERE venue_id = $${paramIdx}`,
+            params,
+          );
+          refreshed++;
+        }
+
+        // Rate limit
+        await new Promise(r => setTimeout(r, 100));
+      } catch (err: any) {
+        errors++;
+        if (errors <= 3) this.logger.warn(`Refresh error for ${row.google_place_id}: ${err?.message}`);
+      }
+    }
+
+    this.logger.log(`Enrichment refresh done: ${refreshed} refreshed, ${errors} errors out of ${stale.length}`);
+  }
+
+  /**
+   * F1: Daily impression_agg maintenance.
+   * - Prune records older than 30 days
+   * - Decay unengaged_count for records older than 14 days (honesty window)
+   */
+  @Cron('0 5 * * *') // 05:00 UTC daily
+  async dailyImpressionMaintenance() {
+    try {
+      // Prune old
+      const pruned = await this.dataSource.query(
+        `DELETE FROM impression_agg WHERE last_shown_at < NOW() - INTERVAL '30 days'`,
+      );
+      const prunedCount = pruned?.[1] ?? 0;
+
+      // Decay stale counters (outside 14-day window)
+      const decayed = await this.dataSource.query(`
+        UPDATE impression_agg
+        SET unengaged_count = 0
+        WHERE last_shown_at < NOW() - INTERVAL '14 days'
+          AND unengaged_count > 0
+          AND NOT engaged
+      `);
+      const decayedCount = decayed?.[1] ?? 0;
+
+      // GC orphaned taste profiles (>90 days no update)
+      const gcProfiles = await this.dataSource.query(
+        `DELETE FROM user_taste_profile WHERE updated_at < NOW() - INTERVAL '90 days'`,
+      );
+      const gcCount = gcProfiles?.[1] ?? 0;
+
+      if (prunedCount > 0 || decayedCount > 0 || gcCount > 0) {
+        this.logger.log(`Impression maintenance: pruned=${prunedCount}, decayed=${decayedCount}, gcProfiles=${gcCount}`);
+      }
+    } catch (e: any) {
+      this.logger.warn(`Impression maintenance failed: ${e?.message}`);
+    }
+  }
 
   @Cron('0 2 * * *') // 02:00 UTC = 06:00 Tbilisi
   async dailyEventRefresh() {
