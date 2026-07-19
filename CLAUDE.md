@@ -241,15 +241,9 @@ Full spec: `.workbench/specs/phase-F2-personalization-spec.md`
 TasteProfileService: `apps/api/src/app/recommendation/taste-profile.service.ts`
 All done: profile update (IDF+EMA), cosine scoring (w_personal 0→0.20), facet negative (≥2 threshold), price gaussian (β=0.06). Steck calibration GATED for ≥10 signals.
 
-### Phase F3: Transparency & Onboarding — IN PROGRESS
+### Phase F3: Transparency & Onboarding — ✅ COMPLETE
 Full spec: `.workbench/specs/phase-F3-transparency-onboarding-spec.md`
-- [x] ~~F3.1: "почему" строка~~ — DONE. resolveWhyLabel (explore/vibe/company/interest/nearby). whyLabel in card model.
-- [x] ~~F3.2: скрутируемый профиль~~ — DONE. GET/PATCH taste-profile endpoints. Settings UI with chips + reset.
-- [x] ~~F3.3: "правила игры"~~ — DONE. Bottomsheet in settings, 5 bullets, i18n.
-- [ ] F3.4: онбординг-рефрейм (мгновенные результаты, no gate) — frontend routing refactor
-- [x] ~~F3.5: турист/местный~~ — DONE. localType in DTO, radius ×1.3/×0.8, chain penalty 0.90/0.80.
-- [x] ~~F3.6: уточняющая карточка~~ — BASELINE EXISTS (FeedTuneBlock at position 5). Facet-based upgrade deferred.
-Gate: time to first recommendation <3 sec, onboarding optional
+All 6 tasks done: whyLabel on cards, scrollable taste profile, how-it-works, no-gate onboarding, tourist/local modifiers, tune block baseline.
 
 ### Phase F4: Optional (validate before investing)
 - [ ] F4.1: структурный поиск (Claude → JSON-фасеты, if analytics show demand)
