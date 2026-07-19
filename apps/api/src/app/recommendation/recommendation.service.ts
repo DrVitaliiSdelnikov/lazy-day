@@ -464,6 +464,100 @@ export class RecommendationService {
     return { sessionId, cards, hasMore: diversified.length > 60, meta };
   }
 
+  /**
+   * Dev-only: same as discover() but returns full score decomposition per venue.
+   * Accepts optional seed for deterministic replay.
+   * Does NOT record impressions (dev tool, not real usage).
+   */
+  async discoverWithExplanation(dto: DiscoverRequestDto) {
+    const deviceIdHash = (dto as any).deviceIdHash;
+    const seed = (dto as any).seed as number | undefined;
+
+    // Load profile
+    const userProfile = await this.tasteProfile.loadProfile(deviceIdHash);
+    const wPersonal = this.tasteProfile.getPersonalWeight(userProfile);
+
+    // Run normal pipeline up to scoring
+    const baseRadiusM = dto.radiusM ?? 5000;
+    const [places, events] = await Promise.all([
+      this.fetchPlaces(dto.lat, dto.lng, baseRadiusM),
+      this.fetchEvents(dto.lat, dto.lng, baseRadiusM, dto.timeWindow),
+    ]);
+
+    const expandedWeights = dto.profile.interests
+      ? this.buildExpandedWeights(dto.profile.interests)
+      : new Map<string, number>();
+
+    let candidates = [...places, ...events].filter((c) => {
+      if ((dto.hiddenIds ?? []).includes(c.id)) return false;
+      return true;
+    });
+
+    const scored = candidates.map((c) => this.scoreCandidate(c, dto, baseRadiusM, expandedWeights));
+
+    // Build decomposition for each
+    const results = scored
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 60)
+      .map((c, rank) => {
+        const venueFacets = this.tasteProfile.extractFacetsFromCandidate(c);
+        const personalScore = this.tasteProfile.computePersonalizationScore(userProfile, venueFacets);
+        const priceBoost = this.tasteProfile.priceTierBoost(userProfile, (c as any).facet_price_tier);
+
+        // Facet match details
+        const facetMatch: Record<string, number> = {};
+        if (userProfile) {
+          for (const { type, value } of venueFacets) {
+            const w = userProfile.facet_weights?.[type]?.[value];
+            if (w) facetMatch[`${type}:${value}`] = w;
+          }
+        }
+
+        return {
+          venueId: c.id,
+          name: c.title,
+          type: c.type,
+          category: c.category,
+          rank: rank + 1,
+          finalScore: Math.round(c.score * 1000) / 1000,
+          components: {
+            interest: Math.round(WEIGHTS.interestMatch * c.interestScore * 1000) / 1000,
+            distance: Math.round(WEIGHTS.distanceDecay * (c.distance_m === null ? 0.5 : Math.max(0, 1 - c.distance_m / baseRadiusM)) * 1000) / 1000,
+            time: Math.round(WEIGHTS.timeFit * this.timeFit(c, dto.timeWindow) * 1000) / 1000,
+            quality: Math.round(WEIGHTS.cardQuality * (Number(c.quality_score) || 0.5) * 1000) / 1000,
+            source: Math.round(WEIGHTS.sourceConfidence * 0.6 * 1000) / 1000,
+            personalization: Math.round(wPersonal * personalScore * 1000) / 1000,
+            priceBoost: Math.round(priceBoost * 1000) / 1000,
+          },
+          facetMatch,
+          facets: {
+            cuisine: (c as any).facet_cuisine ?? [],
+            format: (c as any).facet_format ?? [],
+            atmosphere: (c as any).facet_atmosphere ?? [],
+            occasion: (c as any).facet_occasion ?? [],
+            priceTier: (c as any).facet_price_tier,
+          },
+          flags: {
+            isExplore: !!(c as any)._isExplore,
+            isChain: c.is_chain || false,
+            companyFit: c.companyFit,
+          },
+        };
+      });
+
+    return {
+      profileSnapshot: {
+        facet_weights: userProfile?.facet_weights ?? {},
+        price_pref: userProfile?.price_pref ?? {},
+        signal_count: userProfile?.signal_count ?? 0,
+        w_personal: Math.round(wPersonal * 1000) / 1000,
+      },
+      seed: seed ?? null,
+      totalCandidates: scored.length,
+      results,
+    };
+  }
+
   async more(sessionId: string) {
     // TODO: Redis session cache pagination
     return { sessionId, cards: [], hasMore: false };

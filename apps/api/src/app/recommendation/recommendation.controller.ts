@@ -15,6 +15,12 @@ export class RecommendationController {
     return this.service.discover(dto);
   }
 
+  /** Dev-only: score decomposition per venue. NOT for prod use. */
+  @Post('explain')
+  explain(@Body() dto: DiscoverRequestDto) {
+    return this.service.discoverWithExplanation(dto);
+  }
+
   @Get(':sessionId/more')
   more(@Param('sessionId') sessionId: string) {
     return this.service.more(sessionId);
