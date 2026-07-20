@@ -25,16 +25,16 @@ import { SavedStore } from '../../core/stores/saved.store';
             <button class="detail__icon-btn" (click)="goBack()" [attr.aria-label]="'nav.discover' | translate">
               <ld-icon name="arrow-left" [size]="16" />
             </button>
-            <div class="detail__header-actions">
-              <button class="detail__icon-btn" (click)="shareCard(c)" [attr.aria-label]="'detail.share' | translate">
-                <ld-icon name="share-2" [size]="15" />
-              </button>
-              <button class="detail__icon-btn" [class.detail__icon-btn--heart]="isSaved()"
-                (click)="onToggleSave()" [attr.aria-label]="(isSaved() ? 'detail.unsave' : 'detail.save') | translate">
-                <ld-icon [name]="isSaved() ? 'heart-filled' : 'heart'" [size]="16" />
-              </button>
-            </div>
           }
+          <div class="detail__header-actions">
+            <button class="detail__icon-btn" (click)="shareCard(c)" [attr.aria-label]="'detail.share' | translate">
+              <ld-icon name="share-2" [size]="15" />
+            </button>
+            <button class="detail__icon-btn" [class.detail__icon-btn--heart]="isSaved()"
+              (click)="onToggleSave()" [attr.aria-label]="(isSaved() ? 'detail.unsave' : 'detail.save') | translate">
+              <ld-icon [name]="isSaved() ? 'heart-filled' : 'heart'" [size]="16" />
+            </button>
+          </div>
         </div>
         <div class="detail__header-icon">
           <ld-icon [name]="categoryIcon(c)" [size]="38" />
