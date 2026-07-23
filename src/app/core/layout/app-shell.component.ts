@@ -231,6 +231,12 @@ export class AppShellComponent implements OnInit {
     this.router.events.subscribe(e => {
       if (e instanceof NavigationEnd) {
         this.currentUrl.set(e.urlAfterRedirects);
+        // Analytics: track SPA route changes
+        const url = e.urlAfterRedirects;
+        try {
+          (window as any).ym?.(110570889, 'hit', url);
+          (window as any).gtag?.('event', 'page_view', { page_path: url });
+        } catch {}
         // Refresh dev strip on navigation
         if (this.devMode) this.loadDevProfile();
       }

@@ -138,7 +138,7 @@
         for(var j=0;j<document.scripts.length;j++){if(document.scripts[j].src===r){return;}}
         k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
       })(window,document,'script','https://mc.yandex.ru/metrika/tag.js?id=110570889','ym');
-      ym(110570889,'init',{clickmap:true,trackLinks:true,accurateTrackBounce:true});
+      ym(110570889,'init',{clickmap:true,trackLinks:true,accurateTrackBounce:true,defer:true});
       // Re-send first-touch URL for correct attribution
       try{var ft=localStorage.getItem('ld_first_touch');if(ft){var p=JSON.parse(ft);if(p.landing_url)ym(110570889,'hit',p.landing_url,{params:{first_touch:true}});}}catch(e){}
     </script>
