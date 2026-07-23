@@ -84,15 +84,6 @@ export class IngestionController {
     return this.eventIngestion.listSources();
   }
 
-  /** One-time: fix tkt.ge poster URLs from old CDN to new CDN */
-  @Post('fix-poster-urls')
-  async fixPosterUrls() {
-    const r = await this.dataSource.query(
-      `UPDATE events SET poster_url = REPLACE(poster_url, 'https://tkt.ge/api/image/', 'https://static.tkt.ge/img/') WHERE poster_url LIKE 'https://tkt.ge/api/image/%'`
-    );
-    return { updated: r[1] };
-  }
-
   /** Sync enrichment data from local DB by osm_id (stable key). Replaces coord-based import-enrichment. */
   @Post('sync-by-osm')
   async syncByOsm(@Body() body: { records: any[] }) {
