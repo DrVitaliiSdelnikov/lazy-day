@@ -485,16 +485,16 @@ One-time costs: Google enrichment local $74, prod ~$35 (Enterprise).
 
 ## Key Documents
 
-| Doc | What |
-|---|---|
-| `docs/roadmap.md` | Full roadmap with all tasks and priorities |
-| `docs/post-deploy-review.md` | Week 1 review, red flags, revised plan |
-| `docs/cheatsheet.md` | Commands, API ref, env vars, kill/scale SQL |
-| `docs/project-status.md` | **This file** — comprehensive current state |
-| `docs/ux-specs/` | 24 UX specs (README.md has index with status) |
-| `docs/scoring.md` | Scoring formula, all modifiers |
-| `docs/database.md` | Tables, migrations, schema |
-| `CLAUDE.md` | AI session context — roadmap, Phase 0/A/B, v1/v2 |
+| Doc | What                                                  |
+|---|-------------------------------------------------------|
+| `docs/roadmap.md` | Full roadmap with all tasks and priorities            |
+| `docs/post-deploy-review.md` | Week 1 review, red flags, revised plan                |
+| `docs/cheatsheet.md` | Commands, API ref, env vars, kill/scale SQL           |
+| `docs/project-status.md` | **This file** — comprehensive current state           |
+| `docs/ux-specs/` | 24 UX specs (README.md has index with status)         |
+| `docs/scoring.md` | Scoring formula, all modifiers                        |
+| `docs/database.md` | Tables, migrations, schema                            |
+| `CLAUDE.md` | AI session context — roadmap, Phase 0/jxtveA/B, v1/v2 |
 
 **Workbench specs (local only, not committed):**
 | Spec | What |

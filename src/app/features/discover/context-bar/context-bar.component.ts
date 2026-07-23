@@ -18,9 +18,12 @@ type PanelType = 'location' | 'company' | 'interests' | 'time' | null;
   template: `
     <div class="ctx">
       <div class="ctx__chips">
-        <button class="ctx__chip" (click)="openPanel('location')">
+        <button class="ctx__chip" [class.ctx__chip--hint]="isDefaultLocation()" (click)="openPanel('location')">
           <ld-icon name="map-pin" [size]="14" />
           {{ locationLabel() }}
+          @if (isDefaultLocation()) {
+            <span class="ctx__geo-hint">· {{ 'geo.enable' | translate }}</span>
+          }
         </button>
         <button class="ctx__chip" (click)="openPanel('time')">
           <ld-icon name="clock" [size]="14" />
@@ -148,6 +151,18 @@ type PanelType = 'location' | 'company' | 'interests' | 'time' | null;
       &:active {
         border-color: var(--ld-accent);
       }
+    }
+
+    .ctx__geo-hint {
+      color: var(--ld-primary);
+      font-weight: 500;
+      font-size: 12px;
+      animation: geo-pulse 4s ease-in-out infinite;
+    }
+
+    @keyframes geo-pulse {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 1; }
     }
 
     .ctx__icon {
@@ -325,9 +340,13 @@ export class ContextBarComponent {
   locationLabel(): string {
     const r = this.radiusKm();
     const pos = this.geo.position();
-    if (pos.source === 'gps') return `${r} км`;
-    if (pos.label) return `${pos.label} · ${r} км`;
-    return `${this.translate.instant('context.center')} · ${r} км`;
+    if (pos.source === 'gps') return `📍 ${r} км`;
+    const base = pos.label || this.translate.instant('context.center');
+    return `${base} · ${r} км`;
+  }
+
+  isDefaultLocation(): boolean {
+    return this.geo.position().source !== 'gps';
   }
 
   companyLabel(): string {

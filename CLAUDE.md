@@ -164,6 +164,28 @@ Full spec: `.workbench/specs/feed-cards-ui-spec.md`
 - [ ] UI flows: landing → discover, onboarding, chips → ProfileStore, language switcher
 - [ ] QA: полный пользовательский путь на проде (landing → discover → карточка → share)
 
+#### 0.1c Landing + UX improvements — DONE (2026-07-23)
+- [x] **Event poster thumbnails** on feed cards (tkt.ge, google_events, biletebi via proxy)
+- [x] **Image proxy** `/v1/cards/img-proxy` for CDNs with broken content-type (biletebi.ge)
+- [x] **tkt.ge CDN fix** — `tkt.ge/api/image/` → `static.tkt.ge/img/`, 202 URLs migrated on prod
+- [x] **Detail card hero image** — 200px poster/photo replaces color header, nav floats with gradient
+- [x] **Broken image handler** — `(error)` hides failed `<img>` gracefully
+- [x] **Welcome guard** — `/discover` requires `ld_welcome_done`, new users → landing
+- [x] **Landing copy** — message-matched H1 + "Решить за меня" CTA (3 langs)
+- [x] **SPA analytics fix** — Metrika `defer:true` + `ym('hit')` + `gtag('page_view')` on route change
+- [x] **Explanations on cards** — inline compact text (matches_interest, highly_rated, walk_time)
+- [x] **Save/share in modal detail** — buttons visible in both modal and full-page views
+- [x] **Geolocation UX** — persistent chip in context-bar, priming sheet, "по умолчанию" label, soft animation
+- [x] **9 presets** — added entertainment + spa to match tune block (was 7)
+- [x] **Events distance boost** — events without coords get 0.85 distance (was 0.5, prevented sinking at large radius)
+
+#### 0.1d Interests & Categories refactor (PLANNED)
+- [ ] **Unify presets, interests, and tune block** — currently 3 separate systems (presets = mood switching, interests = ProfileStore, tune block = inline). Confusing UX: selecting in tune block doesn't highlight preset chip.
+- [ ] **Decide architecture**: presets override interests temporarily (current) vs presets = shortcut to set interests?
+- [ ] **Sync tune block ↔ presets** — if user picks "Спа и бани" in tune block, "Спа и бани" preset chip should highlight
+- [ ] **Landing chips → discover presets** — verify selections propagate correctly
+- [ ] **Single source of truth** for category list (currently duplicated in 3 places)
+
 #### 0.2 Backend stabilization
 - [ ] GitHub Actions `workflow_dispatch` тест (Azure IP vs Cloudflare для tkt.ge/biletebi.ge)
 - [ ] Если 403 → настроить local cron на тбилисской машине
@@ -199,7 +221,10 @@ Vitest via `vitest-angular` (Angular 21 default). Zoneless. ~2 дня total.
 - [ ] i18n: проверить все 3 локали (ru/en/ka) — пропущенные ключи, encoding
 
 #### 0.5 Documentation — PARTIALLY DONE
-- [x] **laziGoDocs/** created — structured by topic (9 docs, 7 sections)
+- [x] **laziGoDocs/** created — structured by topic (12 docs, 7 sections)
+- [x] **laziGoDocs/ux/landing-improvement.md** — diagnostic + action plan
+- [x] **laziGoDocs/ux/landing-copy-variants.md** — all copy variants for A/B testing
+- [x] **laziGoDocs/ux/geolocation-playbook.md** — priming, fallback, microcopy
 - [ ] `.workbench/` cleanup — удалить устаревшие specs, оставить актуальные
 - [ ] README.md — quick start для нового разработчика (setup, run, deploy)
 - [ ] Notion MCP интеграция (after stabilization)
@@ -215,7 +240,7 @@ Vitest via `vitest-angular` (Angular 21 default). Zoneless. ~2 дня total.
 - [x] ~~Bolt такси~~ — DONE. Yandex Go + Bolt в decide-for-me и detail card. Hidden <500m и на desktop.
 - [ ] ESC закрывает модалку — детальная карточка места/события должна закрываться на Escape.
 - [ ] Перевод категорий в карточках — проверить что category labels (Museum, Bar, Viewpoint...) переведены на ru/ka.
-- [ ] Лайк в модальном окне — кнопка ♡ save в детальной карточке когда открыта как модалка (сейчас скрыта `@if (!isModal())`).
+- [x] ~~Лайк в модальном окне~~ — DONE. Save/share buttons visible in both modal and full-page views.
 - [ ] Убирать прошедшие events — залоканные ивенты с `startsAt < now` не должны показываться. Проверить фронт-фильтрацию + бек cron.
 - [ ] "Реши за меня" Фаза 2 — межсессионный impression discounting (Postgres), эвристика причины скипа, интерливинг. Только после метрик Фазы 1.
 - [ ] Тултип полного имени — если title обрезан ellipsis, показывать полное имя по hover/long-press.

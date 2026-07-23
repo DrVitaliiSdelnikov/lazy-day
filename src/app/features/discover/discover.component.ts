@@ -41,10 +41,11 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
           <p class="sidebar__label">{{ 'sidebar.location' | translate }}</p>
           <div class="sidebar__location" [class.sidebar__location--default]="geo.position().source === 'default'">
             <ld-icon name="map-pin" [size]="14" />
-            <span>{{ geo.position().label || (geo.position().source === 'gps' ? ('sidebar.my_location' | translate) : ('sidebar.tbilisi_center' | translate)) }}</span>
-            @if (geo.position().source === 'default') {
-              <button class="ld-btn ld-btn--ghost" style="font-size:11px; color:var(--ld-primary); margin-left:auto"
-                (click)="requestGps()">{{ 'sidebar.detect' | translate }}</button>
+            @if (geo.position().source === 'gps') {
+              <span>{{ 'sidebar.my_location' | translate }}</span>
+            } @else {
+              <span style="white-space:nowrap">{{ geo.position().label }}<br><span style="color:var(--ld-text-3);font-size:10px">{{ 'geo.default' | translate }}</span></span>
+              <button class="sidebar__geo-hint" (click)="requestGps()">{{ 'geo.enable' | translate }}</button>
             }
           </div>
         </div>
@@ -111,18 +112,6 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
         <p class="discover__context">{{ contextLine() }}</p>
         <h1 class="discover__greeting ld-display">{{ greeting() }}</h1>
       </header>
-
-      <!-- Location chip: mobile only (desktop has sidebar) -->
-      <button class="discover__geo-chip" (click)="onGeoChipTap()">
-        @if (geo.position().source === 'gps') {
-          <ld-icon name="map-pin" [size]="13" />
-          <span>{{ 'geo.near_you' | translate }}</span>
-        } @else {
-          <ld-icon name="map-pin" [size]="13" />
-          <span>{{ geo.position().label || ('geo.city_center' | translate) }}</span>
-          <span class="discover__geo-enable">· {{ 'geo.enable' | translate }}</span>
-        }
-      </button>
 
       <!-- Context bar: mobile only -->
       <app-context-bar class="discover__context-bar" (changed)="onContextChanged()" />
@@ -339,6 +328,23 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
       color: var(--ld-text);
     }
 
+    .sidebar__geo-hint {
+      font-size: 11px;
+      color: var(--ld-primary);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+      margin-left: auto;
+      white-space: nowrap;
+      animation: geo-pulse 4s ease-in-out infinite;
+    }
+
+    @keyframes geo-pulse {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 1; }
+    }
+
     .sidebar__segments {
       background: var(--ld-bg);
       border-radius: 10px;
@@ -437,30 +443,6 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
 
     .theme-evening .discover__greeting {
       color: var(--ld-primary);
-    }
-
-    @media (min-width: 1024px) {
-      .discover__geo-chip { display: none; }
-    }
-
-    .discover__geo-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      padding: 5px 12px;
-      border-radius: 20px;
-      border: 1px solid var(--ld-border);
-      background: var(--ld-surface);
-      font-family: inherit;
-      font-size: 12px;
-      color: var(--ld-text-2);
-      cursor: pointer;
-      margin: 6px 0 2px;
-    }
-
-    .discover__geo-enable {
-      color: var(--ld-primary);
-      font-weight: 500;
     }
 
     .discover__toolbar {
@@ -920,6 +902,8 @@ export class DiscoverComponent implements OnInit {
     { key: 'family', labelKey: 'preset.family', icon: 'balloon' },
     { key: 'nightlife', labelKey: 'preset.nightlife', icon: 'moon' },
     { key: 'gym', labelKey: 'preset.gym', icon: 'barbell' },
+    { key: 'entertainment', labelKey: 'preset.entertainment', icon: 'movie' },
+    { key: 'spa', labelKey: 'preset.spa', icon: 'coffee' },
   ];
 
   typeFilters = [
@@ -936,6 +920,8 @@ export class DiscoverComponent implements OnInit {
     food: { interests: { food: 1 }, radiusM: 5000 },
     nightlife: { interests: { nightlife: 1, entertainment: 0.5 }, radiusM: 10000 },
     gym: { interests: { gym: 1, sports: 0.5 }, radiusM: 10000 },
+    entertainment: { interests: { entertainment: 1, nightlife: 0.3 }, radiusM: 10000 },
+    spa: { interests: { spa: 1 }, radiusM: 8000 },
   };
 
   readonly activeFilterCount = computed(() => {

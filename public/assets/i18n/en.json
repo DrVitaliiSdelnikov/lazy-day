@@ -132,7 +132,9 @@
     "active": "Active",
     "family": "Kids",
     "nightlife": "Nightlife",
-    "gym": "Fitness"
+    "gym": "Fitness",
+    "entertainment": "Fun",
+    "spa": "Spa & baths"
   },
   "type_filter": {
     "all": "All",
@@ -292,6 +294,7 @@
     "priming_body": "LaziGo sorts places by walking distance from where you are. We use your location only for this — it's never stored.",
     "priming_allow": "Show nearby places",
     "priming_skip": "Not now",
-    "approx_from_center": "≈ from center"
+    "approx_from_center": "≈ from center",
+    "default": "default"
   }
 }

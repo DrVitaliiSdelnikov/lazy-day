@@ -14,7 +14,7 @@ const TBILISI_CENTER: GeoPosition = {
   lat: 41.6934,
   lng: 44.8015,
   source: 'default',
-  label: 'Центр Тбилиси',
+  label: 'пл. Свободы',
 };
 
 @Injectable({ providedIn: 'root' })
