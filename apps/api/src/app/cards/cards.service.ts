@@ -100,6 +100,11 @@ export class CardsService {
       venueName: v?.name,
       ticketUrl: e.ticketUrl,
       priceLabel: this.formatEventPrice(e.priceMin, e.priceMax, e.currency),
+      posterUrl: e.posterUrl
+        ? (e.posterUrl.includes('static.biletebi.ge')
+          ? `/v1/cards/img-proxy?url=${encodeURIComponent(e.posterUrl)}`
+          : e.posterUrl)
+        : undefined,
       address: v?.address,
       description: e.description,
     };

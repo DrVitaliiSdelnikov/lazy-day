@@ -18,8 +18,12 @@ import { SavedStore } from '../../core/stores/saved.store';
   template: `
     @if (card(); as c) {
     <div class="detail">
-      <!-- Color header -->
-      <div class="detail__header" [class.detail__header--event]="c.type === 'event'">
+      <!-- Header: image or color fallback -->
+      <div class="detail__header" [class.detail__header--event]="c.type === 'event'"
+        [class.detail__header--has-img]="!!detailImage(c)">
+        @if (detailImage(c)) {
+          <img class="detail__header-img" [src]="detailImage(c)" alt="" (error)="headerImgFailed.set(true)" />
+        }
         <div class="detail__header-nav">
           @if (!isModal()) {
             <button class="detail__icon-btn" (click)="goBack()" [attr.aria-label]="'nav.discover' | translate">
@@ -36,9 +40,11 @@ import { SavedStore } from '../../core/stores/saved.store';
             </button>
           </div>
         </div>
-        <div class="detail__header-icon">
-          <ld-icon [name]="categoryIcon(c)" [size]="38" />
-        </div>
+        @if (!detailImage(c)) {
+          <div class="detail__header-icon">
+            <ld-icon [name]="categoryIcon(c)" [size]="38" />
+          </div>
+        }
       </div>
 
       <!-- Content -->
@@ -152,10 +158,39 @@ import { SavedStore } from '../../core/stores/saved.store';
     .detail__header {
       background: var(--ld-primary-soft);
       padding: 8px 14px 18px;
+      position: relative;
+      overflow: hidden;
     }
 
     .detail__header--event {
       background: var(--ld-event-soft);
+    }
+
+    .detail__header--has-img {
+      padding: 0;
+      min-height: 200px;
+    }
+
+    .detail__header-img {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      display: block;
+    }
+
+    .detail__header--has-img .detail__header-nav {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 8px 14px;
+      z-index: 1;
+      background: linear-gradient(180deg, rgba(0,0,0,0.4) 0%, transparent 100%);
+    }
+
+    .detail__header--has-img .detail__icon-btn {
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(4px);
     }
 
     .detail__header-nav {
@@ -395,6 +430,12 @@ export class DetailComponent implements OnInit {
   card = signal<RecommendationCard | null>(null);
   isSaved = signal(false);
   shareToast = signal(false);
+  headerImgFailed = signal(false);
+
+  detailImage(c: RecommendationCard): string | null {
+    if (this.headerImgFailed()) return null;
+    return (c as any).posterUrl || c.photoUrl || null;
+  }
 
   ngOnInit() {
     const preloaded = this.preloadedCard();
