@@ -58,6 +58,9 @@ import { LdIconComponent } from '../../../core/components/ld-icon.component';
         @if (explanationLine()) {
           <p class="card__why">{{ explanationLine() }}</p>
         }
+        @if (showGeoHint() && hasDistance()) {
+          <p class="card__geo-hint">{{ 'geo.approx_from_center' | translate }}</p>
+        }
 
         <!-- Slot 3: status (always one line) -->
         <div class="card__status" [class]="'card__status--' + statusTone()">
@@ -258,6 +261,13 @@ import { LdIconComponent } from '../../../core/components/ld-icon.component';
       }
     }
 
+    .card__geo-hint {
+      font-size: 10px;
+      color: var(--ld-text-3);
+      margin: 2px 0 0;
+      font-style: italic;
+    }
+
     .card__status-dot {
       width: 6px;
       height: 6px;
@@ -270,6 +280,7 @@ import { LdIconComponent } from '../../../core/components/ld-icon.component';
 export class ResultCardComponent {
   card = input.required<RecommendationCard>();
   isSaved = input(false);
+  showGeoHint = input(false);
   openDetail = output<void>();
   toggleSave = output<void>();
   hideCard = output<void>();

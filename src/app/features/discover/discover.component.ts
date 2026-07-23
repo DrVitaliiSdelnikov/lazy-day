@@ -112,6 +112,18 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
         <h1 class="discover__greeting ld-display">{{ greeting() }}</h1>
       </header>
 
+      <!-- Location chip: mobile only (desktop has sidebar) -->
+      <button class="discover__geo-chip" (click)="onGeoChipTap()">
+        @if (geo.position().source === 'gps') {
+          <ld-icon name="map-pin" [size]="13" />
+          <span>{{ 'geo.near_you' | translate }}</span>
+        } @else {
+          <ld-icon name="map-pin" [size]="13" />
+          <span>{{ geo.position().label || ('geo.city_center' | translate) }}</span>
+          <span class="discover__geo-enable">· {{ 'geo.enable' | translate }}</span>
+        }
+      </button>
+
       <!-- Context bar: mobile only -->
       <app-context-bar class="discover__context-bar" (changed)="onContextChanged()" />
 
@@ -191,6 +203,7 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
             <app-result-card
               [card]="card"
               [isSaved]="savedStore.isSaved(card.id)"
+              [showGeoHint]="i === 0 && geo.position().source !== 'gps'"
               (openDetail)="onOpenDetail(card)"
               (toggleSave)="onToggleSave(card)"
               (hideCard)="onHideCard(card)"
@@ -250,6 +263,18 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
       <div class="discover__undo-toast">
         <span>{{ 'hide.hidden' | translate }}</span>
         <button class="discover__undo-btn" (click)="undoHide()">{{ 'hide.undo' | translate }}</button>
+      </div>
+    }
+
+    <!-- Geo priming sheet -->
+    @if (geoPrimingOpen()) {
+      <div class="ld-sheet-backdrop ld-sheet-backdrop--visible" (click)="geoPrimingOpen.set(false)"></div>
+      <div class="ld-sheet ld-sheet--open">
+        <div class="ld-sheet__handle"></div>
+        <h3 style="margin: 0 0 8px; font-size: 16px">{{ 'geo.priming_title' | translate }}</h3>
+        <p style="font-size: 13px; color: var(--ld-text-2); margin: 0 0 16px; line-height: 1.5">{{ 'geo.priming_body' | translate }}</p>
+        <button class="ld-btn ld-btn--primary" style="width: 100%; margin-bottom: 8px" (click)="onGeoAllow()">{{ 'geo.priming_allow' | translate }}</button>
+        <button class="ld-btn ld-btn--ghost" style="width: 100%; color: var(--ld-text-3)" (click)="geoPrimingOpen.set(false)">{{ 'geo.priming_skip' | translate }}</button>
       </div>
     }
 
@@ -412,6 +437,30 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
 
     .theme-evening .discover__greeting {
       color: var(--ld-primary);
+    }
+
+    @media (min-width: 1024px) {
+      .discover__geo-chip { display: none; }
+    }
+
+    .discover__geo-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--ld-border);
+      background: var(--ld-surface);
+      font-family: inherit;
+      font-size: 12px;
+      color: var(--ld-text-2);
+      cursor: pointer;
+      margin: 6px 0 2px;
+    }
+
+    .discover__geo-enable {
+      color: var(--ld-primary);
+      font-weight: 500;
     }
 
     .discover__toolbar {
@@ -843,6 +892,8 @@ export class DiscoverComponent implements OnInit {
   readonly activePreset = signal<string | null>(this._sessionFilters.preset);
   readonly undoableHide = signal<{ card: RecommendationCard; index: number; timer: ReturnType<typeof setTimeout> } | null>(null);
   readonly decideOpen = signal(false);
+  readonly geoPrimingOpen = signal(false);
+  private geoPrimingShownThisSession = false;
   readonly decideCards = computed(() => {
     const all = this.cards();
     const ideal = all.filter(c => !c.isChain && (c.explanations?.length ?? 0) > 0);
@@ -1015,6 +1066,23 @@ export class DiscoverComponent implements OnInit {
     if (mod10 === 1 && mod100 !== 11) return 'результат';
     if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'результата';
     return 'результатов';
+  }
+
+  onGeoChipTap() {
+    if (this.geo.position().source === 'gps') return; // already enabled
+    if (!this.geoPrimingShownThisSession) {
+      this.geoPrimingOpen.set(true);
+      this.geoPrimingShownThisSession = true;
+    } else {
+      // Already shown priming this session — go straight to native prompt
+      this.geo.requestPosition().then(() => this.loadFeed());
+    }
+  }
+
+  async onGeoAllow() {
+    this.geoPrimingOpen.set(false);
+    await this.geo.requestPosition();
+    this.loadFeed();
   }
 
   openDecide() {

@@ -283,5 +283,15 @@
   },
   "coords": {
     "error": "Invalid format. Examples: 41°41'39.0\"N 45°00'33.9\"E  or  41.694, 45.009"
+  },
+  "geo": {
+    "near_you": "Near you",
+    "city_center": "Tbilisi center",
+    "enable": "More precise with location",
+    "priming_title": "See what's actually near you",
+    "priming_body": "LaziGo sorts places by walking distance from where you are. We use your location only for this — it's never stored.",
+    "priming_allow": "Show nearby places",
+    "priming_skip": "Not now",
+    "approx_from_center": "≈ from center"
   }
 }
