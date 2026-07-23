@@ -1,4 +1,11 @@
-import { Route } from '@angular/router';
+import { inject } from '@angular/core';
+import { Router, Route } from '@angular/router';
+
+function welcomeGuard() {
+  if (typeof localStorage === 'undefined') return true;
+  if (localStorage.getItem('ld_welcome_done')) return true;
+  return inject(Router).createUrlTree(['/']);
+}
 
 export const appRoutes: Route[] = [
   {
@@ -26,6 +33,7 @@ export const appRoutes: Route[] = [
   },
   {
     path: 'discover',
+    canActivate: [welcomeGuard],
     loadChildren: () =>
       import('./features/discover/discover.routes').then((m) => m.discoverRoutes),
   },
@@ -56,6 +64,6 @@ export const appRoutes: Route[] = [
   },
   {
     path: '**',
-    redirectTo: 'discover',
+    redirectTo: '',
   },
 ];

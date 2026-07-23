@@ -105,6 +105,7 @@ interface CandidateRow {
   ends_at?: string;
   venue_name?: string;
   ticket_url?: string;
+  poster_url?: string;
   price_min?: number;
   price_max?: number;
 }
@@ -441,6 +442,11 @@ export class RecommendationService {
         ticketUrl: c.ticket_url,
         priceLabel: this.formatPrice(c),
         photoUrl: c.photos?.[0],
+        posterUrl: c.poster_url
+          ? (c.poster_url.includes('static.biletebi.ge')
+            ? `/v1/cards/img-proxy?url=${encodeURIComponent(c.poster_url)}`
+            : c.poster_url)
+          : undefined,
         googlePlaceId: c.google_place_id,
         isChain: c.is_chain || false,
         whyLabel: this.resolveWhyLabel(c, userProfile, wPersonal, dto.locale),
@@ -749,8 +755,11 @@ export class RecommendationService {
       }
     }
 
-    // Events without a linked venue have distance_m = null → neutral score (0.5)
-    const distance = c.distance_m === null ? 0.5 : Math.max(0, 1 - c.distance_m / radiusM);
+    // Events without a linked venue get high distance score so they don't sink
+    // when radius increases and hundreds of places flood the results
+    const distance = c.distance_m === null
+      ? (c.type === 'event' ? 0.85 : 0.5)
+      : Math.max(0, 1 - c.distance_m / radiusM);
     const time = this.timeFit(c, dto.timeWindow);
     const quality = Number(c.quality_score) || 0.5;
     const source = 0.6;
@@ -835,7 +844,7 @@ export class RecommendationService {
           ELSE NULL
         END AS distance_m,
         v.address, v.name AS venue_name,
-        e.starts_at, e.ends_at, e.ticket_url,
+        e.starts_at, e.ends_at, e.ticket_url, e.poster_url,
         e.price_min, e.price_max, e.quality_score
       FROM events e
       LEFT JOIN venues v ON e.venue_id = v.id

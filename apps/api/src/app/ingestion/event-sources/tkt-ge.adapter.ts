@@ -4,7 +4,7 @@ import { EventSourceAdapter, NormalizedEvent } from './types';
 const BASE_URL = 'https://tkt.ge';
 const GATEWAY_URL = 'https://gateway.tkt.ge';
 const API_KEY = '7d8d34d1-e9af-4897-9f0f-5c36c179be77';
-const IMAGE_CDN = `${BASE_URL}/api/image`;
+const IMAGE_CDN = 'https://static.tkt.ge/img';
 
 /**
  * Categories to scrape → LazyDay category mapping.

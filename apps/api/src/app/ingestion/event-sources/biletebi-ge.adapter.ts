@@ -166,11 +166,20 @@ export class BiletebiGeAdapter implements EventSourceAdapter {
    * Extract CDN poster URL: alt="event  - {title}" src="..."
    */
   private extractPoster(html: string, title: string): string | undefined {
-    // Escape special regex chars in title
+    // Try 1: exact title match in alt attribute
     const safeTitle = title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').slice(0, 30);
-    const re = new RegExp(`alt="event[^"]*${safeTitle}[^"]*"[^>]*src="([^"]+)"`);
+    const re = new RegExp(`alt="event[^"]*${safeTitle}[^"]*"[^>]*src="([^"]+)"`, 'i');
     const m = html.match(re);
-    return m ? m[1] : undefined;
+    if (m) return m[1];
+
+    // Try 2: find cover image near the event slug in HTML
+    const slugRe = new RegExp(`src="(https://static\\.biletebi\\.ge/[^"]*cover[^"]*)"`, 'i');
+    const m2 = html.match(slugRe);
+    if (m2) return m2[1];
+
+    // Try 3: any static.biletebi.ge image
+    const m3 = html.match(/src="(https:\/\/static\.biletebi\.ge\/[^"]+)"/);
+    return m3 ? m3[1] : undefined;
   }
 
   /**

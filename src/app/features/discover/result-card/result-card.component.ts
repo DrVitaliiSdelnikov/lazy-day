@@ -10,6 +10,9 @@ import { LdIconComponent } from '../../../core/components/ld-icon.component';
   template: `
     <article class="card ld-card" [class.card--event]="card().type === 'event'" [class.card--place]="card().type === 'place'" (click)="openDetail.emit()">
       <div class="card__stripe"></div>
+      @if (cardImage() && !brokenImage()) {
+        <img class="card__thumb" [src]="cardImage()" alt="" loading="lazy" (error)="brokenImage.set(true)" />
+      }
       <div class="card__inner">
         <!-- Slot 1: title + save -->
         <div class="card__header">
@@ -104,6 +107,23 @@ import { LdIconComponent } from '../../../core/components/ld-icon.component';
     }
 
     .theme-evening .card__stripe { width: 5px; }
+
+    .card__thumb {
+      width: 72px;
+      height: 72px;
+      object-fit: cover;
+      flex-shrink: 0;
+      border-radius: 8px;
+      margin: 10px 0 10px 10px;
+      background: var(--ld-surface-2, #f0f0f0);
+    }
+
+    @media (min-width: 1024px) {
+      .card__thumb {
+        width: 88px;
+        height: 88px;
+      }
+    }
 
     .card__inner {
       flex: 1;
@@ -255,6 +275,11 @@ export class ResultCardComponent {
   hideCard = output<void>();
 
   showHideMenu = signal(false);
+  brokenImage = signal(false);
+
+  cardImage(): string | null {
+    return this.card().posterUrl || this.card().photoUrl || null;
+  }
 
   private readonly CATEGORY_LABELS: Record<string, string> = {
     restaurant: 'Restaurant', cafe: 'Café', bar: 'Bar', park: 'Park',

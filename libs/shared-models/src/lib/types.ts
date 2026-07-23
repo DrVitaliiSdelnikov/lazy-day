@@ -17,6 +17,7 @@ export interface RecommendationCard {
   category: string;
   categoryLabel?: string;
   photoUrl?: string;
+  posterUrl?: string;
   lat: number;
   lng: number;
   distanceM: number;
