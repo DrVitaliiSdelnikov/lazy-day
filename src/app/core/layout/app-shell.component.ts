@@ -1,7 +1,6 @@
 import { Component, computed, inject, isDevMode, OnInit, signal } from '@angular/core';
 import { NavigationEnd, Router, RouterModule } from '@angular/router';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import { ConsentBannerComponent } from '../components/consent-banner.component';
 import { LdIconComponent } from '../components/ld-icon.component';
 import { ProfileStore } from '../stores/profile.store';
 import { ApiService } from '../services/api.service';
@@ -10,7 +9,7 @@ import { Locale } from '../models';
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [RouterModule, TranslatePipe, ConsentBannerComponent, LdIconComponent],
+  imports: [RouterModule, TranslatePipe, LdIconComponent],
   template: `
     <div class="shell">
       <!-- Dev strip: taste profile indicator (dev only) -->
@@ -49,8 +48,6 @@ import { Locale } from '../models';
       <main class="shell__content">
         <ng-content />
       </main>
-
-      <app-consent-banner />
 
       <!-- Mobile bottom nav (<1024) — hidden during onboarding -->
       @if (showNav()) {

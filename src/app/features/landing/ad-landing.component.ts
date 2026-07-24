@@ -34,13 +34,7 @@ import { RecommendationCard, Locale, PRESET_META, CANONICAL_PRESETS } from '../.
               {{ 'landing.cta' | translate }}
             </button>
           </div>
-          <div class="land__segment">
-            <button class="land__seg" [class.land__seg--active]="localLevel() === 'local'"
-              (click)="setLocalLevel('local')">{{ 'landing.local' | translate }}</button>
-            <span class="land__seg-dot">·</span>
-            <button class="land__seg" [class.land__seg--active]="localLevel() === 'tourist'"
-              (click)="setLocalLevel('tourist')">{{ 'landing.tourist' | translate }}</button>
-          </div>
+          <a class="land__secondary-link" (click)="goToOnboarding()">{{ 'landing.setup_interests' | translate }}</a>
           <p class="land__no-account">
             <ld-icon name="user" [size]="11" /> {{ 'landing.no_account' | translate }}
           </p>
