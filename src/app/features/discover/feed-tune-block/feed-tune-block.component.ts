@@ -1,6 +1,7 @@
 import { Component, output, signal } from '@angular/core';
 import { TranslatePipe } from '@ngx-translate/core';
 import { LdIconComponent } from '../../../core/components/ld-icon.component';
+import { INTEREST_OPTIONS } from '../../../core/models';
 
 @Component({
   selector: 'app-feed-tune-block',
@@ -80,17 +81,7 @@ export class FeedTuneBlockComponent {
 
   readonly selected = signal(new Set<string>());
 
-  interestOptions = [
-    { slug: 'nature', labelKey: 'interest.nature', icon: 'trees' },
-    { slug: 'food', labelKey: 'interest.food', icon: 'tools-kitchen-2' },
-    { slug: 'culture', labelKey: 'interest.culture', icon: 'masks-theater' },
-    { slug: 'active', labelKey: 'interest.active', icon: 'run' },
-    { slug: 'entertainment', labelKey: 'interest.entertainment', icon: 'movie' },
-    { slug: 'nightlife', labelKey: 'interest.nightlife', icon: 'moon' },
-    { slug: 'family', labelKey: 'interest.family', icon: 'balloon' },
-    { slug: 'spa', labelKey: 'interest.spa', icon: 'coffee' },
-    { slug: 'gym', labelKey: 'interest.gym', icon: 'barbell' },
-  ];
+  interestOptions = INTEREST_OPTIONS;
 
   toggle(slug: string) {
     const s = new Set(this.selected());
@@ -101,7 +92,7 @@ export class FeedTuneBlockComponent {
   onApply() {
     const interests: Record<string, number> = {};
     for (const slug of this.selected()) {
-      interests[slug] = 0.8;
+      interests[slug] = 1.0;
     }
     this.applied.emit(interests);
   }

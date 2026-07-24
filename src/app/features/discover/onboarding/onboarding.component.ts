@@ -6,7 +6,7 @@ import { ApiService } from '../../../core/services/api.service';
 import { ProfileStore } from '../../../core/stores/profile.store';
 import { GeolocationService } from '../../../core/services/geolocation.service';
 import { apiProviders } from '../../../core/providers';
-import { CategoryNode, CompanyType } from '../../../core/models';
+import { CategoryNode, CompanyType, INTEREST_OPTIONS } from '../../../core/models';
 import { LdIconComponent } from '../../../core/components/ld-icon.component';
 
 @Component({
@@ -320,17 +320,7 @@ export class OnboardingComponent implements OnInit {
   geoLoading = signal(false);
   coordsError = signal<string | null>(null);
 
-  interestOptions = [
-    { slug: 'nature', labelKey: 'interest.nature', icon: 'trees' },
-    { slug: 'food', labelKey: 'interest.food', icon: 'tools-kitchen-2' },
-    { slug: 'culture', labelKey: 'interest.culture', icon: 'masks-theater' },
-    { slug: 'active', labelKey: 'interest.active', icon: 'run' },
-    { slug: 'entertainment', labelKey: 'interest.entertainment', icon: 'movie' },
-    { slug: 'nightlife', labelKey: 'interest.nightlife', icon: 'moon' },
-    { slug: 'family', labelKey: 'interest.family', icon: 'balloon' },
-    { slug: 'spa', labelKey: 'interest.spa', icon: 'coffee' },
-    { slug: 'gym', labelKey: 'interest.gym', icon: 'barbell' },
-  ];
+  interestOptions = INTEREST_OPTIONS;
 
   companyOptions = [
     { value: 'solo' as CompanyType, labelKey: 'company.solo', icon: 'user' },

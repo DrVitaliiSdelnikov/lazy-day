@@ -7,7 +7,7 @@ import { SavedStore } from '../../core/stores/saved.store';
 import { ApiService } from '../../core/services/api.service';
 import { GeolocationService } from '../../core/services/geolocation.service';
 import { apiProviders } from '../../core/providers';
-import { RecommendationCard, DiscoverMeta } from '../../core/models';
+import { RecommendationCard, DiscoverMeta, CANONICAL_PRESETS, CANONICAL_RADIUS, PRESET_META } from '../../core/models';
 import { ResultCardComponent } from './result-card/result-card.component';
 import { LdIconComponent } from '../../core/components/ld-icon.component';
 import { DetailComponent } from '../detail/detail.component';
@@ -894,17 +894,7 @@ export class DiscoverComponent implements OnInit {
   private currentFilters = signal<FilterState | null>(null);
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-  presets = [
-    { key: 'chill', labelKey: 'preset.chill', icon: 'trees' },
-    { key: 'food', labelKey: 'preset.food', icon: 'tools-kitchen-2' },
-    { key: 'culture', labelKey: 'preset.culture', icon: 'masks-theater' },
-    { key: 'active', labelKey: 'preset.active', icon: 'run' },
-    { key: 'family', labelKey: 'preset.family', icon: 'balloon' },
-    { key: 'nightlife', labelKey: 'preset.nightlife', icon: 'moon' },
-    { key: 'gym', labelKey: 'preset.gym', icon: 'barbell' },
-    { key: 'entertainment', labelKey: 'preset.entertainment', icon: 'movie' },
-    { key: 'spa', labelKey: 'preset.spa', icon: 'coffee' },
-  ];
+  presets = PRESET_META;
 
   typeFilters = [
     { value: 'all' as const, labelKey: 'type_filter.all', icon: '' },
@@ -912,17 +902,18 @@ export class DiscoverComponent implements OnInit {
     { value: 'event' as const, labelKey: 'type_filter.event', icon: 'ticket' },
   ];
 
-  private readonly MOOD_PRESETS: Record<string, { interests: Record<string, number>; company?: string; radiusM?: number }> = {
-    chill: { interests: { nature: 0.8, food: 0.5, spa: 0.5 }, radiusM: 5000 },
-    active: { interests: { active: 1, sports: 0.5 }, radiusM: 10000 },
-    family: { interests: { family: 1, nature: 0.5, entertainment: 0.5 }, company: 'family', radiusM: 8000 },
-    culture: { interests: { culture: 1, food: 0.3 }, radiusM: 10000 },
-    food: { interests: { food: 1 }, radiusM: 5000 },
-    nightlife: { interests: { nightlife: 1, entertainment: 0.5 }, radiusM: 10000 },
-    gym: { interests: { gym: 1, sports: 0.5 }, radiusM: 10000 },
-    entertainment: { interests: { entertainment: 1, nightlife: 0.3 }, radiusM: 10000 },
-    spa: { interests: { spa: 1 }, radiusM: 8000 },
-  };
+  /** Mood presets built from canonical source. Company overrides per preset. */
+  private readonly MOOD_PRESETS: Record<string, { interests: Record<string, number>; company?: string; radiusM?: number }> =
+    Object.fromEntries(
+      Object.entries(CANONICAL_PRESETS).map(([key, interests]) => [
+        key,
+        {
+          interests,
+          radiusM: CANONICAL_RADIUS[key] ?? 5000,
+          ...(key === 'family' ? { company: 'family' } : {}),
+        },
+      ]),
+    );
 
   readonly activeFilterCount = computed(() => {
     const f = this.currentFilters();

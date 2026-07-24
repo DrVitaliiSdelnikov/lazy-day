@@ -7,7 +7,7 @@ import { GeolocationService } from '../../core/services/geolocation.service';
 import { LdIconComponent } from '../../core/components/ld-icon.component';
 import { ResultCardComponent } from '../discover/result-card/result-card.component';
 import { apiProviders } from '../../core/providers';
-import { RecommendationCard, Locale } from '../../core/models';
+import { RecommendationCard, Locale, PRESET_META, CANONICAL_PRESETS } from '../../core/models';
 
 @Component({
   selector: 'app-ad-landing',
@@ -374,14 +374,7 @@ export class AdLandingComponent implements OnInit {
     { value: 'family',  labelKey: 'company.family',  icon: 'balloon' },
   ];
 
-  presetChips: Array<{ key: string; labelKey: string; icon: string; interests: Record<string, number> }> = [
-    { key: 'chill',     labelKey: 'preset.chill',     icon: 'trees',           interests: { nature: 0.8, food: 0.5, spa: 0.5 } },
-    { key: 'food',      labelKey: 'preset.food',       icon: 'tools-kitchen-2', interests: { food: 1 } },
-    { key: 'culture',   labelKey: 'preset.culture',    icon: 'masks-theater',   interests: { culture: 1, food: 0.3 } },
-    { key: 'active',    labelKey: 'preset.active',     icon: 'run',             interests: { active: 1, sports: 0.5 } },
-    { key: 'family',    labelKey: 'preset.family',     icon: 'balloon',         interests: { family: 1, entertainment: 0.5 } },
-    { key: 'nightlife', labelKey: 'preset.nightlife',  icon: 'moon',            interests: { nightlife: 1 } },
-  ];
+  presetChips = PRESET_META.map(p => ({ ...p, interests: CANONICAL_PRESETS[p.key] }));
 
   currentLang     = signal(this.profileStore.locale());
   selectedCompany = signal<string | null>(null);
