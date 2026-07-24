@@ -33,11 +33,8 @@ import { RecommendationCard, Locale, PRESET_META, CANONICAL_PRESETS } from '../.
             <button class="ld-btn ld-btn--primary land__cta" (click)="goToFeed()">
               {{ 'landing.cta' | translate }}
             </button>
-            <button class="land__setup-btn" (click)="goToOnboarding()">
-              <ld-icon name="sliders" [size]="13" />
-              {{ 'landing.setup_interests' | translate }}
-            </button>
           </div>
+          <a class="land__secondary-link" (click)="goToOnboarding()">{{ 'landing.setup_interests' | translate }}</a>
           <p class="land__no-account">
             <ld-icon name="user" [size]="11" /> {{ 'landing.no_account' | translate }}
           </p>
@@ -212,32 +209,21 @@ import { RecommendationCard, Locale, PRESET_META, CANONICAL_PRESETS } from '../.
     }
 
     .land__cta {
-      min-width: 200px;
+      width: 100%;
+      max-width: 360px;
       min-height: 48px;
       font-size: 16px;
     }
 
-    .land__setup-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      min-width: 200px;
-      min-height: 48px;
-      padding: 0 24px;
-      background: none;
-      border: 1.5px solid var(--ld-primary);
-      border-radius: 14px;
-      font-family: inherit;
-      font-size: 16px;
-      font-weight: 600;
-      color: var(--ld-primary);
+    .land__secondary-link {
+      display: block;
+      text-align: center;
+      font-size: 13px;
+      color: var(--ld-text-3);
       cursor: pointer;
-      transition: background 0.15s, color 0.15s;
-    }
-
-    .land__setup-btn:hover {
-      background: var(--ld-primary-soft);
+      margin-top: 8px;
+      text-decoration: underline;
+      text-underline-offset: 2px;
     }
 
     .land__no-account {
