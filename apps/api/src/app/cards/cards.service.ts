@@ -80,10 +80,11 @@ export class CardsService {
 
   private mapEvent(e: Event, userLat?: number, userLng?: number, locale = 'ru') {
     const v = e.venue;
-    const vLat = v?.lat ?? 0;
-    const vLng = v?.lng ?? 0;
-    const distanceM = (userLat != null && userLng != null) ? Math.round(this.haversineDistance(userLat, userLng, vLat, vLng)) : 0;
-    const walkMinutes = distanceM > 0 ? Math.round((distanceM / 80) * 1.3) : 0;
+    const vLat = v?.lat ?? null;
+    const vLng = v?.lng ?? null;
+    const hasCoords = vLat != null && vLng != null && userLat != null && userLng != null;
+    const distanceM = hasCoords ? Math.round(this.haversineDistance(userLat!, userLng!, vLat!, vLng!)) : null;
+    const walkMinutes = distanceM != null && distanceM > 0 ? Math.round((distanceM / 80) * 1.3) : null;
     return {
       id: e.id,
       type: 'event' as const,
