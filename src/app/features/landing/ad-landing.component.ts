@@ -518,7 +518,7 @@ export class AdLandingComponent implements OnInit {
       locale: this.currentLang(),
       deviceIdHash: this.profileStore.deviceIdHash() || undefined,
     }).subscribe(res => {
-      this.exampleCards.set(res.cards.filter(c => c.type === 'place' && !c.isChain).slice(0, 6));
+      this.exampleCards.set(res.cards.filter(c => c.type === 'place' && !c.isChain).slice(0, 3));
       this.eventCards.set(res.cards.filter(c => c.type === 'event').slice(0, 3));
     });
   }
