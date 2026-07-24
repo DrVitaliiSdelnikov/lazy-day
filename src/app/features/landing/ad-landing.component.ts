@@ -47,24 +47,31 @@ import { RecommendationCard, Locale, PRESET_META, CANONICAL_PRESETS } from '../.
         </div>
       </section>
 
-      <!-- Example cards -->
-      @if (exampleCards().length > 0) {
+      <!-- Preset chips (filters above live cards) -->
+      <section class="land__contexts">
+        <div class="land__chips">
+          @for (p of presetChips; track p.key) {
+            <button class="ld-chip"
+              [class.ld-chip--active]="selectedPreset() === p.key"
+              (click)="selectPreset(p.key)">
+              <ld-icon [name]="p.icon" [size]="14" />
+              {{ p.labelKey | translate }}
+            </button>
+          }
+        </div>
+        @if (selectedPreset()) {
+          <p class="land__filter-state">{{ 'landing.showing' | translate }}: {{ selectedPresetLabel() }}</p>
+        }
+      </section>
+
+      <!-- Live cards (places + events mixed) -->
+      @if (exampleCards().length > 0 || eventCards().length > 0) {
         <section class="land__examples">
-          <h2 class="land__section-title">{{ 'landing.examples_title' | translate }}</h2>
           <div class="land__cards">
             @for (card of exampleCards(); track card.id) {
               <app-result-card [card]="card" [isSaved]="false"
                 (openDetail)="goToFeed()" />
             }
-          </div>
-        </section>
-      }
-
-      <!-- Event cards -->
-      @if (eventCards().length > 0) {
-        <section class="land__examples">
-          <h2 class="land__section-title">{{ 'landing.events_title' | translate }}</h2>
-          <div class="land__cards">
             @for (card of eventCards(); track card.id) {
               <app-result-card [card]="card" [isSaved]="false"
                 (openDetail)="goToFeed()" />
@@ -92,11 +99,9 @@ import { RecommendationCard, Locale, PRESET_META, CANONICAL_PRESETS } from '../.
         </div>
       </section>
 
-      <!-- Context examples -->
+      <!-- Company / pet (below fold) -->
       <section class="land__contexts">
         <h2 class="land__section-title">{{ 'landing.context_title' | translate }}</h2>
-
-        <!-- Company: icon + label -->
         <div class="land__chips">
           @for (c of companyChips; track c.value) {
             <button class="ld-chip"
@@ -113,27 +118,6 @@ import { RecommendationCard, Locale, PRESET_META, CANONICAL_PRESETS } from '../.
             {{ 'company.with_pet' | translate }}
           </button>
         </div>
-
-        <!-- Presets: icon + label, same as discover toolbar -->
-        <div class="land__chips" style="margin-top: 10px">
-          @for (p of presetChips; track p.key) {
-            <button class="ld-chip"
-              [class.ld-chip--active]="selectedPreset() === p.key"
-              (click)="selectPreset(p.key)">
-              <ld-icon [name]="p.icon" [size]="14" />
-              {{ p.labelKey | translate }}
-            </button>
-          }
-        </div>
-        @if (selectedPreset()) {
-          <p class="land__filter-state">{{ 'landing.showing' | translate }}: {{ selectedPresetLabel() }}</p>
-        }
-      </section>
-
-      <!-- Differentiator -->
-      <section class="land__diff">
-        <h2 class="land__section-title">{{ 'landing.diff_title' | translate }}</h2>
-        <p class="land__diff-text">{{ 'landing.diff_text' | translate }}</p>
       </section>
 
       <!-- Final CTA -->
@@ -141,6 +125,7 @@ import { RecommendationCard, Locale, PRESET_META, CANONICAL_PRESETS } from '../.
         <button class="ld-btn ld-btn--primary land__cta" (click)="goToFeed()">
           {{ 'landing.cta' | translate }}
         </button>
+        <p class="land__diff-text" style="margin-top: 12px">{{ 'landing.diff_text' | translate }}</p>
       </section>
     </div>
   `,
