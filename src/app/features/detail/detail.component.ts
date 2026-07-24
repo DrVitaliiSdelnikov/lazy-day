@@ -109,10 +109,12 @@ import { SavedStore } from '../../core/stores/saved.store';
 
         <!-- Actions row -->
         <div class="detail__actions">
-          <button class="ld-btn ld-btn--primary detail__action-main" (click)="openRoute(c)"
-            [disabled]="!hasGps()">
-            <ld-icon name="route" [size]="14" /> {{ 'detail.route' | translate }}
-          </button>
+          @if (c.lat && c.lng) {
+            <button class="ld-btn ld-btn--primary detail__action-main" (click)="openRoute(c)"
+              [disabled]="!hasGps()">
+              <ld-icon name="route" [size]="14" /> {{ 'detail.route' | translate }}
+            </button>
+          }
           @if (showTaxi(c)) {
             <button class="detail__taxi-btn" (click)="openYandexTaxi(c)" aria-label="YandexGo">
               YandexGo
