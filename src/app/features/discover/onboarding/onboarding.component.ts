@@ -46,14 +46,7 @@ import { LdIconComponent } from '../../../core/components/ld-icon.component';
           }
         </div>
 
-        <!-- Tourist / Local -->
-        <p class="ob__subtitle" style="margin-top: 16px">{{ 'onboarding.local_question' | translate }}</p>
-        <div class="ob__local-options">
-          @for (opt of localOptions; track opt.value) {
-            <button class="ld-chip" [class.ld-chip--active]="selectedLocal() === opt.value"
-              (click)="selectedLocal.set(opt.value)">{{ opt.labelKey | translate }}</button>
-          }
-        </div>
+        <!-- Tourist/Local removed — default is 'local' (chains penalized ×0.80) -->
 
         <div class="ob__footer">
           @if (selectedInterests().size === 0) {
