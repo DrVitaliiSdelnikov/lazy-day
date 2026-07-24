@@ -424,7 +424,8 @@ export class AdLandingComponent implements OnInit {
 
   goToOnboarding() {
     this.applySelectionsToStore();
-    localStorage.setItem('ld_welcome_done', 'true');
+    // Temp flag so guard lets through to onboarding; ld_welcome_done set on completion
+    localStorage.setItem('ld_onboarding_started', 'true');
     this.router.navigate(['/discover/onboarding']);
   }
 

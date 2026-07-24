@@ -336,7 +336,7 @@ export class OnboardingComponent implements OnInit {
 
   ngOnInit() {
     this.api.getCategories().subscribe((cats) => this.categories.set(cats));
-    localStorage.setItem('ld_welcome_done', 'true');
+    // ld_welcome_done set only in finishOnboarding(), not here
   }
 
   toggleInterest(slug: string) {
@@ -383,6 +383,8 @@ export class OnboardingComponent implements OnInit {
     this.profileStore.setHasPet(this.selectedPet());
     this.profileStore.setLocalLevel(this.selectedLocal() as any);
     this.profileStore.completeOnboarding();
+    localStorage.setItem('ld_welcome_done', 'true');
+    localStorage.removeItem('ld_onboarding_started');
     this.router.navigate(['/discover']);
   }
 

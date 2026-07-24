@@ -4,6 +4,7 @@ import { Router, Route } from '@angular/router';
 function welcomeGuard() {
   if (typeof localStorage === 'undefined') return true;
   if (localStorage.getItem('ld_welcome_done')) return true;
+  if (localStorage.getItem('ld_onboarding_started')) return true;
   return inject(Router).createUrlTree(['/']);
 }
 
