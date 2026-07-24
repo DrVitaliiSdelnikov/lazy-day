@@ -20,6 +20,7 @@
     "location_subtitle": "We'll show what's nearby",
     "next": "Next",
     "next_selected": "Next · selected {{count}}",
+    "done": "Done",
     "skip": "Skip",
     "use_location": "Allow GPS",
     "locating": "Locating…",
@@ -247,7 +248,10 @@
     "context_title": "Matched to your situation",
     "diff_title": "Not another list of places",
     "diff_text": "LaziGo isn't a catalog. Every suggestion is matched to your interests, company, and time. And explained.",
-    "setup_interests": "Set up interests",
+    "local": "I live here",
+    "tourist": "I'm visiting",
+    "showing": "Showing",
+    "setup_interests": "Refine",
     "events_title": "Upcoming events"
   },
   "feedback": {

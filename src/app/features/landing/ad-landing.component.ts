@@ -34,7 +34,13 @@ import { RecommendationCard, Locale, PRESET_META, CANONICAL_PRESETS } from '../.
               {{ 'landing.cta' | translate }}
             </button>
           </div>
-          <a class="land__secondary-link" (click)="goToOnboarding()">{{ 'landing.setup_interests' | translate }}</a>
+          <div class="land__segment">
+            <button class="land__seg" [class.land__seg--active]="localLevel() === 'local'"
+              (click)="setLocalLevel('local')">{{ 'landing.local' | translate }}</button>
+            <span class="land__seg-dot">·</span>
+            <button class="land__seg" [class.land__seg--active]="localLevel() === 'tourist'"
+              (click)="setLocalLevel('tourist')">{{ 'landing.tourist' | translate }}</button>
+          </div>
           <p class="land__no-account">
             <ld-icon name="user" [size]="11" /> {{ 'landing.no_account' | translate }}
           </p>
@@ -119,6 +125,9 @@ import { RecommendationCard, Locale, PRESET_META, CANONICAL_PRESETS } from '../.
             </button>
           }
         </div>
+        @if (selectedPreset()) {
+          <p class="land__filter-state">{{ 'landing.showing' | translate }}: {{ selectedPresetLabel() }}</p>
+        }
       </section>
 
       <!-- Differentiator -->
@@ -213,6 +222,43 @@ import { RecommendationCard, Locale, PRESET_META, CANONICAL_PRESETS } from '../.
       max-width: 360px;
       min-height: 48px;
       font-size: 16px;
+    }
+
+    .land__segment {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .land__seg {
+      background: none;
+      border: none;
+      font-family: inherit;
+      font-size: 13px;
+      color: var(--ld-text-3);
+      cursor: pointer;
+      padding: 4px 0;
+      border-bottom: 2px solid transparent;
+    }
+
+    .land__seg--active {
+      color: var(--ld-text);
+      font-weight: 600;
+      border-bottom-color: var(--ld-primary);
+    }
+
+    .land__seg-dot {
+      color: var(--ld-text-3);
+      font-size: 13px;
+    }
+
+    .land__filter-state {
+      font-size: 12px;
+      color: var(--ld-text-2);
+      margin: 8px 0 0;
+      text-align: center;
     }
 
     .land__secondary-link {
@@ -368,6 +414,7 @@ export class AdLandingComponent implements OnInit {
   selectedPet     = signal(false);
   exampleCards    = signal<RecommendationCard[]>([]);
   eventCards      = signal<RecommendationCard[]>([]);
+  localLevel      = signal(this.inferLocalLevel());
 
   ngOnInit() {
     // F3.4: Returning user skips landing → straight to feed
@@ -416,23 +463,22 @@ export class AdLandingComponent implements OnInit {
   }
 
   private applySelectionsToStore() {
-    const presetKey = this.selectedPreset();
-    const preset = this.presetChips.find(p => p.key === presetKey);
-    if (preset) {
-      this.profileStore.setInterests(preset.interests);
-    }
+    // Company and pet → ProfileStore (persistent preferences)
     if (this.selectedCompany()) {
       this.profileStore.setCompany(this.selectedCompany() as any);
     }
     if (this.selectedPet()) {
       this.profileStore.setHasPet(true);
     }
-    // Sync preset to sessionStorage so discover toolbar shows it active
+    // Preset → sessionStorage ONLY (session filter, not persistent preference)
+    const presetKey = this.selectedPreset();
     if (presetKey) {
       const filters = JSON.parse(sessionStorage.getItem('ld_filters') || '{}');
       filters.preset = presetKey;
       sessionStorage.setItem('ld_filters', JSON.stringify(filters));
     }
+    // Interests NOT written to ProfileStore from preset chips
+    // User can promote to preference via "Запомнить" in feed
   }
 
   selectCompany(value: string) {
@@ -443,6 +489,26 @@ export class AdLandingComponent implements OnInit {
   togglePet() {
     this.selectedPet.set(!this.selectedPet());
     this.loadExamples();
+  }
+
+  private inferLocalLevel(): string {
+    const stored = this.profileStore.localLevel();
+    if (stored && stored !== 'local') return stored;
+    // Infer: ka locale → likely local, ru/en from ad → likely visitor
+    const lang = this.profileStore.locale();
+    return lang === 'ka' ? 'local' : 'local'; // default to local, user can correct
+  }
+
+  setLocalLevel(level: string) {
+    this.localLevel.set(level);
+    this.profileStore.setLocalLevel(level as any);
+    this.loadExamples();
+  }
+
+  selectedPresetLabel(): string {
+    const key = this.selectedPreset();
+    const p = this.presetChips.find(c => c.key === key);
+    return p ? this.translate.instant(p.labelKey) : '';
   }
 
   selectPreset(key: string) {

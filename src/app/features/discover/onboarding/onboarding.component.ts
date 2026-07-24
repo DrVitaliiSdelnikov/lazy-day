@@ -92,23 +92,8 @@ import { LdIconComponent } from '../../../core/components/ld-icon.component';
         </div>
 
         <div class="ob__footer">
-          <button class="ld-btn ld-btn--primary ob__cta" (click)="step.set(3)">{{ 'onboarding.next' | translate }}</button>
+          <button class="ld-btn ld-btn--primary ob__cta" (click)="finishOnboarding()">{{ 'onboarding.done' | translate }}</button>
         </div>
-      }
-
-      <!-- Step 3: Location -->
-      @if (step() === 3) {
-        <h1 class="ob__title ld-display">{{ 'onboarding.location_title' | translate }}</h1>
-        <p class="ob__subtitle">{{ 'onboarding.location_subtitle' | translate }}</p>
-
-        <button class="ld-btn ld-btn--primary ob__cta" style="margin-bottom: 12px"
-          (click)="requestGeo()">
-          {{ (geoLoading() ? 'onboarding.locating' : 'onboarding.use_location') | translate }}
-        </button>
-
-        <button class="ld-btn ld-btn--ghost ob__skip" (click)="skip()">
-          {{ 'onboarding.skip' | translate }}
-        </button>
       }
     </div>
   `,
@@ -371,7 +356,7 @@ export class OnboardingComponent implements OnInit {
     this.finishOnboarding();
   }
 
-  private finishOnboarding() {
+  finishOnboarding() {
     const interests: Record<string, number> = {};
     for (const slug of this.selectedInterests()) {
       interests[slug] = 1.0;

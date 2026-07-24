@@ -417,12 +417,12 @@ See `.workbench/specs/personalization-bugs-found.md`
 
 ## Kill / Scale Criteria (deploy + 2 months)
 
-| Signal | Decision |
-|---|---|
-| D7 ≥10% AND top-3 CTR ≥25% | **Scale**: invest in v1 features |
-| D7 ≥10% BUT CTR <25% | **Iterate**: improve scoring, tourist mode |
+| Signal | Decision                                      |
+|---|-----------------------------------------------|
+| D7 ≥10% AND top-3 CTR ≥25% | **Scale**: invest in v1 features              |
+| D7 ≥10% BUT CTR <25% | **Iterate**: improve scoring, tourist mode    |
 | D7 <10% AND CTR ≥25% | **Pivot**: evening anchor, push notifications |
-| D7 <10% AND CTR <25% | **Freeze**: preserve as portfolio piece |
+| D7 <10% AND CTR <25% | **Freeze**:1212 preserve as portfolio piece   |ЁЁ  ЁЙ2
 
 Metrics computable via SQL in `docs/cheatsheet.md`. Requires: `card_position` in impressions ✅, stable `device_id_hash` ✅. Missing: tourist/local segmentation in interaction_events context (foundation laid, not yet passed to API).
 
