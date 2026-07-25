@@ -19,7 +19,7 @@ import { LdIconComponent } from '../../../core/components/ld-icon.component';
           @if (card().type === 'event') {
             <ld-icon name="ticket" [size]="16" class="card__ticket-icon" />
           }
-          <h2 class="card__title">{{ card().title }}</h2>
+          <h2 class="card__title" [title]="card().title">{{ card().title }}</h2>
           <button class="card__hide-btn" (click)="onHideClick($event)"
             [attr.aria-label]="'detail.hide' | translate">
             <ld-icon name="eye-off" [size]="15" />
