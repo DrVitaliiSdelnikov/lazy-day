@@ -420,21 +420,23 @@ export class GoogleEnrichmentService {
         if (!res.ok) { errors++; continue; }
 
         const data = await res.json();
+        if (enriched === 0 && skipped < 3) {
+          this.logger.log(`Photo API response sample: ${JSON.stringify(data).slice(0, 500)}`);
+        }
         const photos = data.photos as Array<{ name: string; widthPx: number; heightPx: number }> | undefined;
 
-        if (!photos?.length) { skipped++; continue; }
+        if (!photos?.length) {
+          this.logger.debug(`No photos for ${placeId}`);
+          skipped++;
+          continue;
+        }
 
         // Build media URL for first photo (400px wide for thumbnails)
         const photoName = photos[0].name;
         const mediaUrl = `https://places.googleapis.com/v1/${photoName}/media?maxWidthPx=400&key=${apiKey}`;
 
-        // Verify it works
-        const check = await fetch(mediaUrl, { method: 'HEAD' });
-        if (!check.ok) { skipped++; continue; }
-
-        // Store the final redirect URL (Google returns 302 → actual image)
-        const finalUrl = check.url || mediaUrl;
-        place.photos = [finalUrl];
+        // Store media URL directly (Google serves image at this URL)
+        place.photos = [mediaUrl];
         await this.placeRepo.save(place);
         enriched++;
         matched++;
