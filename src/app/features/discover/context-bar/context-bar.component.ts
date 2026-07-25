@@ -340,7 +340,7 @@ export class ContextBarComponent {
   locationLabel(): string {
     const r = this.radiusKm();
     const pos = this.geo.position();
-    if (pos.source === 'gps') return `📍 ${r} км`;
+    if (pos.source === 'gps') return ` ${r} км`;
     const base = pos.label || this.translate.instant('context.center');
     return `${base} · ${r} км`;
   }

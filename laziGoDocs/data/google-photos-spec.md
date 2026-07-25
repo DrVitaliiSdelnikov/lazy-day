@@ -114,7 +114,9 @@ Feed cards stay text-only (with poster for events).
 | Implementation effort | 4h | 8h | 2h |
 | Maintenance | Low | Medium (refresh cron) | None |
 
-**Recommendation**: Start with **Option C** (detail-only). Measure engagement lift. If significant, upgrade to **Option A** (proxy with cache) for feed thumbnails.
+**Decision (2026-07-25)**: **Hybrid approach** — bulk enrichment for feed thumbnails + on-demand for detail carousel. Visual imbalance (events with poster, places empty) is unacceptable. Places with photos get scoring boost.
+
+Cost: $12 one-time (1,755 places × $7/1K), then $1-2/mo for refresh. Detail carousel: $0 at current traffic.
 
 ## Implementation Plan
 

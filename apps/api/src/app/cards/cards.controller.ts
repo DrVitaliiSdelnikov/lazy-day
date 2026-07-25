@@ -2,7 +2,7 @@ import { Controller, Get, Param, Query, Res, HttpException, HttpStatus } from '@
 import { Response } from 'express';
 import { CardsService } from './cards.service';
 
-const ALLOWED_HOSTS = ['static.biletebi.ge', 'static.tkt.ge', 'encrypted-tbn0.gstatic.com'];
+const ALLOWED_HOSTS = ['static.biletebi.ge', 'static.tkt.ge', 'encrypted-tbn0.gstatic.com', 'lh3.googleusercontent.com', 'places.googleapis.com'];
 const CONTENT_TYPES: Record<string, string> = { '.webp': 'image/webp', '.jpeg': 'image/jpeg', '.jpg': 'image/jpeg', '.png': 'image/png' };
 
 @Controller('cards')

@@ -384,6 +384,77 @@ export class GoogleEnrichmentService {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }
 
+  /**
+   * Fetch one photo URL per place that has google_place_id but no photos.
+   * Stores the photo media URL in places.photos[0].
+   * Cost: $7/1K (Place Details photos field) — one-time bulk.
+   */
+  async enrichPhotos(limit = 100): Promise<EnrichmentResult> {
+    const apiKey = process.env['GOOGLE_PLACES_API_KEY'];
+    if (!apiKey) {
+      this.logger.warn('GOOGLE_PLACES_API_KEY not set');
+      return { matched: 0, enriched: 0, skipped: 0, errors: 0 };
+    }
+
+    const places = await this.placeRepo
+      .createQueryBuilder('p')
+      .innerJoinAndSelect('p.venue', 'v')
+      .where('v.googlePlaceId IS NOT NULL')
+      .andWhere("(p.photos IS NULL OR p.photos = '{}')")
+      .orderBy('p.createdAt', 'ASC')
+      .take(limit)
+      .getMany();
+
+    this.logger.log(`Photo enrichment: ${places.length} places to process`);
+
+    let matched = 0, enriched = 0, skipped = 0, errors = 0;
+
+    for (const place of places) {
+      try {
+        const placeId = place.venue?.googlePlaceId;
+        if (!placeId) { skipped++; continue; }
+
+        // Fetch place details with photos field
+        const url = `${GOOGLE_PLACES_BASE}/places/${placeId}?fields=photos&key=${apiKey}`;
+        const res = await fetch(url);
+        if (!res.ok) { errors++; continue; }
+
+        const data = await res.json();
+        const photos = data.photos as Array<{ name: string; widthPx: number; heightPx: number }> | undefined;
+
+        if (!photos?.length) { skipped++; continue; }
+
+        // Build media URL for first photo (400px wide for thumbnails)
+        const photoName = photos[0].name;
+        const mediaUrl = `https://places.googleapis.com/v1/${photoName}/media?maxWidthPx=400&key=${apiKey}`;
+
+        // Verify it works
+        const check = await fetch(mediaUrl, { method: 'HEAD' });
+        if (!check.ok) { skipped++; continue; }
+
+        // Store the final redirect URL (Google returns 302 → actual image)
+        const finalUrl = check.url || mediaUrl;
+        place.photos = [finalUrl];
+        await this.placeRepo.save(place);
+        enriched++;
+        matched++;
+
+        if (enriched % 50 === 0) {
+          this.logger.log(`Photo enrichment progress: ${enriched}/${places.length}`);
+        }
+
+        // Rate limit: 10 QPS safe
+        await this.sleep(120);
+      } catch (e) {
+        this.logger.warn(`Photo enrichment error for place ${place.id}: ${e}`);
+        errors++;
+      }
+    }
+
+    this.logger.log(`Photo enrichment done: ${enriched} enriched, ${skipped} skipped, ${errors} errors`);
+    return { matched, enriched, skipped, errors };
+  }
+
   private sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }

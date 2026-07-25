@@ -64,6 +64,11 @@ export class IngestionController {
     return this.osmImport.translateGeorgianNames();
   }
 
+  @Post('google-enrich-photos')
+  async enrichPhotos(@Query('limit') limit?: string) {
+    return this.googleEnrich.enrichPhotos(limit ? parseInt(limit, 10) : 100);
+  }
+
   @Post('map-facets')
   async mapFacets() {
     return this.facetMapper.mapAll();
