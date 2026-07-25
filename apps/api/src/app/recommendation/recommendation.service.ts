@@ -761,7 +761,8 @@ export class RecommendationService {
       ? (c.type === 'event' ? 0.85 : 0.5)
       : Math.max(0, 1 - c.distance_m / radiusM);
     const time = this.timeFit(c, dto.timeWindow);
-    const quality = Number(c.quality_score) || 0.5;
+    const hasPhoto = c.photos && c.photos.length > 0;
+    const quality = (Number(c.quality_score) || 0.5) + (hasPhoto ? 0.15 : 0);
     const source = 0.6;
 
     // F3.5: Tourist softer on chains, local stricter
