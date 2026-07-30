@@ -74,6 +74,9 @@ import { RecommendationCard, Locale, PRESET_META, CANONICAL_PRESETS } from '../.
         </section>
       }
 
+      <!-- Honesty line (M2) -->
+      <p class="land__honesty">{{ 'landing.honesty' | translate }}</p>
+
       <!-- How it works -->
       <section class="land__how">
         <h2 class="land__section-title">{{ 'landing.how_title' | translate }}</h2>
@@ -343,6 +346,16 @@ import { RecommendationCard, Locale, PRESET_META, CANONICAL_PRESETS } from '../.
       justify-content: center;
     }
 
+
+    .land__honesty {
+      font-size: 13px;
+      color: var(--ld-text-3);
+      text-align: center;
+      padding: 0 20px 8px;
+      margin: 0;
+      font-style: italic;
+      line-height: 1.5;
+    }
 
     .land__diff {
       padding: 32px 20px;
