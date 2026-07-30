@@ -5,6 +5,7 @@ import { GoogleEnrichmentService } from './google-enrichment.service';
 import { EventIngestionService } from './event-ingestion.service';
 import { FacetMapperService } from './facet-mapper.service';
 import { GeminiEnrichmentService } from './gemini-enrichment.service';
+import { VoiceEnrichmentService } from './voice-enrichment.service';
 import { AdminGuard } from '../guards/admin.guard';
 
 @Controller('admin/ingestion')
@@ -16,6 +17,7 @@ export class IngestionController {
     private readonly eventIngestion: EventIngestionService,
     private readonly facetMapper: FacetMapperService,
     private readonly gemini: GeminiEnrichmentService,
+    private readonly voice: VoiceEnrichmentService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -82,6 +84,21 @@ export class IngestionController {
   @Post('gemini-enrich')
   async geminiEnrich(@Query('limit') limit?: string) {
     return this.gemini.enrichBatch(limit ? parseInt(limit, 10) : 100);
+  }
+
+  @Post('voice-enrich-step1')
+  async voiceStep1(@Query('limit') limit?: string) {
+    return this.voice.enrichStep1(limit ? parseInt(limit, 10) : 100);
+  }
+
+  @Post('voice-enrich-step2')
+  async voiceStep2(@Query('limit') limit?: string) {
+    return this.voice.enrichStep2(limit ? parseInt(limit, 10) : 100);
+  }
+
+  @Get('voice-spot-check')
+  async voiceSpotCheck() {
+    return this.voice.spotCheck();
   }
 
   @Get('events/sources')

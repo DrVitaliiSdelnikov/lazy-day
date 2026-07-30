@@ -104,6 +104,31 @@ export class Place {
   @Column({ type: 'text', nullable: true, name: 'anchor_vs_filler' })
   anchorVsFiller?: string;
 
+  // Voice enrichment (Gemini 2-step)
+  @Column({ type: 'text', nullable: true, name: 'walk_tier' })
+  walkTier?: string;
+
+  @Column({ type: 'text', nullable: true, name: 'walk_confidence' })
+  walkConfidence?: string;
+
+  @Column({ type: 'text', nullable: true })
+  hook?: string;
+
+  @Column({ type: 'text', nullable: true })
+  blurb?: string;
+
+  @Column({ type: 'text', nullable: true, name: 'route_moment' })
+  routeMoment?: string;
+
+  @Column({ type: 'text', nullable: true, name: 'best_time' })
+  bestTime?: string;
+
+  @Column({ type: 'text', nullable: true })
+  outdoor?: string;
+
+  @Column({ type: 'smallint', default: 0, name: 'enrich_version' })
+  enrichVersion!: number;
+
   // Enrichment freshness
   @Column({ type: 'timestamptz', nullable: true, name: 'enriched_at' })
   enrichedAt?: Date;
