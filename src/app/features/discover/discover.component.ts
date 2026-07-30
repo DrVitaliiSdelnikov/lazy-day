@@ -190,6 +190,7 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
                 (dismissed)="onTuneDismissed()" />
             }
             <app-result-card
+              [id]="'card_' + card.id"
               [card]="card"
               [isSaved]="savedStore.isSaved(card.id)"
               [showGeoHint]="i === 0 && geo.position().source !== 'gps'"
@@ -848,8 +849,8 @@ export class DiscoverComponent implements OnInit {
   readonly allCards = signal<RecommendationCard[]>([]);
   readonly activeTypeFilter = signal<'all' | 'place' | 'event'>(this._sessionFilters.typeFilter);
   readonly visibleCount = signal(15);
-  private navigatedToDetail = false;
-  private cachedScrollY = 0;
+
+  private pendingScrollCardId: string | null = null;
 
   // Qualified session tracking (for ads)
   private openedCardIds = new Set<string>();
@@ -944,6 +945,22 @@ export class DiscoverComponent implements OnInit {
         this.loadFeed();
       }
     });
+
+    // Scroll to last opened card after loader hides and cards are rendered
+    effect(() => {
+      const isLoaded = this.loaded();
+      const isLoading = this.loading();
+      if (isLoaded && !isLoading && this.pendingScrollCardId) {
+        const cardId = this.pendingScrollCardId;
+        this.pendingScrollCardId = null;
+        requestAnimationFrame(() => {
+          const el = document.getElementById(`card_${cardId}`);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        });
+      }
+    });
   }
 
   ngOnInit() {
@@ -952,21 +969,33 @@ export class DiscoverComponent implements OnInit {
     // If no interests → loadFeed uses empty interests → backend returns popularity-sorted results.
     this.geoVersion = this.geo.updated();
 
-    // #41: Restore from cache on back-navigation from detail
+    // #41: Back-navigation from detail — restore from cache, show loader, then scroll
+    const selectedCardId = sessionStorage.getItem('ld_selected_card');
     const cache = this.loadFeedCache();
-    if (cache && this.navigatedToDetail) {
+    if (selectedCardId && cache) {
+      sessionStorage.removeItem('ld_selected_card');
+      this.pendingScrollCardId = selectedCardId;
+      this.loading.set(true);
+      const restoreStart = Date.now();
       this.allCards.set(cache.cards);
-      this.loaded.set(true);
-      this.navigatedToDetail = false;
-      requestAnimationFrame(() => window.scrollTo(0, cache.scrollY));
+      this.hasMoreFromServer.set(cache.hasMore ?? true);
+      this.totalFromServer.set(cache.total ?? 0);
+      // Show loader for at least 400ms (anti-flash), then reveal cards
+      const elapsed = Date.now() - restoreStart;
+      const delay = Math.max(400 - elapsed, 0);
+      setTimeout(() => {
+        this.loading.set(false);
+        this.loaded.set(true);
+      }, delay);
       return;
     }
 
     // #42: SWR — show cached feed instantly if context similar
     if (cache && !this.isContextChanged(cache)) {
       this.allCards.set(cache.cards);
+      this.hasMoreFromServer.set(cache.hasMore ?? true);
+      this.totalFromServer.set(cache.total ?? 0);
       this.loaded.set(true);
-      // Silent revalidate in background
       this.silentRevalidate();
       return;
     }
@@ -1217,8 +1246,7 @@ export class DiscoverComponent implements OnInit {
               (window as any).gtag?.('event', 'no_results', {});
               this.interactions.track({ eventType: 'no_results', targetType: 'feed' });
             }
-            // Cache for scroll restore + SWR
-            this.cachedScrollY = 0;
+            // Cache for SWR
             this.saveFeedCache();
           };
 
@@ -1246,9 +1274,8 @@ export class DiscoverComponent implements OnInit {
       this.modalCard.set(card);
       history.replaceState({ modal: true }, '', `/detail/${card.type}/${card.id}`);
     } else {
-      // Save scroll + cards before navigating (for restore on back)
-      this.cachedScrollY = window.scrollY;
-      this.navigatedToDetail = true;
+      // Save selected card for scroll restore on back-navigation
+      sessionStorage.setItem('ld_selected_card', card.id);
       this.saveFeedCache();
       this.router.navigate(['/detail', card.type, card.id]);
     }
@@ -1403,23 +1430,25 @@ export class DiscoverComponent implements OnInit {
     const pos = this.geo.position();
     const cache = {
       cards: this.allCards(),
-      scrollY: this.cachedScrollY,
       timestamp: Date.now(),
       lat: pos.lat,
       lng: pos.lng,
       preset: this.activePreset(),
+      hasMore: this.hasMoreFromServer(),
+      total: this.totalFromServer(),
     };
     try {
       sessionStorage.setItem(this.FEED_CACHE_KEY, JSON.stringify(cache));
     } catch { /* quota exceeded — ignore */ }
   }
 
-  private loadFeedCache(): { cards: RecommendationCard[]; scrollY: number; timestamp: number; lat: number; lng: number; preset: string | null } | null {
+  private loadFeedCache(): { cards: RecommendationCard[]; timestamp: number; lat: number; lng: number; preset: string | null; hasMore?: boolean; total?: number } | null {
     try {
       const raw = sessionStorage.getItem(this.FEED_CACHE_KEY);
       return raw ? JSON.parse(raw) : null;
     } catch { return null; }
   }
+
 
   private isContextChanged(cache: { timestamp: number; lat: number; lng: number; preset: string | null }): boolean {
     const pos = this.geo.position();
