@@ -54,8 +54,10 @@ import { LdIconComponent } from '../../../core/components/ld-icon.component';
           }
         </p>
 
-        <!-- Explanations (compact inline) -->
-        @if (explanationLine()) {
+        <!-- Hook (friend's voice) or explanations fallback -->
+        @if (card().hook) {
+          <p class="card__hook">{{ card().hook }}</p>
+        } @else if (explanationLine()) {
           <p class="card__why">{{ explanationLine() }}</p>
         }
         @if (showGeoHint() && hasDistance()) {
@@ -229,6 +231,16 @@ import { LdIconComponent } from '../../../core/components/ld-icon.component';
     .card__cross {
       color: var(--ld-text-3);
       font-style: italic;
+    }
+
+    .card__hook {
+      font-size: 12px;
+      color: var(--ld-text-2);
+      margin: 4px 0 0;
+      font-style: italic;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .card__why {

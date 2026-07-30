@@ -100,6 +100,7 @@ interface CandidateRow {
   is_chain?: boolean;
   chain_key?: string;
   enriched_at?: string;
+  hook?: string;
   // event-specific
   starts_at?: string;
   ends_at?: string;
@@ -456,6 +457,7 @@ export class RecommendationService {
           : undefined,
         googlePlaceId: c.google_place_id,
         isChain: c.is_chain || false,
+        hook: c.hook ?? undefined,
         whyLabel: this.resolveWhyLabel(c, userProfile, wPersonal, dto.locale),
       };
     });
@@ -861,7 +863,7 @@ export class RecommendationService {
         v.address, p.rating, p.rating_count, p.indoor, p.price_level,
         p.quality_score, p.status, p.attributes, p.google_types, p.google_rating,
         p.google_rating_count, p.opening_hours, p.photos, v.website, v.google_place_id,
-        p.is_chain, p.chain_key, p.enriched_at,
+        p.is_chain, p.chain_key, p.enriched_at, p.hook,
         p.facet_cuisine, p.facet_format, p.facet_atmosphere, p.facet_occasion, p.facet_price_tier
       FROM places p
       JOIN venues v ON p.venue_id = v.id

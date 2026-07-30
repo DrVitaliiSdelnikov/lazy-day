@@ -41,6 +41,7 @@ export interface RecommendationCard {
   secondaryTags?: string[];
   googlePlaceId?: string;
   isChain?: boolean;
+  hook?: string;
   whyLabel?: string;
   source: string;
 }
