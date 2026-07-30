@@ -96,6 +96,11 @@ export class IngestionController {
     return this.voice.enrichStep2(limit ? parseInt(limit, 10) : 100);
   }
 
+  @Post('voice-reset-step2')
+  async voiceResetStep2() {
+    return this.voice.resetStep2();
+  }
+
   @Get('voice-spot-check')
   async voiceSpotCheck() {
     return this.voice.spotCheck();

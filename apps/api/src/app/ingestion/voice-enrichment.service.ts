@@ -10,9 +10,10 @@ import { Venue } from '../database/entities/venue.entity';
  * Step 2: generate hook/blurb/route_moment/best_time/outdoor (only must_see/worth_detour/nice_nearby).
  */
 
-const GEMINI_MODEL = 'gemini-2.0-flash';
+const GEMINI_MODEL_LITE = 'gemini-3.5-flash-lite';
+const GEMINI_MODEL_SMART = 'gemini-3.5-flash';
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta';
-const ENRICH_VERSION = 1;
+const ENRICH_VERSION = 2;
 
 const STEP1_PROMPT = `You are a local Tbilisi resident who knows the city well.
 For each place, decide: would you take a friend there on a city walk?
@@ -38,22 +39,33 @@ const STEP2_PROMPT = `You are a local friend in Tbilisi, showing a friend around
 Write warmly, honestly, briefly. No tourist pomposity, no advertising,
 no Wikipedia retelling. Voice: friendly "you" address.
 
-For each place return STRICTLY JSON:
+Each place in the input has: name, category, tags, atmosphere, occasion,
+google_types, rating, rating_count, walk_tier, confidence.
+USE THIS DATA to write accurate descriptions.
+
+For each place return STRICTLY a JSON array with objects:
 - id
-- hook: up to 10 words — what makes the place special, as a friend would say
-    ("best sunset view", "quiet yard with coffee", "loud, tasty, local style")
-- blurb: 2-3 sentences — ONLY if confidence = "known" AND tier != "nice_nearby".
-    What's beautiful/interesting, what to notice. Otherwise strictly null.
-- route_moment: "anchor" (main point) | "photo_spot" | "rest_stop" |
-    "food_break" | "passage" (passable, on the way)
+- hook: up to 10 words — what makes the place special, as a friend would say.
+    Base it on the provided data (atmosphere, tags, category, google_types).
+    If you personally know this Tbilisi place — use your knowledge too.
+    If you DON'T know it — describe ONLY what the data shows.
+    Examples: "cozy wine bar with a quiet yard", "panoramic city view from the hill",
+    "busy local market, cheap and real"
+- blurb: 2-3 sentences — ONLY if confidence = "known" AND tier != "nice_nearby"
+    AND you genuinely know real facts about this specific place.
+    What's beautiful/interesting, what to notice. If unsure — strictly null.
+    NEVER invent physical details (views, rooftops, interiors) you haven't seen.
+- route_moment: "anchor" | "photo_spot" | "rest_stop" | "food_break" | "passage"
 - best_time: "morning" | "day" | "sunset" | "evening" | "night" | "any"
 - outdoor: "indoor" | "outdoor" | "mixed"
 
-Rules:
-- Don't know real facts about the place — blurb: null. Honest emptiness is better than fiction.
-- hook is always fine (by atmosphere/category), blurb — only with known confidence.
-- No ads, no "best in the city" claims without basis, no exclamations.
-- Answer — JSON only.
+ANTI-HALLUCINATION RULES (critical):
+- NEVER describe physical features you can't verify from the data or your knowledge.
+- If a place is a monument/statue — don't guess what it looks like. Use category + location.
+- If data says "cozy, quiet" — you can say "quiet spot". Don't add "with a rooftop view".
+- When in doubt, keep hook generic based on category: "local café worth a stop".
+- blurb = null is ALWAYS better than a made-up description.
+- Answer — only valid JSON array, no markdown, no explanation.
 
 Places:`;
 
@@ -114,7 +126,7 @@ export class VoiceEnrichmentService {
         }));
 
         const results = await this.callGemini<Step1Result[]>(
-          apiKey, `${STEP1_PROMPT}\n${JSON.stringify(input)}`
+          apiKey, `${STEP1_PROMPT}\n${JSON.stringify(input)}`, GEMINI_MODEL_LITE
         );
         if (!results) { errors++; continue; }
 
@@ -171,21 +183,27 @@ export class VoiceEnrichmentService {
     this.logger.log(`Step 2: ${places.length} places to describe`);
     let processed = 0, errors = 0;
 
-    for (let i = 0; i < places.length; i += 20) {
-      const batch = places.slice(i, i + 20);
+    const STEP2_BATCH = 10;
+    for (let i = 0; i < places.length; i += STEP2_BATCH) {
+      const batch = places.slice(i, i + STEP2_BATCH);
       try {
         const input = batch.map(p => ({
           id: p.id,
           name: p.venue?.name ?? '',
-          name_ka: p.venue?.nameKa ?? undefined,
+          name_en: p.venue?.nameEn ?? undefined,
           category: p.category,
+          tags: p.tags?.length ? p.tags : undefined,
+          atmosphere: p.facetAtmosphere?.length ? p.facetAtmosphere : undefined,
+          occasion: p.facetOccasion?.length ? p.facetOccasion : undefined,
+          google_types: p.googleTypes?.length ? p.googleTypes : undefined,
           rating: p.googleRating ?? p.rating ?? undefined,
+          rating_count: p.googleRatingCount ?? p.ratingCount ?? undefined,
           walk_tier: p.walkTier,
           confidence: p.walkConfidence,
         }));
 
         const results = await this.callGemini<Step2Result[]>(
-          apiKey, `${STEP2_PROMPT}\n${JSON.stringify(input)}`
+          apiKey, `${STEP2_PROMPT}\n${JSON.stringify(input)}`, GEMINI_MODEL_SMART
         );
         if (!results) { errors++; continue; }
 
@@ -211,7 +229,7 @@ export class VoiceEnrichmentService {
 
         await this.placeRepo.save(batch);
         processed += batch.length;
-        this.logger.log(`Step 2 batch ${Math.floor(i / 20) + 1}: ${batch.length} described`);
+        this.logger.log(`Step 2 batch ${Math.floor(i / STEP2_BATCH) + 1}: ${batch.length} described`);
 
         await new Promise(r => setTimeout(r, 500));
       } catch (err: any) {
@@ -225,6 +243,18 @@ export class VoiceEnrichmentService {
 
     this.logger.log(`Step 2 done: ${processed} processed, ${errors} errors`);
     return { processed, errors };
+  }
+
+  /** Reset step2 results (hook/blurb) to re-run with better prompt */
+  async resetStep2(): Promise<{ reset: number }> {
+    const result = await this.placeRepo
+      .createQueryBuilder()
+      .update(Place)
+      .set({ hook: undefined, blurb: undefined, routeMoment: undefined, bestTime: undefined, outdoor: undefined })
+      .where('hook IS NOT NULL')
+      .execute();
+    this.logger.log(`Reset step2: ${result.affected} places cleared`);
+    return { reset: result.affected ?? 0 };
   }
 
   /** Spot-check: return walk_tier stats + sample of must_see places */
@@ -258,15 +288,15 @@ export class VoiceEnrichmentService {
     };
   }
 
-  private async callGemini<T>(apiKey: string, prompt: string): Promise<T | null> {
+  private async callGemini<T>(apiKey: string, prompt: string, model = GEMINI_MODEL_LITE): Promise<T | null> {
     const response = await fetch(
-      `${GEMINI_BASE}/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
+      `${GEMINI_BASE}/models/${model}:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.1, maxOutputTokens: 4096 },
+          generationConfig: { temperature: 0.1, maxOutputTokens: 16384 },
         }),
       },
     );
