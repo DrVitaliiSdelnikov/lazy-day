@@ -7,6 +7,7 @@ import { EventCronService } from './event-cron.service';
 import { FacetMapperService } from './facet-mapper.service';
 import { GeminiEnrichmentService } from './gemini-enrichment.service';
 import { VoiceEnrichmentService } from './voice-enrichment.service';
+import { CooccurrenceService } from './cooccurrence.service';
 import { IngestionController } from './ingestion.controller';
 import { Venue } from '../database/entities/venue.entity';
 import { Place } from '../database/entities/place.entity';
@@ -17,7 +18,7 @@ import { SourceRef } from '../database/entities/source-ref.entity';
 @Module({
   imports: [TypeOrmModule.forFeature([Venue, Place, Event, SourceItem, SourceRef])],
   controllers: [IngestionController],
-  providers: [OsmImportService, GoogleEnrichmentService, EventIngestionService, EventCronService, FacetMapperService, GeminiEnrichmentService, VoiceEnrichmentService],
-  exports: [OsmImportService, GoogleEnrichmentService, EventIngestionService, FacetMapperService, GeminiEnrichmentService, VoiceEnrichmentService],
+  providers: [OsmImportService, GoogleEnrichmentService, EventIngestionService, EventCronService, FacetMapperService, GeminiEnrichmentService, VoiceEnrichmentService, CooccurrenceService],
+  exports: [OsmImportService, GoogleEnrichmentService, EventIngestionService, FacetMapperService, GeminiEnrichmentService, VoiceEnrichmentService, CooccurrenceService],
 })
 export class IngestionModule {}

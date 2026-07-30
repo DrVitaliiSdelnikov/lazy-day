@@ -6,6 +6,7 @@ import { EventIngestionService } from './event-ingestion.service';
 import { FacetMapperService } from './facet-mapper.service';
 import { GeminiEnrichmentService } from './gemini-enrichment.service';
 import { VoiceEnrichmentService } from './voice-enrichment.service';
+import { CooccurrenceService } from './cooccurrence.service';
 import { AdminGuard } from '../guards/admin.guard';
 
 @Controller('admin/ingestion')
@@ -18,6 +19,7 @@ export class IngestionController {
     private readonly facetMapper: FacetMapperService,
     private readonly gemini: GeminiEnrichmentService,
     private readonly voice: VoiceEnrichmentService,
+    private readonly cooccurrence: CooccurrenceService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -104,6 +106,27 @@ export class IngestionController {
   @Get('voice-spot-check')
   async voiceSpotCheck() {
     return this.voice.spotCheck();
+  }
+
+  @Post('cooccurrence/compute')
+  async computeCooccurrence() {
+    return this.cooccurrence.computeFromPlaces();
+  }
+
+  @Post('cooccurrence/seed-chat')
+  async seedChatCooccurrence() {
+    return this.cooccurrence.seedFromChatMining();
+  }
+
+  @Get('cooccurrence/graph')
+  async getCooccurrenceGraph(@Query('source') source?: string) {
+    return this.cooccurrence.getGraph(source || undefined);
+  }
+
+  @Get('cooccurrence/suggest')
+  async suggestNextFacets(@Query('facets') facets: string, @Query('limit') limit?: string) {
+    const active = facets ? facets.split(',').map(f => f.trim()) : [];
+    return this.cooccurrence.suggestNext(active, limit ? parseInt(limit, 10) : 5);
   }
 
   @Get('events/sources')
