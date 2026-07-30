@@ -26,6 +26,13 @@ export class HttpApiService extends ApiService {
     );
   }
 
+  count(request: DiscoverRequest): Observable<{ places: number; events: number; total: number }> {
+    return this.http.post<{ places: number; events: number; total: number }>(
+      `${this.baseUrl}/recommendations/count`,
+      request,
+    );
+  }
+
   getCard(type: string, id: string, lat?: number, lng?: number): Observable<RecommendationCard> {
     const locale = localStorage.getItem('ld_profile') ? JSON.parse(localStorage.getItem('ld_profile')!).locale || 'ru' : 'ru';
     const parts = [];

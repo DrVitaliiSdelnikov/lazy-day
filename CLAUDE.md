@@ -278,25 +278,59 @@ All done: profile update (IDF+EMA), cosine scoring (w_personal 0→0.20), facet 
 Full spec: `.workbench/specs/phase-F3-transparency-onboarding-spec.md`
 All 6 tasks done: whyLabel on cards, scrollable taste profile, how-it-works, no-gate onboarding, tourist/local modifiers, tune block baseline.
 
-### Phase F4: Optional (validate before investing)
-- [ ] F4.1: структурный поиск (Claude → JSON-фасеты, if analytics show demand)
-- [ ] F4.2: occasion-conditional profiles (when enough data per user)
+### v2 Roadmap — "Digital Local Friend" (13 specs in .workbench/mvp_lazy_day/v2-upd/)
+Full summary: `laziGoDocs/product/v2-roadmap-summary.md`
 
-### Phase B: Multi-source enrichment (after Phase A + real traffic)
-Full spec: `.workbench/specs/data-enrichment-roadmap.md`
-- [ ] B1-B7: Overture, FSQ, OSM, 2GIS, Yandex (see spec)
+**Engagement ladder**: Decide for me → Facets → Route → Curator
 
-### v1 — Community Layer
-- [ ] "Been here" button — ground-truth visited signal
-- [ ] Micro-tips + collections + badges
-- [ ] Search/autocomplete
+#### v2 Phase 1: Facets Stability (NEXT)
+- [ ] session_seed — deterministic results within session
+- [ ] Frozen shown-set — no twitching on scroll
+- [ ] Cursor pagination — proper "show more"
+- [ ] RouteReuseStrategy — preserve feed state on back-navigation
+- [ ] Voice layers: honesty line, card voice from Gemini hook
 
-### v2 — Scale
-Full spec: `.workbench/specs/collaborative-filtering-strategy.md`
-- [ ] Popularity prior → segments → item-item co-occurrence
-- [ ] City expansion (Batumi, Kutaisi)
-- [ ] Journey planner ("Спланируй день" — schema ready in A8)
-- [ ] Weather-aware, gamification, curator network
+#### v2 Phase 2: Route ("Создай маршрут")
+Full spec: `.workbench/mvp_lazy_day/v2-upd/lazigo-route-feature-spec.md`
+- [ ] Chain 3-8 POIs: walk_tier, role alternation, time budget
+- [ ] Care rules C1-C8: water, weather, taxi, hungry, sunset, tiring, late return
+- [ ] Own map: MapLibre/Leaflet + OSM (not Google)
+- [ ] Edit: replace/remove/add-detour + care recalc
+
+#### v2 Phase 3: Curator ("Собери вечер")
+Full spec: `.workbench/mvp_lazy_day/v2-upd/lazigo-curator-feature-spec.md`
+- [ ] when + mood + day-part → event skeleton + places meat + care
+- [ ] Care rules K1-K7: leave time, cross-city, Sunday hours, weather
+- [ ] Events health metric (freshness gate)
+
+#### v2 Phase 4: Facets Palette + Soft Reranking
+Full spec: `.workbench/mvp_lazy_day/v2-upd/lazigo-facet-refinement-spec.md`
+- [ ] Co-occurrence graph → "next facet" suggestions
+- [ ] Dead-end prevention (≥3 results gate)
+- [ ] Session weights: save +1.0, dwell +0.5, scroll-past -0.1
+- [ ] Nightlife isolated mode
+
+#### Data priorities (from Telegram analysis)
+- **Quick win**: Baths (engagement 1.47, highest in data)
+- **Facets to add**: view, live_music, occasion, regional_cuisine, room_size
+- **NOT building**: delivery, nightlife mixed with daily, activities/craft (tiny signal)
+
+#### Monetization path
+1. Affiliate links on tickets (GetYourGuide/Viator ~8%, tkt.ge) — NOW
+2. B2B2C widget (hotels, coworkings, banks) — after PMF
+3. Curated experiences (Fever model) — if retention proven
+4. Data/engine API (Foursquare model) — parallel track
+
+#### Kill criteria (8-10 weeks)
+- Photos don't lift action 2x → not root cause
+- D7 < 10% with weekly digest → pivot B2B
+- No B2B partner in 2 months → sell asset
+
+#### NOT doing now
+- City expansion (Batumi/Kutaisi) — until PMF proven
+- Full Vitest — only smoke tests for scoring engine
+- Collaborative filtering — need traffic first
+- Structured search (Claude → JSON) — if demand shown
 
 ### Personalization Validation — ✅ GATE PASSED (16/16 green) + DEPLOYED
 Full spec: `.workbench/specs/personalization-validation-spec.md`

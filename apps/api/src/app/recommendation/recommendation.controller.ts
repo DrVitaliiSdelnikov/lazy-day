@@ -16,6 +16,12 @@ export class RecommendationController {
     return this.service.discover(dto);
   }
 
+  /** Lightweight count — returns only total matching candidates by type */
+  @Post('count')
+  count(@Body() dto: DiscoverRequestDto) {
+    return this.service.count(dto);
+  }
+
   /** Dev-only: score decomposition per venue. NOT for prod use. */
   @Post('explain')
   explain(@Body() dto: DiscoverRequestDto) {

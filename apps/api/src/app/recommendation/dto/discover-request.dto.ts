@@ -82,4 +82,23 @@ export class DiscoverRequestDto {
   @IsOptional()
   @IsString()
   deviceIdHash?: string;
+
+  @IsOptional()
+  @IsNumber()
+  sessionSeed?: number;
+
+  @IsOptional()
+  @IsEnum(['all', 'place', 'event'])
+  typeFilter?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  offset?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(60)
+  limit?: number;
 }

@@ -172,7 +172,7 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
 
       <!-- Results count -->
       @if (!loading() && cards().length > 0) {
-        <div class="discover__count">{{ cards().length }} {{ pluralizeResults(cards().length) }}</div>
+        <div class="discover__count">{{ totalLabel() }}</div>
       }
 
       <!-- Loading: feed loader animation -->
@@ -210,7 +210,7 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
       @if (!loading() && hasMoreCards()) {
         <div class="discover__more">
           <button class="discover__more-btn" (click)="showMore()">
-            {{ 'discover.show_more' | translate }} ({{ allCards().length - visibleCount() }})
+            {{ 'discover.show_more' | translate }}
           </button>
         </div>
       }
@@ -806,9 +806,11 @@ export class DiscoverComponent implements OnInit {
     this.onContextChanged();
   }
 
-  countByType(type: string): number {
-    if (type === 'all') return this.allCards().length;
-    return this.allCards().filter(c => c.type === type).length;
+  /** Секции sidebar: >100 → "100+", ≤100 → exact. Uses lightweight count endpoint. */
+  countByType(type: string): string {
+    const c = this.sectionCounts();
+    const n = type === 'all' ? c.total : type === 'place' ? c.places : c.events;
+    return n > 100 ? '100+' : String(n);
   }
 
   resetSidebar() {
@@ -853,22 +855,25 @@ export class DiscoverComponent implements OnInit {
   private openedCardIds = new Set<string>();
   private hasQualifiedAction = false;
   private qualifiedFired = false;
-  readonly cards = computed(() => {
-    const type = this.activeTypeFilter();
-    const filtered = type === 'all'
-      ? this.allCards()
-      : this.allCards().filter((c) => c.type === type);
-    return filtered.slice(0, this.visibleCount());
-  });
+  readonly cards = computed(() => this.allCards());
   readonly hasMoreCards = computed(() => {
+    if (!this.hasMoreFromServer()) return false;
+    // When filtered by type, only show "more" if current filter has room to grow
     const type = this.activeTypeFilter();
-    const total = type === 'all'
-      ? this.allCards().length
-      : this.allCards().filter((c) => c.type === type).length;
-    return this.visibleCount() < total;
+    if (type !== 'all') {
+      const filtered = this.allCards().filter(c => c.type === type);
+      // If we already loaded all of this type from what server sent, no more
+      return filtered.length >= 15 && this.hasMoreFromServer();
+    }
+    return true;
   });
   readonly loading = signal(false);
   readonly loaded = signal(false);
+  readonly hasMoreFromServer = signal(true);
+  readonly totalFromServer = signal(0);
+  readonly sectionCounts = signal<{ places: number; events: number; total: number }>({ places: 0, events: 0, total: 0 });
+  /** Fixed seed for session — dithering/epsilon produce same order within session */
+  private readonly sessionSeed = Math.floor(Math.random() * 2147483647);
   readonly feedMeta = signal<DiscoverMeta | undefined>(undefined);
   readonly forcedNow = signal(false);
   readonly activePreset = signal<string | null>(this._sessionFilters.preset);
@@ -988,11 +993,40 @@ export class DiscoverComponent implements OnInit {
   setTypeFilter(type: 'all' | 'place' | 'event') {
     this.activeTypeFilter.set(type);
     this.saveSessionFilters();
-    this.visibleCount.set(15);
+    this.loadFeed();
   }
 
   showMore() {
-    this.visibleCount.update((n) => n + 15);
+    const current = this.allCards();
+    const ctx = this.contextBar();
+    const pos = this.geo.position();
+    const isDesktop = window.innerWidth >= 1024;
+    const defaultRadius = pos.source === 'default' ? 3000 : 5000;
+    const radiusM = isDesktop ? this.sidebarRadius() * 1000 : (ctx ? ctx.getRadiusM() : defaultRadius);
+    const timeWindow = isDesktop ? this.getTimeWindowForValue(this.sidebarTime()) : (ctx ? ctx.getTimeWindow() : this.defaultTimeWindow());
+    const preset = this.activePreset();
+    const mood = preset ? this.MOOD_PRESETS[preset] : null;
+    const interests = mood?.interests ?? this.profileStore.interests();
+    const company = (mood?.company ?? this.profileStore.company() ?? undefined) as any;
+
+    this.api.discover({
+      lat: pos.lat, lng: pos.lng,
+      radiusM: mood?.radiusM ?? radiusM,
+      timeWindow,
+      profile: { interests, company, hasPet: this.profileStore.hasPet() || undefined },
+      hiddenIds: this.profileStore.hiddenIds(),
+      locale: this.profileStore.locale(),
+      deviceIdHash: this.profileStore.deviceIdHash() || undefined,
+      sessionSeed: this.sessionSeed,
+      typeFilter: this.activeTypeFilter() !== 'all' ? this.activeTypeFilter() : undefined,
+      offset: current.length,
+      limit: 15,
+    }).subscribe({
+      next: (res) => {
+        this.allCards.set([...current, ...res.cards]);
+        this.hasMoreFromServer.set(res.hasMore);
+      },
+    });
   }
 
   onDebugCoordsSet(value: string) {
@@ -1031,6 +1065,13 @@ export class DiscoverComponent implements OnInit {
     this.activePreset.set(null);
     this.activeTypeFilter.set('all');
     this.loadFeed();
+  }
+
+  /** Перед списком: всегда точное число */
+  totalLabel(): string {
+    const total = this.totalFromServer();
+    if (total > 0) return `${total} ${this.pluralizeResults(total)}`;
+    return `${this.cards().length} ${this.pluralizeResults(this.cards().length)}`;
   }
 
   pluralizeResults(n: number): string {
@@ -1128,10 +1169,24 @@ export class DiscoverComponent implements OnInit {
         locale: this.profileStore.locale(),
         forcedNow: this.forcedNow() || undefined,
         deviceIdHash: this.profileStore.deviceIdHash() || undefined,
+        sessionSeed: this.sessionSeed,
+        typeFilter: this.activeTypeFilter() !== 'all' ? this.activeTypeFilter() : undefined,
+        offset: 0,
+        limit: 15,
       })
       .subscribe({
         next: (res) => {
+          this.hasMoreFromServer.set(res.hasMore);
+          this.totalFromServer.set((res as any).total ?? 0);
           this.feedMeta.set(res.meta);
+
+          // Lightweight count for section tabs (parallel, non-blocking)
+          this.api.count({
+            lat: pos.lat, lng: pos.lng, radiusM: finalRadius, timeWindow,
+            profile: { interests, company },
+            hiddenIds: this.profileStore.hiddenIds(),
+            locale: this.profileStore.locale(),
+          }).subscribe(c => this.sectionCounts.set(c));
           let filtered = res.cards;
 
           // Client-side quick filters
@@ -1403,9 +1458,15 @@ export class DiscoverComponent implements OnInit {
         hiddenIds: this.profileStore.hiddenIds(),
         locale: this.profileStore.locale(),
         deviceIdHash: this.profileStore.deviceIdHash() || undefined,
+        sessionSeed: this.sessionSeed,
+        typeFilter: this.activeTypeFilter() !== 'all' ? this.activeTypeFilter() : undefined,
+        offset: 0,
+        limit: 15,
       })
       .subscribe({
         next: (res) => {
+          this.hasMoreFromServer.set(res.hasMore);
+          this.totalFromServer.set((res as any).total ?? 0);
           const oldIds = this.allCards().map(c => c.id).join(',');
           const newIds = res.cards.map(c => c.id).join(',');
           if (oldIds !== newIds) {

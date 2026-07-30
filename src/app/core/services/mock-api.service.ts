@@ -40,6 +40,10 @@ export class MockApiService extends ApiService {
       .pipe(map((cards) => (this.allCards = cards)));
   }
 
+  count(_request: DiscoverRequest): Observable<{ places: number; events: number; total: number }> {
+    return of({ places: 0, events: 0, total: 0 });
+  }
+
   discover(request: DiscoverRequest): Observable<DiscoverResponse> {
     return this.loadCards().pipe(
       map((cards) => {

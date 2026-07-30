@@ -77,6 +77,10 @@ export interface DiscoverRequest {
   locale: Locale;
   forcedNow?: boolean;
   deviceIdHash?: string;
+  sessionSeed?: number;
+  typeFilter?: 'all' | 'place' | 'event';
+  offset?: number;
+  limit?: number;
 }
 
 export interface DiscoverMeta {

@@ -241,7 +241,10 @@ export class RecommendationService {
         this.fetchEvents(dto.lat, dto.lng, radiusM, dto.timeWindow),
       ]);
 
-      let candidates: CandidateRow[] = [...places, ...events];
+      const typeFilter = (dto as any).typeFilter as string | undefined;
+      let candidates: CandidateRow[] = typeFilter === 'place' ? [...places]
+        : typeFilter === 'event' ? [...events]
+        : [...places, ...events];
 
       // Hard filters (hidden, budget)
       candidates = candidates.filter((c) => {
@@ -305,8 +308,9 @@ export class RecommendationService {
     // Sort + daily rotation (tie-breaker for similar scores, top-3 untouched)
     scored.sort((a, b) => b.score - a.score);
 
-    // F1.3: Session dithering (variety between sessions)
-    this.impressionService.applySessionDithering(scored, deviceIdHash ?? '');
+    // F1.3: Session dithering (stable within session, varies between sessions)
+    const sessionSeed = (dto as any).sessionSeed as number | undefined;
+    this.impressionService.applySessionDithering(scored, deviceIdHash ?? '', sessionSeed);
 
     this.applyDailyRotation(scored);
     let diversified = this.applyDiversity(scored);
@@ -391,7 +395,10 @@ export class RecommendationService {
       ? new Date(new Date().setUTCDate(new Date().getUTCDate() + 1))  // tomorrow noon-ish
       : new Date((new Date(dto.timeWindow.from).getTime() + new Date(dto.timeWindow.to).getTime()) / 2);
 
-    const cards = diversified.slice(0, 60).map((c) => {
+    const offset = (dto as any).offset ?? 0;
+    const limit = (dto as any).limit ?? 15;
+    const totalAvailable = diversified.length;
+    const cards = diversified.slice(offset, offset + limit).map((c) => {
       const openStatus = c.type === 'place'
         ? checkOpenStatus(c.opening_hours, timeMid)
         : undefined;
@@ -453,8 +460,8 @@ export class RecommendationService {
       };
     });
 
-    // F1.4: Inject epsilon-explore slot
-    this.impressionService.injectEpsilonSlot(cards, scored, discountMap, deviceIdHash ?? '');
+    // F1.4: Inject epsilon-explore slot (same seed for determinism within session)
+    this.impressionService.injectEpsilonSlot(cards, scored, discountMap, deviceIdHash ?? '', sessionSeed);
 
     const sessionId = crypto.randomUUID();
 
@@ -467,7 +474,50 @@ export class RecommendationService {
       this.impressionService.recordImpressions(deviceIdHash, cards.map((c: any) => c.id)).catch(() => {});
     }
 
-    return { sessionId, cards, hasMore: diversified.length > 60, meta };
+    return { sessionId, cards, hasMore: offset + limit < totalAvailable, total: totalAvailable, meta };
+  }
+
+  /**
+   * Lightweight count — no scoring, no personalization, just count matching candidates.
+   * Used by frontend to show section counts without loading full cards.
+   */
+  async count(dto: DiscoverRequestDto): Promise<{ places: number; events: number; total: number }> {
+    const radiusM = dto.radiusM ?? 5000;
+    const hiddenIds = dto.hiddenIds ?? [];
+    const expandedWeights = dto.profile.interests
+      ? this.buildExpandedWeights(dto.profile.interests)
+      : new Map<string, number>();
+    const hasStrictInterests = [...expandedWeights.values()].some((w) => w >= 0.7);
+    const hasInterests = expandedWeights.size > 0;
+
+    const [places, events] = await Promise.all([
+      this.fetchPlaces(dto.lat, dto.lng, radiusM),
+      this.fetchEvents(dto.lat, dto.lng, radiusM, dto.timeWindow),
+    ]);
+
+    let candidates: CandidateRow[] = [...places, ...events].filter(c => !hiddenIds.includes(c.id));
+
+    // Score minimally just to get primaryTags for interest filter
+    if (hasInterests) {
+      const scored = candidates.map(c => this.scoreCandidate(c, dto, radiusM, expandedWeights));
+      if (hasStrictInterests) {
+        candidates = scored.filter(c => c.hasStrictMatch) as any;
+      } else {
+        candidates = scored.filter(c => c.primaryTags.length > 0) as any;
+      }
+    }
+
+    // Availability filter
+    const timeMid = new Date((new Date(dto.timeWindow.from).getTime() + new Date(dto.timeWindow.to).getTime()) / 2);
+    candidates = candidates.filter(c => {
+      if (c.type === 'event') return true;
+      const status = checkOpenStatus(c.opening_hours, timeMid);
+      return status !== 'closed';
+    });
+
+    const placeCount = candidates.filter(c => c.type === 'place').length;
+    const eventCount = candidates.filter(c => c.type === 'event').length;
+    return { places: placeCount, events: eventCount, total: placeCount + eventCount };
   }
 
   /**
@@ -820,7 +870,7 @@ export class RecommendationService {
         AND v.lng BETWEEN $2 - ($3::float / (111000 * cos(radians($1)))) AND $2 + ($3::float / (111000 * cos(radians($1))))
       ORDER BY distance_m
       LIMIT $4`,
-      [lat, lng, radiusM, radiusM > 5000 ? 1000 : 500],
+      [lat, lng, radiusM, 3000],
     );
     return rows.filter((r: any) => r.distance_m <= radiusM);
   }
