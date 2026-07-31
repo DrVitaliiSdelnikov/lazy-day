@@ -491,7 +491,11 @@ export class RecommendationService {
     }
 
     // Palette: suggest next facets from shown cards' facets + co-occurrence graph
-    const suggestedFacets = await this.computeSuggestedFacets(diversified.slice(offset, offset + limit), diversified, dto.facetFilters ?? []);
+    // Palette signal: from stable representation of the feed under current filters.
+    // v1 (flat): diversified pool is stable (deterministic for same filters+seed).
+    // L2 (progressive, Phase 3): frozen shown-set is stable → signal from shown.
+    // Count/dead-end always from diversified pool.
+    const suggestedFacets = await this.computeSuggestedFacets(diversified, diversified, dto.facetFilters ?? []);
 
     return { sessionId, cards, hasMore: offset + limit < totalAvailable, total: totalAvailable, meta, suggestedFacets };
   }

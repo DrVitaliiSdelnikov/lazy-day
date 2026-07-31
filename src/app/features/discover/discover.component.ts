@@ -162,9 +162,9 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
         }
       </div>
 
-      <!-- Palette: active facet filters + suggested facets -->
-      @if (!loading() && paletteChips().length > 0) {
-        <div class="discover__palette">
+      <!-- Palette: independent section, never hides under feed loader -->
+      @if (paletteChips().length > 0 || paletteLoading()) {
+        <div class="discover__palette" [class.discover__palette--loading]="paletteLoading()">
           <span class="discover__palette-label">{{ 'palette.refine' | translate }}</span>
           @for (chip of paletteChips(); track chip.facet) {
             <button class="ld-chip"
@@ -173,6 +173,13 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
               {{ facetLabel(chip.facet) }}
               @if (chip.active) { <ld-icon name="x" [size]="12" class="ld-chip__clear" /> }
             </button>
+          }
+          @if (paletteLoading()) {
+            <span class="discover__palette-pins">
+              <span class="pin"><ld-icon name="map-pin" [size]="16" /></span>
+              <span class="pin"><ld-icon name="map-pin" [size]="16" /></span>
+              <span class="pin"><ld-icon name="map-pin" [size]="16" /></span>
+            </span>
           }
         </div>
       }
@@ -542,6 +549,12 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
       align-items: center;
       position: relative;
       z-index: 1;
+      transition: opacity 0.2s;
+    }
+
+    .discover__palette--loading {
+      opacity: 0.6;
+      pointer-events: none;
     }
 
     .discover__palette-label {
@@ -558,6 +571,7 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
       font-size: 12px;
       color: var(--ld-text-2);
       cursor: pointer;
+      transition: opacity 0.24s, transform 0.24s, max-width 0.28s;
 
       &:hover {
         border-color: var(--ld-primary);
@@ -568,8 +582,32 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
         background: var(--ld-primary-soft);
         color: var(--ld-on-primary-soft);
         border: 1px solid var(--ld-primary);
-        border-style: solid;
       }
+    }
+
+    .discover__palette-pins {
+      display: inline-flex;
+      gap: 2px;
+      margin-left: 4px;
+    }
+
+    .discover__palette-pins .pin {
+      display: inline-block;
+      transform-origin: bottom center;
+      color: var(--ld-primary);
+      animation: pinHop 1.05s ease-in-out infinite;
+    }
+
+    .discover__palette-pins .pin:nth-child(2) { animation-delay: 0.14s; }
+    .discover__palette-pins .pin:nth-child(3) { animation-delay: 0.28s; }
+
+    @keyframes pinHop {
+      0%, 70%, 100% { transform: translateY(0) scale(1); opacity: 0.55; }
+      35% { transform: translateY(-7px) scale(1.12); opacity: 1; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .discover__palette-pins .pin { animation: none; opacity: 0.7; }
     }
 
 
@@ -933,6 +971,7 @@ export class DiscoverComponent implements OnInit {
   readonly feedMeta = signal<DiscoverMeta | undefined>(undefined);
   readonly suggestedFacets = signal<SuggestedFacet[]>([]);
   readonly activeFacetFilters = signal<string[]>(this._sessionFilters.facetFilters);
+  readonly paletteLoading = signal(false);
   readonly paletteChips = computed(() => {
     const active = this.activeFacetFilters();
     const suggested = this.suggestedFacets();
@@ -1112,6 +1151,7 @@ export class DiscoverComponent implements OnInit {
       this.activeFacetFilters.set([...current, facet]);
     }
     this.saveSessionFilters();
+    this.paletteLoading.set(true);
     this.loadFeed();
   }
 
@@ -1325,11 +1365,8 @@ export class DiscoverComponent implements OnInit {
           const suggestedFacets = res.suggestedFacets ?? [];
           const finish = () => {
             this.allCards.set(filtered);
-            // Only update palette when no active facet filters (base context)
-            // Prevents shuffling when toggling facets
-            if (this.activeFacetFilters().length === 0) {
-              this.suggestedFacets.set(suggestedFacets);
-            }
+            this.suggestedFacets.set(suggestedFacets);
+            this.paletteLoading.set(false);
             this.visibleCount.set(15);
             this.loading.set(false);
             this.loaded.set(true);
@@ -1358,6 +1395,7 @@ export class DiscoverComponent implements OnInit {
         error: () => {
           this.loading.set(false);
           this.loaded.set(true);
+          this.paletteLoading.set(false);
         },
       });
   }
