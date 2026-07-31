@@ -16,6 +16,7 @@ import { FilterSheetComponent, FilterState } from './filter-sheet/filter-sheet.c
 import { FeedLoaderComponent } from './feed-loader/feed-loader.component';
 import { FeedTuneBlockComponent } from './feed-tune-block/feed-tune-block.component';
 import { InteractionService } from '../../core/services/interaction.service';
+import { NetworkStatusService } from '../../core/services/network-status.service';
 import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
 
 @Component({
@@ -189,6 +190,13 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
         <div class="discover__fallback-banner">
           <span>{{ 'fallback.tomorrow_banner' | translate }}</span>
           <button class="ld-btn ld-btn--ghost discover__fallback-action" (click)="forceNow()">{{ 'fallback.force_now' | translate }}</button>
+        </div>
+      }
+
+      <!-- Offline/degraded banner -->
+      @if (!network.isOnline()) {
+        <div class="discover__offline-banner">
+          <span>{{ network.isOffline() ? ('net.offline' | translate) : ('net.degraded' | translate) }}</span>
         </div>
       }
 
@@ -837,6 +845,19 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
       to { opacity: 1; transform: translateX(-50%) translateY(0); }
     }
 
+    .discover__offline-banner {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px var(--ld-space-lg);
+      margin: 0 var(--ld-space-lg) var(--ld-space-sm);
+      background: var(--ld-surface-2);
+      border-radius: 8px;
+      font-size: 12px;
+      color: var(--ld-text-3);
+      font-style: italic;
+    }
+
     .discover__empty {
       text-align: center;
       padding: var(--ld-space-xl);
@@ -863,6 +884,7 @@ export class DiscoverComponent implements OnInit {
   private theme = inject(ThemeService);
   private translate = inject(TranslateService);
   private interactions = inject(InteractionService);
+  readonly network = inject(NetworkStatusService);
 
   private _sessionFilters = this.loadSessionFilters();
   sidebarRadius = signal(this._sessionFilters.radius);
@@ -1143,15 +1165,20 @@ export class DiscoverComponent implements OnInit {
     return translated !== key ? translated : facet.replace(/_/g, ' ');
   }
 
+  private _facetRollback: string[] | null = null;
+
   applyFacetFilter(facet: string) {
-    const current = this.activeFacetFilters();
-    if (current.includes(facet)) {
-      this.activeFacetFilters.set(current.filter(f => f !== facet));
+    const prev = this.activeFacetFilters();
+    this._facetRollback = [...prev]; // save for rollback
+    if (prev.includes(facet)) {
+      this.activeFacetFilters.set(prev.filter(f => f !== facet));
     } else {
-      this.activeFacetFilters.set([...current, facet]);
+      this.activeFacetFilters.set([...prev, facet]);
     }
     this.saveSessionFilters();
     this.paletteLoading.set(true);
+    // Register retry for auto-recovery
+    this.network.setPendingRetry(() => this.loadFeed());
     this.loadFeed();
   }
 
@@ -1367,6 +1394,8 @@ export class DiscoverComponent implements OnInit {
             this.allCards.set(filtered);
             this.suggestedFacets.set(suggestedFacets);
             this.paletteLoading.set(false);
+            this._facetRollback = null;
+            this.network.setPendingRetry(null);
             this.visibleCount.set(15);
             this.loading.set(false);
             this.loaded.set(true);
@@ -1396,6 +1425,12 @@ export class DiscoverComponent implements OnInit {
           this.loading.set(false);
           this.loaded.set(true);
           this.paletteLoading.set(false);
+          // Rollback facet selection on network error
+          if (this._facetRollback) {
+            this.activeFacetFilters.set(this._facetRollback);
+            this._facetRollback = null;
+            this.saveSessionFilters();
+          }
         },
       });
   }
