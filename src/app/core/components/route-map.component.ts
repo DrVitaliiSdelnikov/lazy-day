@@ -76,6 +76,23 @@ export class RouteMapComponent implements AfterViewInit, OnDestroy {
   private map: Map | null = null;
   private markers: Marker[] = [];
   private segmentLabels: Marker[] = [];
+  private mapReady = false;
+  private svgOverlay: HTMLElement | null = null;
+
+  constructor() {
+    // Re-render when inputs change (must be in constructor for injection context)
+    effect(() => {
+      const pts = this.points();
+      const lns = this.lines();
+      if (this.mapReady) this.renderRoute();
+    });
+
+    // Resize on fullscreen toggle
+    effect(() => {
+      const fs = this.fullscreen();
+      if (this.map) setTimeout(() => this.map?.resize(), 50);
+    });
+  }
 
   ngAfterViewInit() {
     const el = this.mapContainer()?.nativeElement;
@@ -93,30 +110,27 @@ export class RouteMapComponent implements AfterViewInit, OnDestroy {
             attribution: '&copy; OpenStreetMap',
           },
         },
-        layers: [{
-          id: 'osm',
-          type: 'raster',
-          source: 'osm',
-        }],
+        layers: [
+          { id: 'osm', type: 'raster', source: 'osm' },
+        ],
       },
-      center: [44.8015, 41.6934], // Tbilisi default
+      center: [44.8015, 41.6934],
       zoom: 13,
     });
 
-    this.map.on('load', () => this.renderRoute());
+    // Raster-only style: 'load' may not fire. Use 'idle' + timeout.
+    const onReady = () => {
+      if (this.mapReady) return;
+      this.mapReady = true;
+      this.renderRoute();
+    };
+    this.map.on('load', onReady);
+    this.map.once('idle', onReady);
+    setTimeout(() => { if (!this.mapReady) onReady(); }, 1500);
 
-    // Re-render when inputs change
-    effect(() => {
-      const pts = this.points();
-      const lns = this.lines();
-      if (this.map?.loaded()) this.renderRoute();
-    });
-
-    // Resize on fullscreen toggle
-    effect(() => {
-      const fs = this.fullscreen();
-      setTimeout(() => this.map?.resize(), 50);
-    });
+    // Redraw SVG lines on map move/zoom
+    this.map.on('move', () => this.drawSvgLines());
+    this.map.on('zoom', () => this.drawSvgLines());
   }
 
   ngOnDestroy() {
@@ -132,12 +146,6 @@ export class RouteMapComponent implements AfterViewInit, OnDestroy {
     this.markers.forEach(m => m.remove());
     this.markers = [];
 
-    // Remove old lines
-    if (this.map.getSource('route-lines')) {
-      this.map.removeLayer('route-walk');
-      this.map.removeLayer('route-taxi');
-      this.map.removeSource('route-lines');
-    }
 
     if (pts.length === 0) return;
 
@@ -166,55 +174,8 @@ export class RouteMapComponent implements AfterViewInit, OnDestroy {
       bounds.extend([pt.lng, pt.lat]);
     }
 
-    // Add lines
-    if (lns.length > 0) {
-      const walkCoords: [number, number][][] = [];
-      const taxiCoords: [number, number][][] = [];
-
-      for (const ln of lns) {
-        const segment: [number, number][] = [ln.from, ln.to];
-        if (ln.type === 'taxi') taxiCoords.push(segment);
-        else walkCoords.push(segment);
-      }
-
-      const features: any[] = [];
-      for (const seg of walkCoords) {
-        features.push({ type: 'Feature', properties: { type: 'walk' }, geometry: { type: 'LineString', coordinates: seg } });
-      }
-      for (const seg of taxiCoords) {
-        features.push({ type: 'Feature', properties: { type: 'taxi' }, geometry: { type: 'LineString', coordinates: seg } });
-      }
-
-      this.map.addSource('route-lines', {
-        type: 'geojson',
-        data: { type: 'FeatureCollection', features },
-      });
-
-      this.map.addLayer({
-        id: 'route-walk',
-        type: 'line',
-        source: 'route-lines',
-        filter: ['==', ['get', 'type'], 'walk'],
-        paint: {
-          'line-color': '#4a7c59',
-          'line-width': 3,
-          'line-opacity': 0.8,
-        },
-      });
-
-      this.map.addLayer({
-        id: 'route-taxi',
-        type: 'line',
-        source: 'route-lines',
-        filter: ['==', ['get', 'type'], 'taxi'],
-        paint: {
-          'line-color': '#e67e22',
-          'line-width': 3,
-          'line-dasharray': [4, 4],
-          'line-opacity': 0.8,
-        },
-      });
-    }
+    // Lines drawn via SVG overlay (raster-only style doesn't support GeoJSON layers)
+    this.drawSvgLines();
 
     // Segment time labels
     this.segmentLabels.forEach(m => m.remove());
@@ -240,6 +201,48 @@ export class RouteMapComponent implements AfterViewInit, OnDestroy {
 
     // Fit bounds
     this.map.fitBounds(bounds, { padding: 40, maxZoom: 15 });
+  }
+
+  private drawSvgLines() {
+    if (!this.map) return;
+    const lns = this.lines();
+    const container = this.mapContainer()?.nativeElement;
+    if (!container) return;
+
+    // Remove old SVG
+    if (this.svgOverlay) { this.svgOverlay.remove(); this.svgOverlay = null; }
+    if (lns.length === 0) return;
+
+    const w = container.clientWidth;
+    const h = container.clientHeight;
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', String(w));
+    svg.setAttribute('height', String(h));
+    svg.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;z-index:1;';
+
+    for (const ln of lns) {
+      const from = this.map.project(ln.from as [number, number]);
+      const to = this.map.project(ln.to as [number, number]);
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', String(from.x));
+      line.setAttribute('y1', String(from.y));
+      line.setAttribute('x2', String(to.x));
+      line.setAttribute('y2', String(to.y));
+      line.setAttribute('stroke', ln.type === 'taxi' ? '#e67e22' : '#4a7c59');
+      line.setAttribute('stroke-width', '4');
+      line.setAttribute('stroke-linecap', 'round');
+      if (ln.type === 'taxi') line.setAttribute('stroke-dasharray', '8,6');
+      svg.appendChild(line);
+    }
+
+    // Append to map canvas container
+    const canvasContainer = container.querySelector('.maplibregl-canvas-container');
+    if (canvasContainer) {
+      canvasContainer.appendChild(svg);
+    } else {
+      container.appendChild(svg);
+    }
+    this.svgOverlay = svg as unknown as HTMLElement;
   }
 
   scrollToPoint(index: number) {

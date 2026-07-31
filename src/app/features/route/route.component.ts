@@ -424,12 +424,11 @@ export class RouteComponent implements OnInit {
   });
 
   manualMapPoints = computed<MapPoint[]>(() => {
+    // Only selected points as numbered markers on map
+    // Unselected shown in list only (map would be cluttered with 60 markers)
     const selected = this.selectedPoints();
-    const all = this.topPlaces();
-    // Show all as markers, selected ones get index
-    return all.map((p, i) => ({
-      id: p.id, name: p.name, lat: p.lat, lng: p.lng,
-      index: this.selectedPointIds().indexOf(p.id),
+    return selected.map((p, i) => ({
+      id: p.id, name: p.name, lat: p.lat, lng: p.lng, index: i,
     }));
   });
 
@@ -698,8 +697,9 @@ export class RouteComponent implements OnInit {
   }
 
   togglePoint(mapIndex: number) {
-    const place = this.topPlaces()[mapIndex];
-    if (place) this.togglePointById(place.id);
+    // Markers on map are selected points only — tap removes
+    const selected = this.selectedPoints();
+    if (selected[mapIndex]) this.togglePointById(selected[mapIndex].id);
   }
 
   togglePointById(id: string) {
