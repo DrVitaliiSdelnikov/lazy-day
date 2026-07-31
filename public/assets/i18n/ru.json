@@ -323,7 +323,14 @@
     "remove": "Убрать",
     "open_maps": "Открыть в Google Maps",
     "pick_alternative": "Выберите замену:",
-    "cancel": "Оставить как было"
+    "cancel": "Оставить как было",
+    "mode_manual": "Соберу сам",
+    "mode_generate": "Собери мне",
+    "filter_all": "Все",
+    "mood_spa": "Бани",
+    "places_selected": "мест выбрано",
+    "km": "км",
+    "done": "Готово"
   },
   "feedback": {
     "title": "Обратная связь",

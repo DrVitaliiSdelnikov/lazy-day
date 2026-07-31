@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, viewChild } from '@angular/core';
+import { Component, inject, signal, computed, viewChild, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { ApiService } from '../../core/services/api.service';
@@ -36,7 +36,66 @@ interface CareLine {
         <h1 class="route__title">{{ 'route.title' | translate }}</h1>
       </header>
 
-      <!-- Step: Form -->
+      <!-- Mode switcher -->
+      @if (step() === 'form' || step() === 'manual') {
+        <div class="route__mode-switch">
+          <button class="route__mode-btn" [class.route__mode-btn--active]="step() === 'manual'"
+            (click)="step.set('manual'); loadTopPlaces()">{{ 'route.mode_manual' | translate }}</button>
+          <button class="route__mode-btn" [class.route__mode-btn--active]="step() === 'form'"
+            (click)="step.set('form')">{{ 'route.mode_generate' | translate }}</button>
+        </div>
+      }
+
+      <!-- Step: Manual selection -->
+      @if (step() === 'manual') {
+        <section class="route__manual">
+          <!-- Type filter -->
+          <div class="route__chips" style="padding: 0 var(--ld-space-lg); margin-bottom: 8px">
+            @for (t of typeFilters; track t.value) {
+              <button class="ld-chip" [class.ld-chip--active]="manualTypeFilter() === t.value"
+                (click)="setManualFilter(t.value)">{{ t.labelKey | translate }}</button>
+            }
+          </div>
+
+          <!-- Counter -->
+          <div class="route__manual-counter">
+            {{ selectedPoints().length }} {{ 'route.places_selected' | translate }}
+            @if (manualStats().totalMin > 0) {
+              · ~{{ manualStats().timeStr }} · {{ manualStats().km }} {{ 'route.km' | translate }}
+              @if (manualStats().taxiLegs > 0) { · 🚕 {{ manualStats().taxiLegs }} }
+            }
+          </div>
+
+          <!-- Map with selectable markers -->
+          <div class="route__manual-map">
+            <app-route-map [points]="manualMapPoints()" [lines]="manualMapLines()"
+              (markerTap)="togglePoint($event)" />
+          </div>
+
+          <!-- Place list -->
+          <div class="route__place-list">
+            @for (place of topPlaces(); track place.id) {
+              <button class="route__place-item" [class.route__place-item--selected]="isSelected(place.id)"
+                (click)="togglePointById(place.id)">
+                <span class="route__place-tier">{{ place.walkTier === 'must_see' ? '★' : '◆' }}</span>
+                <div class="route__place-info">
+                  <span class="route__place-name">{{ place.name }}</span>
+                  @if (place.hook) { <span class="route__place-hook">{{ place.hook }}</span> }
+                </div>
+                @if (isSelected(place.id)) { <ld-icon name="x" [size]="14" class="route__place-check" /> }
+              </button>
+            }
+          </div>
+
+          <!-- Done -->
+          <button class="ld-btn ld-btn--primary route__submit" [disabled]="selectedPoints().length === 0"
+            (click)="buildManualRoute()">
+            {{ 'route.done' | translate }} ({{ selectedPoints().length }})
+          </button>
+        </section>
+      }
+
+      <!-- Step: Form (generate mode) -->
       @if (step() === 'form') {
         <section class="route__form">
           <p class="route__form-label">{{ 'route.duration' | translate }}</p>
@@ -188,6 +247,41 @@ interface CareLine {
     .route__back { background: none; border: none; cursor: pointer; color: var(--ld-text); padding: 4px; }
     .route__title { font-size: 18px; font-weight: 700; margin: 0; }
 
+    .route__mode-switch {
+      display: flex; gap: 4px; padding: 0 var(--ld-space-lg); margin-bottom: 12px;
+      background: var(--ld-surface-2); border-radius: 10px; margin: 0 var(--ld-space-lg) 12px;
+      padding: 3px;
+    }
+    .route__mode-btn {
+      flex: 1; padding: 8px; border: none; border-radius: 8px; font-size: 13px;
+      font-weight: 600; cursor: pointer; font-family: inherit;
+      background: transparent; color: var(--ld-text-3);
+    }
+    .route__mode-btn--active { background: var(--ld-surface); color: var(--ld-text); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+    .route__manual { padding: 0; }
+    .route__manual-counter {
+      padding: 0 var(--ld-space-lg); font-size: 13px; color: var(--ld-text-2); margin-bottom: 8px;
+    }
+    .route__manual-map { margin: 0 0 8px; }
+
+    .route__place-list {
+      padding: 0 var(--ld-space-lg); max-height: 300px; overflow-y: auto;
+      display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px;
+    }
+    .route__place-item {
+      display: flex; align-items: center; gap: 10px; width: 100%;
+      padding: 8px 10px; border: 1px solid var(--ld-border); border-radius: 10px;
+      background: var(--ld-surface); cursor: pointer; text-align: left; font-family: inherit;
+    }
+    .route__place-item--selected { border-color: var(--ld-primary); background: var(--ld-primary-soft); }
+    .route__place-tier { font-size: 14px; flex-shrink: 0; }
+    .route__place-info { flex: 1; min-width: 0; }
+    .route__place-name { display: block; font-size: 13px; font-weight: 600; }
+    .route__place-hook { display: block; font-size: 11px; color: var(--ld-text-2); font-style: italic;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .route__place-check { color: var(--ld-primary); flex-shrink: 0; }
+
     .route__form { padding: 0 var(--ld-space-lg); }
     .route__form-label { font-size: 13px; color: var(--ld-text-2); margin: 16px 0 8px; font-weight: 600; }
     .route__chips { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -291,7 +385,7 @@ interface CareLine {
     }
   `,
 })
-export class RouteComponent {
+export class RouteComponent implements OnInit {
   private api = inject(ApiService);
   private geo = inject(GeolocationService);
   private profile = inject(ProfileStore);
@@ -300,11 +394,77 @@ export class RouteComponent {
 
   private routeMap = viewChild<RouteMapComponent>('routeMap');
 
-  step = signal<'form' | 'loading' | 'result'>('form');
+  ngOnInit() {
+    this.loadTopPlaces();
+  }
+
+  step = signal<'form' | 'loading' | 'result' | 'manual'>('manual'); // manual = default
   routeData = signal<any>(null);
   alternatives = signal<any[]>([]);
   alternativesForIndex = signal(-1);
   altLoading = signal(false);
+
+  // Manual mode
+  topPlaces = signal<any[]>([]);
+  selectedPointIds = signal<string[]>([]);
+  manualTypeFilter = signal<string | null>(null);
+
+  typeFilters = [
+    { value: null, labelKey: 'route.filter_all' },
+    { value: 'scenic', labelKey: 'route.mood_scenic' },
+    { value: 'food', labelKey: 'route.mood_food' },
+    { value: 'culture', labelKey: 'route.mood_culture' },
+    { value: 'spa', labelKey: 'route.mood_spa' },
+    { value: 'coffee', labelKey: 'route.mood_coffee' },
+  ];
+
+  selectedPoints = computed(() => {
+    const ids = this.selectedPointIds();
+    return this.topPlaces().filter(p => ids.includes(p.id));
+  });
+
+  manualMapPoints = computed<MapPoint[]>(() => {
+    const selected = this.selectedPoints();
+    const all = this.topPlaces();
+    // Show all as markers, selected ones get index
+    return all.map((p, i) => ({
+      id: p.id, name: p.name, lat: p.lat, lng: p.lng,
+      index: this.selectedPointIds().indexOf(p.id),
+    }));
+  });
+
+  manualMapLines = computed<MapLine[]>(() => {
+    const pts = this.selectedPoints();
+    if (pts.length < 2) return [];
+    const lines: MapLine[] = [];
+    for (let i = 0; i < pts.length - 1; i++) {
+      const distM = this.haversine(pts[i].lat, pts[i].lng, pts[i + 1].lat, pts[i + 1].lng);
+      const walkMin = Math.round((distM / 80) * 1.3);
+      lines.push({
+        from: [pts[i].lng, pts[i].lat],
+        to: [pts[i + 1].lng, pts[i + 1].lat],
+        type: distM > 920 ? 'taxi' : 'walk',
+        durationMin: distM > 920 ? Math.max(5, Math.round(distM / 500)) : walkMin,
+      });
+    }
+    return lines;
+  });
+
+  manualStats = computed(() => {
+    const lines = this.manualMapLines();
+    const pts = this.selectedPoints();
+    const totalMin = pts.reduce((s, p) => s + (p.durationMin || 30), 0) +
+      lines.reduce((s, l) => s + (l.durationMin || 0), 0);
+    const walkM = lines.filter(l => l.type === 'walk').reduce((s, l) => s + ((l.durationMin ?? 0) * 80 / 1.3), 0);
+    const hours = Math.floor(totalMin / 60);
+    const mins = totalMin % 60;
+    return {
+      totalMin,
+      timeStr: hours > 0 ? `${hours} ч ${mins > 0 ? mins + ' мин' : ''}` : `${mins} мин`,
+      km: (walkM / 1000).toFixed(1),
+      taxiLegs: lines.filter(l => l.type === 'taxi').length,
+    };
+  });
 
   selectedDuration = signal('2-3h');
   selectedMoods = signal<string[]>(['scenic', 'food']);
@@ -507,6 +667,83 @@ export class RouteComponent {
 
   focusMapPoint(index: number) {
     this.routeMap()?.scrollToPoint(index);
+  }
+
+  // Manual mode methods
+  loadTopPlaces() {
+    if (this.topPlaces().length > 0) return;
+    const pos = this.geo.position();
+    const type = this.manualTypeFilter();
+    const url = type
+      ? `generateRoute` // reuse, but actually we need a direct HTTP call
+      : `generateRoute`;
+    // Direct HTTP to top-places endpoint
+    const baseUrl = (typeof window !== 'undefined' && window.location.hostname !== 'localhost')
+      ? 'https://api.lazigo.app/v1' : '/v1';
+    fetch(`${baseUrl}/routes/top-places?lat=${pos.lat}&lng=${pos.lng}${type ? '&type=' + type : ''}`)
+      .then(r => r.json())
+      .then(places => this.topPlaces.set(places))
+      .catch(() => {});
+  }
+
+  setManualFilter(type: string | null) {
+    this.manualTypeFilter.set(type);
+    const pos = this.geo.position();
+    const baseUrl = (typeof window !== 'undefined' && window.location.hostname !== 'localhost')
+      ? 'https://api.lazigo.app/v1' : '/v1';
+    fetch(`${baseUrl}/routes/top-places?lat=${pos.lat}&lng=${pos.lng}${type ? '&type=' + type : ''}`)
+      .then(r => r.json())
+      .then(places => this.topPlaces.set(places))
+      .catch(() => {});
+  }
+
+  togglePoint(mapIndex: number) {
+    const place = this.topPlaces()[mapIndex];
+    if (place) this.togglePointById(place.id);
+  }
+
+  togglePointById(id: string) {
+    const current = this.selectedPointIds();
+    if (current.includes(id)) {
+      this.selectedPointIds.set(current.filter(x => x !== id));
+    } else {
+      this.selectedPointIds.set([...current, id]);
+    }
+  }
+
+  isSelected(id: string): boolean {
+    return this.selectedPointIds().includes(id);
+  }
+
+  buildManualRoute() {
+    if (this.selectedPoints().length === 0) return;
+    this.step.set('loading');
+    const pos = this.geo.position();
+    const baseUrl = (typeof window !== 'undefined' && window.location.hostname !== 'localhost')
+      ? 'https://api.lazigo.app/v1' : '/v1';
+    fetch(`${baseUrl}/routes/link`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        pointIds: this.selectedPointIds(),
+        startLat: pos.lat,
+        startLng: pos.lng,
+        locale: this.profile.locale(),
+      }),
+    })
+      .then(r => r.json())
+      .then(data => { this.routeData.set(data); this.step.set('result'); })
+      .catch(() => this.step.set('manual'));
+  }
+
+  private haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
+    const R = 6371000;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2 +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }
 
   goBack() {

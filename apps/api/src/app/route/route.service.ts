@@ -413,6 +413,123 @@ export class RouteService {
   }
 
   /**
+   * Get top places for manual route building.
+   * must_see + worth_detour, optionally filtered by category type.
+   */
+  /**
+   * Link user-selected points into a route (manual mode).
+   * Fetches point data, orders by greedy nearest-neighbor, computes transitions + care.
+   */
+  async linkPoints(dto: { pointIds: string[]; startLat: number; startLng: number; locale?: string }): Promise<RouteResponse> {
+    if (!dto.pointIds?.length) {
+      return this.emptyFallback({ lat: dto.startLat, lng: dto.startLng } as any, dto.locale ?? 'ru');
+    }
+
+    const placeholders = dto.pointIds.map((_, i) => `$${i + 1}`).join(',');
+    const rows = await this.ds.query(`
+      SELECT p.id, v.name, v.name_en, p.category,
+        v.lat, v.lng, p.hook, p.walk_tier, p.route_moment, p.best_time, p.outdoor,
+        p.typical_duration_min, p.photos
+      FROM places p
+      JOIN venues v ON p.venue_id = v.id
+      WHERE p.id IN (${placeholders})
+    `, dto.pointIds);
+
+    if (rows.length === 0) {
+      return this.emptyFallback({ lat: dto.startLat, lng: dto.startLng } as any, dto.locale ?? 'ru');
+    }
+
+    // Order by greedy nearest-neighbor from start
+    const ordered: RouteCandidate[] = [];
+    const remaining = [...rows] as RouteCandidate[];
+    let curLat = dto.startLat;
+    let curLng = dto.startLng;
+
+    while (remaining.length > 0) {
+      const nearest = this.nearest(remaining, curLat, curLng)!;
+      ordered.push(nearest);
+      remaining.splice(remaining.indexOf(nearest), 1);
+      curLat = nearest.lat;
+      curLng = nearest.lng;
+    }
+
+    // Convert to RoutePoints
+    const chain: RoutePoint[] = ordered.map((c) => this.toPoint(c, c.route_moment || 'anchor', 'relaxed'));
+
+    // Compute transitions
+    const transitions = this.computeTransitions(chain);
+
+    // Assign times
+    const now = new Date();
+    this.assignTimes(chain, transitions, (now.getUTCHours() + 4) % 24, now.getMinutes());
+
+    // Totals
+    const totalWalkM = transitions.reduce((s, t) => s + (t.type === 'walk' ? t.distanceM : 0), 0);
+    const totalMinutes = chain.reduce((s, p) => s + p.durationMin, 0) +
+      transitions.reduce((s, t) => s + t.durationMin, 0);
+    const taxiLinks = transitions.filter(t => t.type === 'taxi').length;
+
+    // Care
+    const careLines = this.computeCareLines(chain, transitions, totalWalkM, totalMinutes);
+
+    // Header (manual tone)
+    const km = (totalWalkM / 1000).toFixed(1);
+    const hours = Math.floor(totalMinutes / 60);
+    const mins = totalMinutes % 60;
+    const timeStr = hours > 0 ? `${hours} ч ${mins > 0 ? mins + ' мин' : ''}` : `${mins} мин`;
+    let header = `Ваш маршрут: ~${timeStr}, ${chain.length} ${chain.length <= 4 ? 'места' : 'мест'}, ${km} км пешком`;
+    const headerCare = careLines.filter(c => c.position === 'header').slice(0, 2);
+    if (headerCare.length > 0) header += '. ' + headerCare.map(c => c.text).join('. ');
+
+    return { points: chain, transitions, careLines, totalKm: Math.round(totalWalkM / 100) / 10, totalMinutes, taxiLinks, header };
+  }
+
+  async getTopPlaces(lat: number, lng: number, type?: string): Promise<any[]> {
+    const typeFilter = type ? this.mapTypeToCategories(type) : null;
+    const typeWhere = typeFilter ? `AND p.category IN (${typeFilter.map((t: string) => `'${t}'`).join(',')})` : '';
+
+    const rows = await this.ds.query(`
+      SELECT p.id, v.name, v.name_en, p.category,
+        v.lat, v.lng, p.hook, p.walk_tier, p.route_moment, p.best_time, p.outdoor,
+        p.typical_duration_min, p.google_rating, p.photos
+      FROM places p
+      JOIN venues v ON p.venue_id = v.id
+      WHERE p.status = 'active'
+        AND p.walk_tier IN ('must_see', 'worth_detour')
+        ${typeWhere}
+      ORDER BY
+        CASE p.walk_tier WHEN 'must_see' THEN 1 ELSE 2 END,
+        p.google_rating DESC NULLS LAST
+      LIMIT 60
+    `);
+
+    return rows.map((r: any) => ({
+      id: r.id,
+      name: r.name_en || r.name,
+      category: r.category,
+      lat: Number(r.lat),
+      lng: Number(r.lng),
+      hook: r.hook,
+      walkTier: r.walk_tier,
+      routeMoment: r.route_moment,
+      rating: r.google_rating ? Number(r.google_rating) : undefined,
+      photoUrl: r.photos?.[0],
+      durationMin: r.typical_duration_min ? Math.min(Number(r.typical_duration_min), 60) : 30,
+    }));
+  }
+
+  private mapTypeToCategories(type: string): string[] | null {
+    const map: Record<string, string[]> = {
+      scenic: ['viewpoint', 'park', 'garden', 'attraction'],
+      food: ['restaurant', 'cafe', 'bakery'],
+      culture: ['museum', 'gallery', 'theater', 'library'],
+      spa: ['bath', 'swimming'],
+      coffee: ['cafe'],
+    };
+    return map[type] ?? null;
+  }
+
+  /**
    * Get 2-3 alternatives for a specific point in the route.
    * Same role, nearby, not already in route. Returns with transition cost preview.
    */

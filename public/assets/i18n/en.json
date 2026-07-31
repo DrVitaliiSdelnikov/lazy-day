@@ -323,7 +323,14 @@
     "remove": "Remove",
     "open_maps": "Open in Google Maps",
     "pick_alternative": "Pick a replacement:",
-    "cancel": "Keep current"
+    "cancel": "Keep current",
+    "mode_manual": "I'll build",
+    "mode_generate": "Build for me",
+    "filter_all": "All",
+    "mood_spa": "Spa",
+    "places_selected": "places selected",
+    "km": "km",
+    "done": "Done"
   },
   "feedback": {
     "title": "Feedback",

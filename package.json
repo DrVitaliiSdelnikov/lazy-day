@@ -30,6 +30,8 @@
     "@ngx-translate/core": "^18.0.0",
     "@ngx-translate/http-loader": "^18.0.0",
     "@primeuix/themes": "^2.0.3",
+    "@turf/distance": "^7.3.5",
+    "@turf/helpers": "^7.3.5",
     "@types/cookie-parser": "^1.4.10",
     "axios": "^1.6.0",
     "class-transformer": "^0.5.1",
