@@ -6,6 +6,7 @@ import { GeolocationService } from '../../core/services/geolocation.service';
 import { ProfileStore } from '../../core/stores/profile.store';
 import { apiProviders } from '../../core/providers';
 import { LdIconComponent } from '../../core/components/ld-icon.component';
+import { RouteMapComponent, MapPoint, MapLine } from '../../core/components/route-map.component';
 
 interface RoutePoint {
   id: string; name: string; category: string; lat: number; lng: number;
@@ -23,7 +24,7 @@ interface CareLine {
 @Component({
   selector: 'app-route',
   standalone: true,
-  imports: [TranslatePipe, LdIconComponent],
+  imports: [TranslatePipe, LdIconComponent, RouteMapComponent],
   providers: [...apiProviders],
   template: `
     <div class="route">
@@ -89,6 +90,9 @@ interface CareLine {
           <div class="route__napustvie">
             <p>{{ routeData()!.header }}</p>
           </div>
+
+          <!-- Map -->
+          <app-route-map [points]="mapPoints()" [lines]="mapLines()" />
 
           <!-- Timeline -->
           <div class="route__timeline">
@@ -251,6 +255,32 @@ export class RouteComponent {
   private loaderIdx = 0;
 
   loaderPhrase = signal(this.loaderPhrases[0]);
+
+  mapPoints = computed<MapPoint[]>(() => {
+    const data = this.routeData();
+    if (!data?.points) return [];
+    return data.points.map((p: RoutePoint, i: number) => ({
+      id: p.id, name: p.name, lat: p.lat, lng: p.lng, index: i,
+    }));
+  });
+
+  mapLines = computed<MapLine[]>(() => {
+    const data = this.routeData();
+    if (!data?.points || !data?.transitions) return [];
+    const lines: MapLine[] = [];
+    for (let i = 0; i < data.transitions.length; i++) {
+      const from = data.points[i];
+      const to = data.points[i + 1];
+      if (from && to) {
+        lines.push({
+          from: [from.lng, from.lat],
+          to: [to.lng, to.lat],
+          type: data.transitions[i].type,
+        });
+      }
+    }
+    return lines;
+  });
 
   footerCare = computed(() => {
     const data = this.routeData();
