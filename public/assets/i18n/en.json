@@ -318,7 +318,10 @@
     "role_photo_spot": "Photo spot",
     "role_food_break": "Food break",
     "role_rest_stop": "Rest stop",
-    "role_passage": "On the way"
+    "role_passage": "On the way",
+    "replace": "Replace",
+    "remove": "Remove",
+    "open_maps": "Open in Google Maps"
   },
   "feedback": {
     "title": "Feedback",

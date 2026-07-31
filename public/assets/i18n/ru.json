@@ -318,7 +318,10 @@
     "role_photo_spot": "Фото-стоп",
     "role_food_break": "Перекусить",
     "role_rest_stop": "Передохнуть",
-    "role_passage": "По пути"
+    "role_passage": "По пути",
+    "replace": "Заменить",
+    "remove": "Убрать",
+    "open_maps": "Открыть в Google Maps"
   },
   "feedback": {
     "title": "Обратная связь",

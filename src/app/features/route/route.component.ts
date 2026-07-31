@@ -110,6 +110,14 @@ interface CareLine {
                   @if (pointCare(point.role)) {
                     <p class="route__point-care">{{ pointCare(point.role) }}</p>
                   }
+                  <div class="route__point-actions">
+                    <button class="route__action-btn" (click)="replacePoint(i)">
+                      <ld-icon name="arrow-left" [size]="12" /> {{ 'route.replace' | translate }}
+                    </button>
+                    <button class="route__action-btn route__action-btn--remove" (click)="removePoint(i)">
+                      <ld-icon name="x" [size]="12" /> {{ 'route.remove' | translate }}
+                    </button>
+                  </div>
                 </div>
               </div>
               <!-- Transition -->
@@ -138,6 +146,9 @@ interface CareLine {
             <button class="ld-btn ld-btn--ghost" (click)="step.set('form')">{{ 'route.edit' | translate }}</button>
             <button class="ld-btn ld-btn--primary" (click)="buildRoute()">{{ 'route.rebuild' | translate }}</button>
           </div>
+          <a class="route__maps-link" [href]="googleMapsUrl()" target="_blank" rel="noopener">
+            <ld-icon name="map-pin" [size]="14" /> {{ 'route.open_maps' | translate }}
+          </a>
         </section>
       }
     </div>
@@ -212,10 +223,29 @@ interface CareLine {
       text-align: center; margin: 16px 0 0;
     }
 
+    .route__point-actions {
+      display: flex; gap: 8px; margin-top: 6px;
+    }
+    .route__action-btn {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: none; border: 1px solid var(--ld-border); border-radius: 6px;
+      font-size: 11px; color: var(--ld-text-3); cursor: pointer;
+      padding: 3px 8px; font-family: inherit;
+    }
+    .route__action-btn:hover { border-color: var(--ld-primary); color: var(--ld-primary); }
+    .route__action-btn--remove:hover { border-color: #e74c3c; color: #e74c3c; }
+
     .route__actions {
       display: flex; gap: 8px; margin-top: 24px;
     }
     .route__actions .ld-btn { flex: 1; }
+
+    .route__maps-link {
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      margin-top: 12px; padding: 10px;
+      font-size: 13px; color: var(--ld-primary); text-decoration: none;
+      border: 1px solid var(--ld-primary); border-radius: 10px;
+    }
   `,
 })
 export class RouteComponent {
@@ -338,6 +368,42 @@ export class RouteComponent {
     if (!data) return null;
     const care = data.careLines?.find((c: CareLine) => c.position === 'point' && c.rule === 'C5' && role === 'food_break');
     return care?.text ?? null;
+  }
+
+  removePoint(index: number) {
+    const data = this.routeData();
+    if (!data || data.points.length <= 2) return; // keep at least 2 points
+    const points = [...data.points];
+    const transitions = [...data.transitions];
+    points.splice(index, 1);
+    // Remove transition: if removing middle point, merge transitions
+    if (index < transitions.length) transitions.splice(index, 1);
+    else if (transitions.length > 0) transitions.splice(transitions.length - 1, 1);
+    // Recalculate totals
+    const totalMin = points.reduce((s: number, p: RoutePoint) => s + p.durationMin, 0) +
+      transitions.reduce((s: number, t: RouteTransition) => s + t.durationMin, 0);
+    this.routeData.set({
+      ...data,
+      points,
+      transitions,
+      totalMinutes: totalMin,
+    });
+  }
+
+  replacePoint(index: number) {
+    // Rebuild route keeping other points' moods — full regeneration with new seed
+    this.buildRoute();
+  }
+
+  googleMapsUrl(): string {
+    const data = this.routeData();
+    if (!data?.points?.length) return '#';
+    const pts = data.points;
+    const origin = `${pts[0].lat},${pts[0].lng}`;
+    const dest = `${pts[pts.length - 1].lat},${pts[pts.length - 1].lng}`;
+    const waypoints = pts.slice(1, -1).map((p: RoutePoint) => `${p.lat},${p.lng}`).join('|');
+    const base = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}&travelmode=walking`;
+    return waypoints ? `${base}&waypoints=${waypoints}` : base;
   }
 
   goBack() {
