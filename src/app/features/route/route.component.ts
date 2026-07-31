@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, inject, signal, computed, viewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { ApiService } from '../../core/services/api.service';
@@ -92,13 +92,13 @@ interface CareLine {
           </div>
 
           <!-- Map -->
-          <app-route-map [points]="mapPoints()" [lines]="mapLines()" />
+          <app-route-map [points]="mapPoints()" [lines]="mapLines()" (markerTap)="scrollToTimelinePoint($event)" #routeMap />
 
           <!-- Timeline -->
           <div class="route__timeline">
             @for (point of routeData()!.points; track point.id; let i = $index) {
               <!-- Point -->
-              <div class="route__point">
+              <div class="route__point" [id]="'route-point-' + i" (click)="focusMapPoint(i)">
                 <div class="route__point-time">{{ point.arriveAt }}</div>
                 <div class="route__point-marker">{{ i + 1 }}</div>
                 <div class="route__point-body">
@@ -255,6 +255,8 @@ export class RouteComponent {
   private router = inject(Router);
   private translate = inject(TranslateService);
 
+  private routeMap = viewChild<RouteMapComponent>('routeMap');
+
   step = signal<'form' | 'loading' | 'result'>('form');
   routeData = signal<any>(null);
 
@@ -306,6 +308,7 @@ export class RouteComponent {
           from: [from.lng, from.lat],
           to: [to.lng, to.lat],
           type: data.transitions[i].type,
+          durationMin: data.transitions[i].durationMin,
         });
       }
     }
@@ -404,6 +407,15 @@ export class RouteComponent {
     const waypoints = pts.slice(1, -1).map((p: RoutePoint) => `${p.lat},${p.lng}`).join('|');
     const base = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}&travelmode=walking`;
     return waypoints ? `${base}&waypoints=${waypoints}` : base;
+  }
+
+  scrollToTimelinePoint(index: number) {
+    const el = document.getElementById(`route-point-${index}`);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  focusMapPoint(index: number) {
+    this.routeMap()?.scrollToPoint(index);
   }
 
   goBack() {

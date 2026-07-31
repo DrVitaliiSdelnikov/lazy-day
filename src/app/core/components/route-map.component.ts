@@ -1,5 +1,5 @@
 import {
-  Component, input, effect, ElementRef, viewChild, signal, AfterViewInit, OnDestroy,
+  Component, input, output, effect, ElementRef, viewChild, signal, AfterViewInit, OnDestroy,
 } from '@angular/core';
 import { Map, Marker, LngLatBounds, Popup } from 'maplibre-gl';
 
@@ -15,6 +15,7 @@ export interface MapLine {
   from: [number, number]; // [lng, lat]
   to: [number, number];
   type: 'walk' | 'taxi';
+  durationMin?: number;
 }
 
 @Component({
@@ -68,11 +69,13 @@ export interface MapLine {
 export class RouteMapComponent implements AfterViewInit, OnDestroy {
   points = input<MapPoint[]>([]);
   lines = input<MapLine[]>([]);
+  markerTap = output<number>();
 
   fullscreen = signal(false);
   private mapContainer = viewChild<ElementRef>('mapContainer');
   private map: Map | null = null;
   private markers: Marker[] = [];
+  private segmentLabels: Marker[] = [];
 
   ngAfterViewInit() {
     const el = this.mapContainer()?.nativeElement;
@@ -152,6 +155,8 @@ export class RouteMapComponent implements AfterViewInit, OnDestroy {
         border:2px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,.3);
       `;
 
+      el.addEventListener('click', () => this.markerTap.emit(pt.index));
+
       const marker = new Marker({ element: el })
         .setLngLat([pt.lng, pt.lat])
         .setPopup(new Popup({ offset: 20 }).setText(pt.name))
@@ -209,6 +214,28 @@ export class RouteMapComponent implements AfterViewInit, OnDestroy {
           'line-opacity': 0.8,
         },
       });
+    }
+
+    // Segment time labels
+    this.segmentLabels.forEach(m => m.remove());
+    this.segmentLabels = [];
+    for (const ln of lns) {
+      if (ln.durationMin) {
+        const midLng = (ln.from[0] + ln.to[0]) / 2;
+        const midLat = (ln.from[1] + ln.to[1]) / 2;
+        const label = document.createElement('div');
+        const icon = ln.type === 'taxi' ? '🚕' : '🚶';
+        label.textContent = `${icon} ${ln.durationMin} мин`;
+        label.style.cssText = `
+          font-size:10px; font-weight:600; color:#555; background:rgba(255,255,255,0.9);
+          padding:2px 6px; border-radius:8px; white-space:nowrap; font-family:inherit;
+          box-shadow:0 1px 3px rgba(0,0,0,0.15); pointer-events:none;
+        `;
+        const m = new Marker({ element: label, anchor: 'center' })
+          .setLngLat([midLng, midLat])
+          .addTo(this.map!);
+        this.segmentLabels.push(m);
+      }
     }
 
     // Fit bounds
