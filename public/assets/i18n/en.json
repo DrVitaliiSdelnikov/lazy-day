@@ -321,7 +321,9 @@
     "role_passage": "On the way",
     "replace": "Replace",
     "remove": "Remove",
-    "open_maps": "Open in Google Maps"
+    "open_maps": "Open in Google Maps",
+    "pick_alternative": "Pick a replacement:",
+    "cancel": "Keep current"
   },
   "feedback": {
     "title": "Feedback",

@@ -56,6 +56,10 @@ export class HttpApiService extends ApiService {
     return this.http.post(`${this.baseUrl}/routes/generate`, request);
   }
 
+  getRouteAlternatives(request: any): Observable<any> {
+    return this.http.post(`${this.baseUrl}/routes/alternatives`, request);
+  }
+
   getTasteProfile(): Observable<any> {
     return this.http.get(`${this.baseUrl}/recommendations/taste-profile`);
   }

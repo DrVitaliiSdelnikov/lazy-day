@@ -10,4 +10,13 @@ export class RouteController {
   async generate(@Body() dto: GenerateRouteDto) {
     return this.routeService.generate(dto);
   }
+
+  @Post('alternatives')
+  async alternatives(@Body() dto: {
+    lat: number; lng: number; role: string;
+    excludeIds: string[]; prevLat?: number; prevLng?: number;
+    nextLat?: number; nextLng?: number; moods?: string[];
+  }) {
+    return this.routeService.getAlternatives(dto);
+  }
 }

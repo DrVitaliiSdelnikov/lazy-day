@@ -321,7 +321,9 @@
     "role_passage": "По пути",
     "replace": "Заменить",
     "remove": "Убрать",
-    "open_maps": "Открыть в Google Maps"
+    "open_maps": "Открыть в Google Maps",
+    "pick_alternative": "Выберите замену:",
+    "cancel": "Оставить как было"
   },
   "feedback": {
     "title": "Обратная связь",

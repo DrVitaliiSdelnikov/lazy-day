@@ -412,6 +412,66 @@ export class RouteService {
     };
   }
 
+  /**
+   * Get 2-3 alternatives for a specific point in the route.
+   * Same role, nearby, not already in route. Returns with transition cost preview.
+   */
+  async getAlternatives(dto: {
+    lat: number; lng: number; role: string;
+    excludeIds: string[]; prevLat?: number; prevLng?: number; nextLat?: number; nextLng?: number;
+    moods?: string[];
+  }): Promise<{ id: string; name: string; category: string; lat: number; lng: number;
+    hook?: string; walkTier: string; transitionFromPrev?: { type: string; durationMin: number };
+    transitionToNext?: { type: string; durationMin: number }; photoUrl?: string }[]> {
+
+    const candidates = await this.fetchCandidates(dto.lat, dto.lng, 3000, dto.moods ?? []);
+    const excludeSet = new Set(dto.excludeIds);
+
+    const categoryMap: Record<string, string[]> = {
+      food_break: ['restaurant', 'cafe', 'bakery'],
+      rest_stop: ['cafe', 'park', 'garden'],
+      photo_spot: ['viewpoint', 'park', 'attraction', 'garden'],
+      anchor: ['viewpoint', 'museum', 'gallery', 'theater', 'bath'],
+    };
+
+    const validCategories = categoryMap[dto.role] ?? [];
+    const filtered = candidates.filter(c => {
+      if (excludeSet.has(c.id)) return false;
+      return validCategories.includes(c.category) || c.route_moment === dto.role;
+    });
+
+    // Sort by distance from current point, take top 3
+    const sorted = filtered
+      .map(c => ({ ...c, dist: this.haversine(dto.lat, dto.lng, c.lat, c.lng) }))
+      .sort((a, b) => a.dist - b.dist)
+      .slice(0, 3);
+
+    return sorted.map(c => {
+      const result: any = {
+        id: c.id, name: c.name_en || c.name, category: c.category,
+        lat: c.lat, lng: c.lng, hook: c.hook, walkTier: c.walk_tier,
+        photoUrl: c.photos?.[0],
+      };
+      // Preview transition cost from previous point
+      if (dto.prevLat != null && dto.prevLng != null) {
+        const distM = this.haversine(dto.prevLat, dto.prevLng, c.lat, c.lng);
+        const walkMin = Math.round((distM / WALK_SPEED_M_PER_MIN) * STREET_CURVE);
+        result.transitionFromPrev = distM > MAX_WALK_M
+          ? { type: 'taxi', durationMin: Math.max(5, Math.round(distM / 500)) }
+          : { type: 'walk', durationMin: walkMin };
+      }
+      // Preview transition cost to next point
+      if (dto.nextLat != null && dto.nextLng != null) {
+        const distM = this.haversine(c.lat, c.lng, dto.nextLat, dto.nextLng);
+        const walkMin = Math.round((distM / WALK_SPEED_M_PER_MIN) * STREET_CURVE);
+        result.transitionToNext = distM > MAX_WALK_M
+          ? { type: 'taxi', durationMin: Math.max(5, Math.round(distM / 500)) }
+          : { type: 'walk', durationMin: walkMin };
+      }
+      return result;
+    });
+  }
+
   private haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
     const R = 6371000;
     const dLat = (lat2 - lat1) * Math.PI / 180;

@@ -111,13 +111,37 @@ interface CareLine {
                     <p class="route__point-care">{{ pointCare(point.role) }}</p>
                   }
                   <div class="route__point-actions">
-                    <button class="route__action-btn" (click)="replacePoint(i)">
+                    <button class="route__action-btn" (click)="loadAlternatives(i)">
                       <ld-icon name="arrow-left" [size]="12" /> {{ 'route.replace' | translate }}
                     </button>
                     <button class="route__action-btn route__action-btn--remove" (click)="removePoint(i)">
                       <ld-icon name="x" [size]="12" /> {{ 'route.remove' | translate }}
                     </button>
                   </div>
+                  <!-- Alternatives inline -->
+                  @if (alternativesForIndex() === i && alternatives().length > 0) {
+                    <div class="route__alternatives">
+                      <p class="route__alt-label">{{ 'route.pick_alternative' | translate }}</p>
+                      @for (alt of alternatives(); track alt.id) {
+                        <button class="route__alt-card" (click)="applyAlternative(i, alt)">
+                          <span class="route__alt-name">{{ alt.name }}</span>
+                          @if (alt.hook) { <span class="route__alt-hook">{{ alt.hook }}</span> }
+                          @if (alt.transitionFromPrev) {
+                            <span class="route__alt-cost">
+                              {{ alt.transitionFromPrev.type === 'taxi' ? '🚕' : '🚶' }}
+                              {{ alt.transitionFromPrev.durationMin }} {{ 'route.min' | translate }}
+                            </span>
+                          }
+                        </button>
+                      }
+                      <button class="route__alt-cancel" (click)="alternativesForIndex.set(-1)">{{ 'route.cancel' | translate }}</button>
+                    </div>
+                  }
+                  @if (alternativesForIndex() === i && alternatives().length === 0 && altLoading()) {
+                    <div class="route__alternatives">
+                      <span class="route__alt-label">{{ 'route.loader_1' | translate }}</span>
+                    </div>
+                  }
                 </div>
               </div>
               <!-- Transition -->
@@ -240,6 +264,25 @@ interface CareLine {
     }
     .route__actions .ld-btn { flex: 1; }
 
+    .route__alternatives {
+      margin-top: 8px; padding: 8px; background: var(--ld-surface-2); border-radius: 10px;
+    }
+    .route__alt-label { font-size: 12px; color: var(--ld-text-3); font-style: italic; margin: 0 0 6px; }
+    .route__alt-card {
+      display: flex; flex-direction: column; gap: 2px; width: 100%;
+      background: var(--ld-surface); border: 1px solid var(--ld-border); border-radius: 8px;
+      padding: 8px 10px; margin-bottom: 6px; cursor: pointer; text-align: left;
+      font-family: inherit; transition: border-color 0.15s;
+    }
+    .route__alt-card:hover { border-color: var(--ld-primary); }
+    .route__alt-name { font-size: 13px; font-weight: 600; }
+    .route__alt-hook { font-size: 11px; color: var(--ld-text-2); font-style: italic; }
+    .route__alt-cost { font-size: 11px; color: var(--ld-text-3); }
+    .route__alt-cancel {
+      background: none; border: none; font-size: 12px; color: var(--ld-text-3);
+      cursor: pointer; padding: 4px 0; font-family: inherit;
+    }
+
     .route__maps-link {
       display: flex; align-items: center; justify-content: center; gap: 6px;
       margin-top: 12px; padding: 10px;
@@ -259,6 +302,9 @@ export class RouteComponent {
 
   step = signal<'form' | 'loading' | 'result'>('form');
   routeData = signal<any>(null);
+  alternatives = signal<any[]>([]);
+  alternativesForIndex = signal(-1);
+  altLoading = signal(false);
 
   selectedDuration = signal('2-3h');
   selectedMoods = signal<string[]>(['scenic', 'food']);
@@ -393,9 +439,54 @@ export class RouteComponent {
     });
   }
 
-  replacePoint(index: number) {
-    // Rebuild route keeping other points' moods — full regeneration with new seed
-    this.buildRoute();
+  loadAlternatives(index: number) {
+    const data = this.routeData();
+    if (!data) return;
+    const point = data.points[index];
+    const prev = index > 0 ? data.points[index - 1] : null;
+    const next = index < data.points.length - 1 ? data.points[index + 1] : null;
+
+    this.alternativesForIndex.set(index);
+    this.alternatives.set([]);
+    this.altLoading.set(true);
+
+    this.api.getRouteAlternatives({
+      lat: point.lat, lng: point.lng, role: point.role,
+      excludeIds: data.points.map((p: RoutePoint) => p.id),
+      prevLat: prev?.lat, prevLng: prev?.lng,
+      nextLat: next?.lat, nextLng: next?.lng,
+      moods: this.selectedMoods(),
+    }).subscribe({
+      next: (alts: any[]) => {
+        this.alternatives.set(alts);
+        this.altLoading.set(false);
+      },
+      error: () => {
+        this.altLoading.set(false);
+      },
+    });
+  }
+
+  applyAlternative(index: number, alt: any) {
+    const data = this.routeData();
+    if (!data) return;
+    const points = [...data.points];
+    points[index] = {
+      ...points[index],
+      id: alt.id, name: alt.name, category: alt.category,
+      lat: alt.lat, lng: alt.lng, hook: alt.hook, photoUrl: alt.photoUrl,
+    };
+    // Recalculate transitions around replaced point
+    const transitions = [...data.transitions];
+    if (alt.transitionFromPrev && index > 0) {
+      transitions[index - 1] = { ...transitions[index - 1], ...alt.transitionFromPrev, distanceM: 0 };
+    }
+    if (alt.transitionToNext && index < transitions.length) {
+      transitions[index] = { ...transitions[index], ...alt.transitionToNext, distanceM: 0 };
+    }
+    this.routeData.set({ ...data, points, transitions });
+    this.alternativesForIndex.set(-1);
+    this.alternatives.set([]);
   }
 
   googleMapsUrl(): string {

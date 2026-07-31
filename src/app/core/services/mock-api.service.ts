@@ -106,6 +106,10 @@ export class MockApiService extends ApiService {
     return of({ points: [], transitions: [], careLines: [], totalKm: 0, totalMinutes: 0, taxiLinks: 0, header: 'Mock route' }).pipe(delay(500));
   }
 
+  getRouteAlternatives(): Observable<any> {
+    return of([]).pipe(delay(300));
+  }
+
   getTasteProfile(): Observable<any> {
     return of({ positives: [], negatives: [], price: {}, signalCount: 0 }).pipe(delay(200));
   }
