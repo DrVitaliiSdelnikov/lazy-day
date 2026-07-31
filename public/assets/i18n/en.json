@@ -330,7 +330,10 @@
     "mood_spa": "Spa",
     "places_selected": "places selected",
     "km": "km",
-    "done": "Done"
+    "done": "Done",
+    "optimize_question": "Optimize route from your current location? Places will be reordered from nearest to farthest.",
+    "optimize_yes": "Yes, from me",
+    "optimize_no": "No, keep my order"
   },
   "feedback": {
     "title": "Feedback",

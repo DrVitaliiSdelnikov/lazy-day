@@ -87,11 +87,22 @@ interface CareLine {
             }
           </div>
 
-          <!-- Done -->
-          <button class="ld-btn ld-btn--primary route__submit" [disabled]="selectedPoints().length === 0"
-            (click)="buildManualRoute()">
-            {{ 'route.done' | translate }} ({{ selectedPoints().length }})
-          </button>
+          <!-- Done / optimize prompt -->
+          @if (!showOptimizePrompt()) {
+            <button class="ld-btn ld-btn--primary route__submit" [disabled]="selectedPoints().length === 0"
+              (click)="onDone()">
+              {{ 'route.done' | translate }} ({{ selectedPoints().length }})
+            </button>
+          }
+          @if (showOptimizePrompt()) {
+            <div class="route__optimize">
+              <p class="route__optimize-text">{{ 'route.optimize_question' | translate }}</p>
+              <div class="route__optimize-actions">
+                <button class="ld-btn ld-btn--primary" (click)="buildManualRoute(true)">{{ 'route.optimize_yes' | translate }}</button>
+                <button class="ld-btn ld-btn--ghost" (click)="buildManualRoute(false)">{{ 'route.optimize_no' | translate }}</button>
+              </div>
+            </div>
+          }
         </section>
       }
 
@@ -282,6 +293,14 @@ interface CareLine {
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .route__place-check { color: var(--ld-primary); flex-shrink: 0; }
 
+    .route__optimize {
+      padding: 12px var(--ld-space-lg); background: var(--ld-primary-soft);
+      border-radius: 12px; margin: 0 var(--ld-space-lg) 12px;
+    }
+    .route__optimize-text { font-size: 14px; margin: 0 0 10px; color: var(--ld-text); line-height: 1.4; }
+    .route__optimize-actions { display: flex; gap: 8px; }
+    .route__optimize-actions .ld-btn { flex: 1; }
+
     .route__form { padding: 0 var(--ld-space-lg); }
     .route__form-label { font-size: 13px; color: var(--ld-text-2); margin: 16px 0 8px; font-weight: 600; }
     .route__chips { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -398,7 +417,8 @@ export class RouteComponent implements OnInit {
     this.loadTopPlaces();
   }
 
-  step = signal<'form' | 'loading' | 'result' | 'manual'>('manual'); // manual = default
+  step = signal<'form' | 'loading' | 'result' | 'manual'>('manual');
+  showOptimizePrompt = signal(false);
   routeData = signal<any>(null);
   alternatives = signal<any[]>([]);
   alternativesForIndex = signal(-1);
@@ -715,10 +735,31 @@ export class RouteComponent implements OnInit {
     return this.selectedPointIds().includes(id);
   }
 
-  buildManualRoute() {
+  onDone() {
+    if (this.selectedPoints().length === 0) return;
+    const pos = this.geo.position();
+    // If GPS available (not default), ask whether to optimize from current location
+    if (pos.source === 'gps') {
+      this.showOptimizePrompt.set(true);
+    } else {
+      // No GPS — build in selection order, start from first selected point
+      this.buildManualRoute(false);
+    }
+  }
+
+  buildManualRoute(optimizeFromGps: boolean) {
+    this.showOptimizePrompt.set(false);
     if (this.selectedPoints().length === 0) return;
     this.step.set('loading');
+
     const pos = this.geo.position();
+    const firstPoint = this.selectedPoints()[0];
+
+    // If optimize: start from GPS → greedy nearest-neighbor reorders all points
+    // If not: start from first selected → keeps user's selection order
+    const startLat = optimizeFromGps ? pos.lat : firstPoint.lat;
+    const startLng = optimizeFromGps ? pos.lng : firstPoint.lng;
+
     const baseUrl = (typeof window !== 'undefined' && window.location.hostname !== 'localhost')
       ? 'https://api.lazigo.app/v1' : '/v1';
     fetch(`${baseUrl}/routes/link`, {
@@ -726,8 +767,8 @@ export class RouteComponent implements OnInit {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         pointIds: this.selectedPointIds(),
-        startLat: pos.lat,
-        startLng: pos.lng,
+        startLat,
+        startLng,
         locale: this.profile.locale(),
       }),
     })
