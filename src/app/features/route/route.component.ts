@@ -50,59 +50,80 @@ interface CareLine {
       @if (step() === 'manual') {
         <section class="route__manual">
           <!-- Type filter -->
-          <div class="route__chips" style="padding: 0 var(--ld-space-lg); margin-bottom: 8px">
+          <div class="route__filter-bar">
             @for (t of typeFilters; track t.value) {
               <button class="ld-chip" [class.ld-chip--active]="manualTypeFilter() === t.value"
                 (click)="setManualFilter(t.value)">{{ t.labelKey | translate }}</button>
             }
           </div>
 
-          <!-- Counter -->
-          <div class="route__manual-counter">
-            {{ selectedPoints().length }} {{ 'route.places_selected' | translate }}
-            @if (manualStats().totalMin > 0) {
-              · ~{{ manualStats().timeStr }} · {{ manualStats().km }} {{ 'route.km' | translate }}
-              @if (manualStats().taxiLegs > 0) { · 🚕 {{ manualStats().taxiLegs }} }
-            }
-          </div>
+          <!-- Two-column layout (desktop) / sticky map (mobile) -->
+          <div class="route__split">
+            <!-- Map panel -->
+            <div class="route__map-panel">
+              <app-route-map [points]="manualMapPoints()" [lines]="manualMapLines()"
+                (markerTap)="togglePoint($event)" />
+            </div>
 
-          <!-- Map with selectable markers -->
-          <div class="route__manual-map">
-            <app-route-map [points]="manualMapPoints()" [lines]="manualMapLines()"
-              (markerTap)="togglePoint($event)" />
-          </div>
-
-          <!-- Place list -->
-          <div class="route__place-list">
-            @for (place of topPlaces(); track place.id) {
-              <button class="route__place-item" [class.route__place-item--selected]="isSelected(place.id)"
-                (click)="togglePointById(place.id)">
-                <span class="route__place-tier">{{ place.walkTier === 'must_see' ? '★' : '◆' }}</span>
-                <div class="route__place-info">
-                  <span class="route__place-name">{{ place.name }}</span>
-                  @if (place.hook) { <span class="route__place-hook">{{ place.hook }}</span> }
+            <!-- List panel -->
+            <div class="route__list-panel">
+              @for (place of topPlaces(); track place.id) {
+                <div class="route__place-row"
+                  [class.route__place-row--selected]="isSelected(place.id)"
+                  [class.route__place-row--expanded]="expandedPlaceId() === place.id"
+                  (click)="toggleExpand(place.id)">
+                  <!-- Rest: always visible -->
+                  <div class="route__place-rest">
+                    <span class="route__place-tier">{{ place.walkTier === 'must_see' ? '★' : '◆' }}</span>
+                    <span class="route__place-name">{{ place.name }}</span>
+                    @if (isSelected(place.id)) {
+                      <span class="route__place-idx">{{ selectedIndex(place.id) + 1 }}</span>
+                    }
+                  </div>
+                  <!-- Expanded: on tap -->
+                  @if (expandedPlaceId() === place.id) {
+                    <div class="route__place-detail">
+                      @if (place.photoUrl) {
+                        <img class="route__place-photo" [src]="place.photoUrl" alt="" loading="lazy"
+                          (error)="place.photoUrl = undefined" />
+                      }
+                      @if (place.hook) { <p class="route__place-hook">{{ place.hook }}</p> }
+                      <button class="ld-btn ld-btn--primary route__place-add-btn"
+                        (click)="togglePointById(place.id); $event.stopPropagation()">
+                        {{ isSelected(place.id) ? ('route.remove' | translate) : ('route.add_point' | translate) }}
+                      </button>
+                    </div>
+                  }
                 </div>
-                @if (isSelected(place.id)) { <ld-icon name="x" [size]="14" class="route__place-check" /> }
+              }
+            </div>
+          </div>
+
+          <!-- Bottom bar: counter + done -->
+          <div class="route__bottom-bar">
+            <div class="route__manual-counter">
+              {{ selectedPoints().length }} {{ 'route.places_selected' | translate }}
+              @if (manualStats().totalMin > 0) {
+                · ~{{ manualStats().timeStr }} · {{ manualStats().km }} {{ 'route.km' | translate }}
+                @if (manualStats().taxiLegs > 0) { · 🚕 {{ manualStats().taxiLegs }} }
+              }
+            </div>
+            @if (!showOptimizePrompt()) {
+              <button class="ld-btn ld-btn--primary route__done-btn" [disabled]="selectedPoints().length === 0"
+                (click)="onDone()">
+                {{ 'route.done' | translate }} ({{ selectedPoints().length }})
               </button>
             }
-          </div>
-
-          <!-- Done / optimize prompt -->
-          @if (!showOptimizePrompt()) {
-            <button class="ld-btn ld-btn--primary route__submit" [disabled]="selectedPoints().length === 0"
-              (click)="onDone()">
-              {{ 'route.done' | translate }} ({{ selectedPoints().length }})
-            </button>
-          }
-          @if (showOptimizePrompt()) {
-            <div class="route__optimize">
-              <p class="route__optimize-text">{{ 'route.optimize_question' | translate }}</p>
-              <div class="route__optimize-actions">
-                <button class="ld-btn ld-btn--primary" (click)="buildManualRoute(true)">{{ 'route.optimize_yes' | translate }}</button>
-                <button class="ld-btn ld-btn--ghost" (click)="buildManualRoute(false)">{{ 'route.optimize_no' | translate }}</button>
+            @if (showOptimizePrompt()) {
+              <div class="route__optimize">
+                <p class="route__optimize-text">{{ 'route.optimize_question' | translate }}</p>
+                <div class="route__optimize-actions">
+                  <button class="ld-btn ld-btn--primary" (click)="buildManualRoute(true)">{{ 'route.optimize_yes' | translate }}</button>
+                  <button class="ld-btn ld-btn--ghost" (click)="buildManualRoute(false)">{{ 'route.optimize_no' | translate }}</button>
+                </div>
               </div>
-            </div>
-          }
+            }
+          </div>
         </section>
       }
 
@@ -259,8 +280,8 @@ interface CareLine {
     .route__title { font-size: 18px; font-weight: 700; margin: 0; }
 
     .route__mode-switch {
-      display: flex; gap: 4px; padding: 0 var(--ld-space-lg); margin-bottom: 12px;
-      background: var(--ld-surface-2); border-radius: 10px; margin: 0 var(--ld-space-lg) 12px;
+      display: flex; gap: 4px;
+      background: var(--ld-surface-2); border-radius: 10px; margin: 0 var(--ld-space-lg) 8px;
       padding: 3px;
     }
     .route__mode-btn {
@@ -270,28 +291,84 @@ interface CareLine {
     }
     .route__mode-btn--active { background: var(--ld-surface); color: var(--ld-text); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
 
-    .route__manual { padding: 0; }
-    .route__manual-counter {
-      padding: 0 var(--ld-space-lg); font-size: 13px; color: var(--ld-text-2); margin-bottom: 8px;
-    }
-    .route__manual-map { margin: 0 0 8px; }
+    .route__manual { padding: 0; padding-bottom: 80px; }
 
-    .route__place-list {
-      padding: 0 var(--ld-space-lg); max-height: 300px; overflow-y: auto;
-      display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px;
+    .route__filter-bar {
+      display: flex; flex-wrap: wrap; gap: 4px;
+      padding: 0 var(--ld-space-lg) 8px;
     }
-    .route__place-item {
-      display: flex; align-items: center; gap: 10px; width: 100%;
-      padding: 8px 10px; border: 1px solid var(--ld-border); border-radius: 10px;
-      background: var(--ld-surface); cursor: pointer; text-align: left; font-family: inherit;
+
+    /* Split layout: mobile stacked, desktop side-by-side */
+    .route__split {
+      display: flex; flex-direction: column;
     }
-    .route__place-item--selected { border-color: var(--ld-primary); background: var(--ld-primary-soft); }
+    @media (min-width: 768px) {
+      .route__split { flex-direction: row; gap: 12px; padding: 0 var(--ld-space-lg); }
+    }
+
+    /* Map panel */
+    .route__map-panel {
+      position: sticky; top: 56px; z-index: 5; background: var(--ld-bg);
+      height: 180px; flex-shrink: 0;
+    }
+    .route__map-panel app-route-map { height: 100%; display: block; }
+    @media (min-width: 768px) {
+      .route__map-panel { position: static; flex: 0 0 45%; height: 400px; border-radius: 12px; overflow: hidden; }
+    }
+
+    /* List panel */
+    .route__list-panel {
+      padding: 8px var(--ld-space-lg);
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    @media (min-width: 768px) {
+      .route__list-panel { flex: 1; max-height: 500px; overflow-y: auto; padding: 0; }
+    }
+
+    /* Place row: rest state */
+    .route__place-row {
+      border: 1px solid var(--ld-border); border-radius: 10px;
+      background: var(--ld-surface); cursor: pointer; overflow: hidden;
+      transition: border-color 0.15s;
+    }
+    .route__place-row--selected { border-color: var(--ld-primary); }
+    .route__place-row--expanded { border-color: var(--ld-primary); background: var(--ld-primary-soft); }
+
+    .route__place-rest {
+      display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+    }
     .route__place-tier { font-size: 14px; flex-shrink: 0; }
-    .route__place-info { flex: 1; min-width: 0; }
-    .route__place-name { display: block; font-size: 13px; font-weight: 600; }
-    .route__place-hook { display: block; font-size: 11px; color: var(--ld-text-2); font-style: italic;
+    .route__place-name { flex: 1; font-size: 13px; font-weight: 600; min-width: 0;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .route__place-check { color: var(--ld-primary); flex-shrink: 0; }
+    .route__place-idx {
+      width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+      background: var(--ld-primary); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700;
+    }
+
+    /* Place row: expanded detail */
+    .route__place-detail {
+      padding: 0 12px 10px; display: flex; flex-direction: column; gap: 6px;
+    }
+    .route__place-photo {
+      width: 64px; height: 64px; border-radius: 8px; object-fit: cover;
+    }
+    .route__place-hook {
+      font-size: 12px; color: var(--ld-text-2); font-style: italic; margin: 0;
+    }
+    .route__place-add-btn { min-height: 34px; font-size: 13px; }
+
+    /* Bottom bar */
+    .route__bottom-bar {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
+      background: var(--ld-surface); border-top: 1px solid var(--ld-border);
+      padding: 8px var(--ld-space-lg); display: flex; align-items: center; gap: 8px;
+    }
+    .route__manual-counter {
+      flex: 1; font-size: 12px; color: var(--ld-text-2);
+    }
+    .route__done-btn { flex-shrink: 0; min-height: 38px; font-size: 14px; }
 
     .route__optimize {
       padding: 12px var(--ld-space-lg); background: var(--ld-primary-soft);
@@ -428,6 +505,7 @@ export class RouteComponent implements OnInit {
   topPlaces = signal<any[]>([]);
   selectedPointIds = signal<string[]>([]);
   manualTypeFilter = signal<string | null>(null);
+  expandedPlaceId = signal<string | null>(null);
 
   typeFilters = [
     { value: null, labelKey: 'route.filter_all' },
@@ -733,6 +811,14 @@ export class RouteComponent implements OnInit {
 
   isSelected(id: string): boolean {
     return this.selectedPointIds().includes(id);
+  }
+
+  selectedIndex(id: string): number {
+    return this.selectedPointIds().indexOf(id);
+  }
+
+  toggleExpand(id: string) {
+    this.expandedPlaceId.set(this.expandedPlaceId() === id ? null : id);
   }
 
   onDone() {

@@ -30,13 +30,14 @@ export interface MapLine {
     </div>
   `,
   styles: `
+    :host { display: block; height: 100%; }
     .map-wrap {
       position: relative;
       width: 100%;
-      height: 220px;
+      height: 100%;
+      min-height: 180px;
       border-radius: 12px;
       overflow: hidden;
-      margin-bottom: 16px;
       transition: height 0.3s ease;
     }
     .map-wrap--fullscreen {
