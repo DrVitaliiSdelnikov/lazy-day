@@ -142,6 +142,10 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
           [attr.aria-label]="'decide.button' | translate">
           <ld-icon name="compass" [size]="15" />
         </button>
+        <button class="discover__route-btn" (click)="openRoute()"
+          [attr.aria-label]="'route.title' | translate">
+          <ld-icon name="route" [size]="15" />
+        </button>
         <!-- Filter button hidden: 0% places have price data. TODO: decide how to use -->
         <!-- <button class="discover__filter-btn" (click)="openFilters()" aria-label="Filters">
           &#9776;
@@ -788,6 +792,21 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
       50% { box-shadow: 0 0 0 9px color-mix(in srgb, var(--ld-primary) 0%, transparent); }
     }
 
+    .discover__route-btn {
+      width: 40px;
+      min-height: 36px;
+      background: var(--ld-surface);
+      color: var(--ld-primary);
+      border: 1px solid var(--ld-primary);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      padding: 0;
+    }
+
     .discover__fallback-banner {
       display: flex;
       align-items: center;
@@ -1294,6 +1313,10 @@ export class DiscoverComponent implements OnInit {
       this.decideOpen.set(true);
       this.interactions.track({ eventType: 'decide_open', targetType: 'feed', targetId: this.cards()[0]?.id });
     }
+  }
+
+  openRoute() {
+    this.router.navigate(['/route']);
   }
 
   setSidebarTime(value: string) {

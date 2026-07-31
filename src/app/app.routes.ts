@@ -44,6 +44,12 @@ export const appRoutes: Route[] = [
       import('./features/detail/detail.component').then((m) => m.DetailComponent),
   },
   {
+    path: 'route',
+    canActivate: [welcomeGuard],
+    loadComponent: () =>
+      import('./features/route/route.component').then((m) => m.RouteComponent),
+  },
+  {
     path: 'saved',
     loadComponent: () =>
       import('./features/saved/saved.component').then((m) => m.SavedComponent),

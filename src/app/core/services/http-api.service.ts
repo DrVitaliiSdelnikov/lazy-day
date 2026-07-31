@@ -52,6 +52,10 @@ export class HttpApiService extends ApiService {
     return this.http.post<{ ok: boolean }>(`${this.baseUrl}/feedback`, data);
   }
 
+  generateRoute(request: { lat: number; lng: number; duration?: string; moods?: string[]; pace?: string; locale?: string }): Observable<any> {
+    return this.http.post(`${this.baseUrl}/routes/generate`, request);
+  }
+
   getTasteProfile(): Observable<any> {
     return this.http.get(`${this.baseUrl}/recommendations/taste-profile`);
   }
