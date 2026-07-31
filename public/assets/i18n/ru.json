@@ -11,6 +11,37 @@
     "results": "результатов",
     "show_more": "Показать ещё"
   },
+  "palette": {
+    "refine": "а если точнее?"
+  },
+  "facet": {
+    "cozy": "уютное",
+    "lively": "живое",
+    "romantic": "романтичное",
+    "quiet": "тихое",
+    "trendy": "модное",
+    "traditional": "традиционное",
+    "outdoorsy": "на воздухе",
+    "family_friendly": "для семьи",
+    "work_friendly": "для работы",
+    "date_worthy": "для свидания",
+    "group_friendly": "для компании",
+    "upscale": "премиум",
+    "casual": "непринуждённое",
+    "cultural": "культурное",
+    "scenic": "с видом",
+    "live_music": "с музыкой",
+    "instagram_worthy": "фотогеничное",
+    "date": "свидание",
+    "family_outing": "семейная прогулка",
+    "solo": "одному",
+    "work": "работа",
+    "friends": "с друзьями",
+    "celebration": "праздник",
+    "quick_stop": "на ходу",
+    "exploring": "исследовать",
+    "georgian": "грузинская кухня"
+  },
   "onboarding": {
     "interests_title": "Что вам по душе?",
     "interests_subtitle": "Хотя бы одно — можно поменять потом",

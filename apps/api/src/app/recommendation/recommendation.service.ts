@@ -101,6 +101,9 @@ interface CandidateRow {
   chain_key?: string;
   enriched_at?: string;
   hook?: string;
+  facet_atmosphere?: string[];
+  facet_occasion?: string[];
+  facet_price_tier?: number;
   // event-specific
   starts_at?: string;
   ends_at?: string;
@@ -277,6 +280,17 @@ export class RecommendationService {
         const status = checkOpenStatus(c.opening_hours, timeMid);
         return status !== 'closed';
       });
+
+      // Facet filter: keep only candidates that have ALL requested facets
+      const facetFilters = dto.facetFilters;
+      if (facetFilters?.length) {
+        scored = scored.filter((c) =>
+          facetFilters.every(f =>
+            (c.facet_atmosphere ?? []).includes(f) ||
+            (c.facet_occasion ?? []).includes(f)
+          )
+        );
+      }
 
       // Enough results? Stop expanding.
       if (scored.length >= MIN_RELEVANT_RESULTS || !hasInterests) break;
@@ -476,7 +490,10 @@ export class RecommendationService {
       this.impressionService.recordImpressions(deviceIdHash, cards.map((c: any) => c.id)).catch(() => {});
     }
 
-    return { sessionId, cards, hasMore: offset + limit < totalAvailable, total: totalAvailable, meta };
+    // Palette: suggest next facets from shown cards' facets + co-occurrence graph
+    const suggestedFacets = await this.computeSuggestedFacets(diversified.slice(offset, offset + limit), diversified, dto.facetFilters ?? []);
+
+    return { sessionId, cards, hasMore: offset + limit < totalAvailable, total: totalAvailable, meta, suggestedFacets };
   }
 
   /**
@@ -641,9 +658,9 @@ export class RecommendationService {
           facets: {
             cuisine: (c as any).facet_cuisine ?? [],
             format: (c as any).facet_format ?? [],
-            atmosphere: (c as any).facet_atmosphere ?? [],
-            occasion: (c as any).facet_occasion ?? [],
-            priceTier: (c as any).facet_price_tier,
+            atmosphere: c.facet_atmosphere ?? [],
+            occasion: c.facet_occasion ?? [],
+            priceTier: c.facet_price_tier,
           },
           flags: {
             isExplore: !!(c as any)._isExplore,
@@ -676,9 +693,84 @@ export class RecommendationService {
   // ---------------------------------------------------------------------------
 
   /**
-   * Build expanded tag->weight map from user interests + synonyms.
-   * Called once per request, reused for all candidates.
+   * Palette: suggest next facets based on shown cards' facets.
+   * Signal: facets from shown cards (frozen shown-set).
+   * Count: from full scored pool (how many would remain with this facet).
    */
+  private async computeSuggestedFacets(
+    shownCandidates: ScoredCandidate[],
+    allScored: ScoredCandidate[],
+    currentFacetFilters: string[],
+  ): Promise<{ facet: string; count: number; sources: string[] }[]> {
+    // Collect facets from shown cards
+    const facetCounts = new Map<string, number>();
+    for (const c of shownCandidates) {
+      const facets = [
+        ...(c.facet_atmosphere ?? []),
+        ...(c.facet_occasion ?? []),
+      ];
+      for (const f of facets) {
+        facetCounts.set(f, (facetCounts.get(f) ?? 0) + 1);
+      }
+    }
+
+    // Top facets from shown cards (sorted by frequency)
+    const activeFacets = [...facetCounts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([f]) => f);
+
+    if (activeFacets.length === 0) return [];
+
+    // Query co-occurrence graph for suggestions
+    try {
+      const rows = await this.dataSource.query(`
+        SELECT
+          CASE WHEN facet_a = ANY($1::text[]) THEN facet_b ELSE facet_a END AS suggested,
+          source, weight
+        FROM facet_cooccurrence
+        WHERE (facet_a = ANY($1::text[]) OR facet_b = ANY($1::text[]))
+          AND NOT (facet_a = ANY($1::text[]) AND facet_b = ANY($1::text[]))
+        ORDER BY weight DESC
+      `, [activeFacets]);
+
+      // Aggregate by suggested facet
+      const agg = new Map<string, { score: number; sources: Set<string> }>();
+      for (const r of rows) {
+        const entry = agg.get(r.suggested) ?? { score: 0, sources: new Set<string>() };
+        entry.score += Number(r.weight);
+        entry.sources.add(r.source);
+        agg.set(r.suggested, entry);
+      }
+
+      // Count = "how many would remain if this facet is added to current filters"
+      // i.e. intersection of current facetFilters + this new facet
+      const hasFacet = (c: ScoredCandidate, f: string) =>
+        (c.facet_atmosphere ?? []).includes(f) || (c.facet_occasion ?? []).includes(f);
+
+      const suggestions = [...agg.entries()]
+        .filter(([f]) => !activeFacets.includes(f))
+        .sort((a, b) => b[1].score - a[1].score)
+        .slice(0, 5)
+        .map(([facet, data]) => {
+          const allFilters = [...currentFacetFilters, facet];
+          const count = allScored.filter(c =>
+            allFilters.every(f => hasFacet(c, f))
+          ).length;
+          return {
+            facet,
+            count,
+            sources: [...data.sources],
+          };
+        })
+        .filter(s => s.count >= 3); // dead-end prevention
+
+      return suggestions;
+    } catch {
+      return [];
+    }
+  }
+
   /**
    * Build expanded tag->weight map from user interests + synonyms.
    * Only includes interests with weight >= MIN_INTEREST_THRESHOLD (0.3).

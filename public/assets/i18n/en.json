@@ -11,6 +11,37 @@
     "results": "results",
     "show_more": "Show more"
   },
+  "palette": {
+    "refine": "want something specific?"
+  },
+  "facet": {
+    "cozy": "cozy",
+    "lively": "lively",
+    "romantic": "romantic",
+    "quiet": "quiet",
+    "trendy": "trendy",
+    "traditional": "traditional",
+    "outdoorsy": "outdoors",
+    "family_friendly": "family-friendly",
+    "work_friendly": "work-friendly",
+    "date_worthy": "date spot",
+    "group_friendly": "groups",
+    "upscale": "upscale",
+    "casual": "casual",
+    "cultural": "cultural",
+    "scenic": "scenic",
+    "live_music": "live music",
+    "instagram_worthy": "instagrammable",
+    "date": "date",
+    "family_outing": "family outing",
+    "solo": "solo",
+    "work": "work",
+    "friends": "friends",
+    "celebration": "celebration",
+    "quick_stop": "quick stop",
+    "exploring": "exploring",
+    "georgian": "Georgian food"
+  },
   "onboarding": {
     "interests_title": "What are you into?",
     "interests_subtitle": "At least one — you can change it later",

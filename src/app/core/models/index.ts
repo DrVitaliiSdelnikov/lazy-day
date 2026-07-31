@@ -9,6 +9,7 @@ export type {
   DiscoverRequest,
   DiscoverResponse,
   DiscoverMeta,
+  SuggestedFacet,
 } from '@lazy-day/shared-models';
 
 export {

@@ -11,6 +11,9 @@
     "results": "შედეგი",
     "show_more": "მეტის ჩვენება"
   },
+  "palette": {
+    "refine": "რამე კონკრეტული?"
+  },
   "onboarding": {
     "interests_title": "რა გაინტერესებთ?",
     "interests_subtitle": "სულ ცოტა ერთი — შეგიძლიათ შეცვალოთ",

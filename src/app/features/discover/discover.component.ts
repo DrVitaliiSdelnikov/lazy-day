@@ -7,7 +7,7 @@ import { SavedStore } from '../../core/stores/saved.store';
 import { ApiService } from '../../core/services/api.service';
 import { GeolocationService } from '../../core/services/geolocation.service';
 import { apiProviders } from '../../core/providers';
-import { RecommendationCard, DiscoverMeta, CANONICAL_PRESETS, CANONICAL_RADIUS, PRESET_META } from '../../core/models';
+import { RecommendationCard, DiscoverMeta, SuggestedFacet, CANONICAL_PRESETS, CANONICAL_RADIUS, PRESET_META } from '../../core/models';
 import { ResultCardComponent } from './result-card/result-card.component';
 import { LdIconComponent } from '../../core/components/ld-icon.component';
 import { DetailComponent } from '../detail/detail.component';
@@ -161,6 +161,21 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
           </button>
         }
       </div>
+
+      <!-- Palette: active facet filters + suggested facets -->
+      @if (!loading() && paletteChips().length > 0) {
+        <div class="discover__palette">
+          <span class="discover__palette-label">{{ 'palette.refine' | translate }}</span>
+          @for (chip of paletteChips(); track chip.facet) {
+            <button class="ld-chip"
+              [class.ld-chip--active]="chip.active"
+              (click)="applyFacetFilter(chip.facet)">
+              {{ facetLabel(chip.facet) }}
+              @if (chip.active) { <ld-icon name="x" [size]="12" class="ld-chip__clear" /> }
+            </button>
+          }
+        </div>
+      }
 
       <!-- Fallback banner: tomorrow mode -->
       @if (!loading() && feedMeta()?.fallback === 'tomorrow') {
@@ -519,6 +534,45 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
       color: var(--ld-text-2);
     }
 
+    .discover__palette {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: var(--ld-space-sm) var(--ld-space-lg);
+      align-items: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    .discover__palette-label {
+      font-size: 12px;
+      color: var(--ld-text-3);
+      font-style: italic;
+      margin-right: 4px;
+      flex-shrink: 0;
+    }
+
+    .discover__palette .ld-chip {
+      background: var(--ld-surface);
+      border: 1px dashed var(--ld-border);
+      font-size: 12px;
+      color: var(--ld-text-2);
+      cursor: pointer;
+
+      &:hover {
+        border-color: var(--ld-primary);
+        color: var(--ld-primary);
+      }
+
+      &.ld-chip--active {
+        background: var(--ld-primary-soft);
+        color: var(--ld-on-primary-soft);
+        border: 1px solid var(--ld-primary);
+        border-style: solid;
+      }
+    }
+
+
     .discover__type-filter {
       display: flex;
       gap: 3px;
@@ -817,6 +871,7 @@ export class DiscoverComponent implements OnInit {
   resetSidebar() {
     this.activePreset.set(null);
     this.activeTypeFilter.set('all');
+    this.activeFacetFilters.set([]);
     this.sidebarRadius.set(5);
     this.sidebarTime.set('now');
     sessionStorage.removeItem('ld_filters');
@@ -876,6 +931,24 @@ export class DiscoverComponent implements OnInit {
   /** Fixed seed for session — dithering/epsilon produce same order within session */
   private readonly sessionSeed = Math.floor(Math.random() * 2147483647);
   readonly feedMeta = signal<DiscoverMeta | undefined>(undefined);
+  readonly suggestedFacets = signal<SuggestedFacet[]>([]);
+  readonly activeFacetFilters = signal<string[]>(this._sessionFilters.facetFilters);
+  readonly paletteChips = computed(() => {
+    const active = this.activeFacetFilters();
+    const suggested = this.suggestedFacets();
+    const chips: { facet: string; count: number; active: boolean }[] = [];
+    // Active facets first (always visible, with X to deselect)
+    for (const f of active) {
+      chips.push({ facet: f, count: 0, active: true });
+    }
+    // Then suggested (not already active)
+    for (const sf of suggested) {
+      if (!active.includes(sf.facet)) {
+        chips.push({ facet: sf.facet, count: sf.count, active: false });
+      }
+    }
+    return chips;
+  });
   readonly forcedNow = signal(false);
   readonly activePreset = signal<string | null>(this._sessionFilters.preset);
   readonly undoableHide = signal<{ card: RecommendationCard; index: number; timer: ReturnType<typeof setTimeout> } | null>(null);
@@ -1021,6 +1094,23 @@ export class DiscoverComponent implements OnInit {
 
   setTypeFilter(type: 'all' | 'place' | 'event') {
     this.activeTypeFilter.set(type);
+    this.saveSessionFilters();
+    this.loadFeed();
+  }
+
+  facetLabel(facet: string): string {
+    const key = `facet.${facet}`;
+    const translated = this.translate.instant(key);
+    return translated !== key ? translated : facet.replace(/_/g, ' ');
+  }
+
+  applyFacetFilter(facet: string) {
+    const current = this.activeFacetFilters();
+    if (current.includes(facet)) {
+      this.activeFacetFilters.set(current.filter(f => f !== facet));
+    } else {
+      this.activeFacetFilters.set([...current, facet]);
+    }
     this.saveSessionFilters();
     this.loadFeed();
   }
@@ -1200,6 +1290,7 @@ export class DiscoverComponent implements OnInit {
         deviceIdHash: this.profileStore.deviceIdHash() || undefined,
         sessionSeed: this.sessionSeed,
         typeFilter: this.activeTypeFilter() !== 'all' ? this.activeTypeFilter() : undefined,
+        facetFilters: this.activeFacetFilters().length > 0 ? this.activeFacetFilters() : undefined,
         offset: 0,
         limit: 15,
       })
@@ -1231,8 +1322,14 @@ export class DiscoverComponent implements OnInit {
             );
           }
 
+          const suggestedFacets = res.suggestedFacets ?? [];
           const finish = () => {
             this.allCards.set(filtered);
+            // Only update palette when no active facet filters (base context)
+            // Prevents shuffling when toggling facets
+            if (this.activeFacetFilters().length === 0) {
+              this.suggestedFacets.set(suggestedFacets);
+            }
             this.visibleCount.set(15);
             this.loading.set(false);
             this.loaded.set(true);
@@ -1398,7 +1495,7 @@ export class DiscoverComponent implements OnInit {
 
   private readonly FEED_CACHE_KEY = 'ld_feed_cache';
 
-  private loadSessionFilters(): { preset: string | null; typeFilter: 'all' | 'place' | 'event'; radius: number; time: string } {
+  private loadSessionFilters(): { preset: string | null; typeFilter: 'all' | 'place' | 'event'; radius: number; time: string; facetFilters: string[] } {
     try {
       const raw = sessionStorage.getItem('ld_filters');
       if (raw) {
@@ -1408,10 +1505,11 @@ export class DiscoverComponent implements OnInit {
           typeFilter: f.typeFilter ?? 'all',
           radius: f.radius ?? 5,
           time: f.time ?? 'now',
+          facetFilters: f.facetFilters ?? [],
         };
       }
     } catch { /* corrupted — ignore */ }
-    return { preset: null, typeFilter: 'all', radius: 5, time: 'now' };
+    return { preset: null, typeFilter: 'all', radius: 5, time: 'now', facetFilters: [] };
   }
 
   private saveSessionFilters() {
@@ -1420,6 +1518,7 @@ export class DiscoverComponent implements OnInit {
       typeFilter: this.activeTypeFilter(),
       radius: this.sidebarRadius(),
       time: this.sidebarTime(),
+      facetFilters: this.activeFacetFilters(),
     };
     try {
       sessionStorage.setItem('ld_filters', JSON.stringify(filters));

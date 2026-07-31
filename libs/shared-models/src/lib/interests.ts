@@ -59,3 +59,22 @@ export const INTEREST_OPTIONS: Array<{ slug: string; labelKey: string; icon: str
   { slug: 'spa',           labelKey: 'interest.spa',           icon: 'coffee' },
   { slug: 'gym',           labelKey: 'interest.gym',           icon: 'barbell' },
 ];
+
+/**
+ * Bridge: interest → characteristic facets (atmosphere + occasion).
+ * Computed from real venue data (3168 places, top facets per tag by frequency).
+ *
+ * Used by palette to map high-level interests to co-occurrence graph facets.
+ * NOT a filter — a signal of "what facets are typical for this interest".
+ */
+export const INTEREST_FACET_BRIDGE: Record<string, string[]> = {
+  nature:        ['outdoorsy', 'scenic', 'exploring', 'quiet', 'solo', 'family_outing'],
+  food:          ['casual', 'cozy', 'friends', 'family_friendly', 'quick_stop', 'traditional'],
+  culture:       ['cultural', 'exploring', 'scenic', 'solo', 'quiet', 'instagram_worthy'],
+  active:        ['solo', 'work_friendly', 'casual', 'lively', 'trendy', 'friends'],
+  family:        ['family_outing', 'family_friendly', 'outdoorsy', 'exploring', 'solo', 'quiet'],
+  nightlife:     ['friends', 'lively', 'celebration', 'trendy', 'group_friendly', 'live_music'],
+  entertainment: ['friends', 'lively', 'celebration', 'trendy', 'live_music', 'family_outing'],
+  spa:           ['traditional', 'solo', 'exploring', 'quiet', 'cozy'],
+  gym:           ['solo', 'work_friendly', 'casual', 'trendy', 'lively'],
+};

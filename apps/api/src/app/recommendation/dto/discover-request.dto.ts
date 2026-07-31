@@ -92,6 +92,11 @@ export class DiscoverRequestDto {
   typeFilter?: string;
 
   @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  facetFilters?: string[];
+
+  @IsOptional()
   @IsNumber()
   @Min(0)
   offset?: number;

@@ -80,6 +80,7 @@ export interface DiscoverRequest {
   deviceIdHash?: string;
   sessionSeed?: number;
   typeFilter?: 'all' | 'place' | 'event';
+  facetFilters?: string[];
   offset?: number;
   limit?: number;
 }
@@ -89,11 +90,18 @@ export interface DiscoverMeta {
   originalCount?: number;
 }
 
+export interface SuggestedFacet {
+  facet: string;
+  count: number;
+  sources: string[];
+}
+
 export interface DiscoverResponse {
   sessionId: string;
   cards: RecommendationCard[];
   hasMore: boolean;
   meta?: DiscoverMeta;
+  suggestedFacets?: SuggestedFacet[];
 }
 
 export interface InteractionRequest {
