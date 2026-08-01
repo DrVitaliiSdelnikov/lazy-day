@@ -484,7 +484,7 @@ export class RouteService {
     return { points: chain, transitions, careLines, totalKm: Math.round(totalWalkM / 100) / 10, totalMinutes, taxiLinks, header };
   }
 
-  async getAreas(): Promise<any[]> {
+  async getAreas(locale = 'ru'): Promise<any[]> {
     const rows = await this.ds.query(`
       SELECT id, name, name_en, name_ru, description_en, description_ru,
         vibe, best_for, when_best, what_to_expect, honest_warning,
@@ -493,10 +493,8 @@ export class RouteService {
     `);
     return rows.map((r: any) => ({
       id: r.id,
-      name: r.name_en ?? r.name,
-      nameRu: r.name_ru,
-      descriptionEn: r.description_en,
-      descriptionRu: r.description_ru,
+      name: locale === 'ru' ? (r.name_ru ?? r.name_en ?? r.name) : (r.name_en ?? r.name),
+      description: locale === 'ru' ? (r.description_ru ?? r.description_en) : r.description_en,
       vibe: r.vibe,
       bestFor: r.best_for,
       whenBest: r.when_best,
@@ -509,7 +507,7 @@ export class RouteService {
     }));
   }
 
-  async getTopPlaces(lat: number, lng: number, type?: string): Promise<any[]> {
+  async getTopPlaces(lat: number, lng: number, type?: string, locale = 'ru'): Promise<any[]> {
     const typeFilter = type ? this.mapTypeToCategories(type) : null;
     const typeWhere = typeFilter ? `AND p.category IN (${typeFilter.map((t: string) => `'${t}'`).join(',')})` : '';
 
@@ -530,7 +528,7 @@ export class RouteService {
 
     return rows.map((r: any) => ({
       id: r.id,
-      name: r.name_en || r.name,
+      name: this.resolveTitle(r.name, r.name_en, locale),
       category: r.category,
       lat: Number(r.lat),
       lng: Number(r.lng),
@@ -612,6 +610,14 @@ export class RouteService {
       }
       return result;
     });
+  }
+
+  private resolveTitle(name: string, nameEn?: string, locale = 'ru'): string {
+    const isGeorgian = (s: string) => /[\u10A0-\u10FF]/.test(s);
+    if (locale === 'ka') return name;
+    if (nameEn) return nameEn;
+    if (isGeorgian(name)) return name; // Georgian fallback if no English
+    return name;
   }
 
   private haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {

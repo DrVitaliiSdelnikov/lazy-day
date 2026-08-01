@@ -24,9 +24,15 @@ export interface MapLine {
   template: `
     <div class="map-wrap" [class.map-wrap--fullscreen]="fullscreen()">
       <div #mapContainer class="map-container"></div>
-      <button class="map-toggle" (click)="fullscreen.set(!fullscreen())">
-        {{ fullscreen() ? '✕' : '⛶' }}
-      </button>
+      <div class="map-controls">
+        @if (areas().length > 0) {
+          <button class="map-ctrl-btn" [class.map-ctrl-btn--active]="showAreas()"
+            (click)="toggleAreas()">▦</button>
+        }
+        <button class="map-ctrl-btn" (click)="fullscreen.set(!fullscreen())">
+          {{ fullscreen() ? '✕' : '⛶' }}
+        </button>
+      </div>
     </div>
   `,
   styles: `
@@ -49,28 +55,30 @@ export interface MapLine {
       margin: 0;
     }
     .map-container { width: 100%; height: 100%; }
-    .map-toggle {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      width: 32px;
-      height: 32px;
+    .map-controls {
+      position: absolute; top: 8px; right: 8px; z-index: 6;
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .map-ctrl-btn {
+      width: 32px; height: 32px;
       background: var(--ld-surface, #fff);
       border: 1px solid var(--ld-border, #ddd);
-      border-radius: 8px;
-      font-size: 16px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 1;
+      border-radius: 8px; font-size: 16px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .map-ctrl-btn--active {
+      background: var(--ld-primary, #4a7c59); color: #fff;
+      border-color: var(--ld-primary, #4a7c59);
     }
   `,
 })
 export class RouteMapComponent implements AfterViewInit, OnDestroy {
   points = input<MapPoint[]>([]);
   lines = input<MapLine[]>([]);
+  areas = input<any[]>([]);
   markerTap = output<number>();
+
+  showAreas = signal(false);
 
   fullscreen = signal(false);
   private mapContainer = viewChild<ElementRef>('mapContainer');
@@ -79,6 +87,7 @@ export class RouteMapComponent implements AfterViewInit, OnDestroy {
   private segmentLabels: Marker[] = [];
   private mapReady = false;
   private svgOverlay: HTMLElement | null = null;
+  private areaOverlay: HTMLElement | null = null;
 
   constructor() {
     // Re-render when inputs change (must be in constructor for injection context)
@@ -129,9 +138,9 @@ export class RouteMapComponent implements AfterViewInit, OnDestroy {
     this.map.once('idle', onReady);
     setTimeout(() => { if (!this.mapReady) onReady(); }, 1500);
 
-    // Redraw SVG lines on map move/zoom
-    this.map.on('move', () => this.drawSvgLines());
-    this.map.on('zoom', () => this.drawSvgLines());
+    // Redraw SVG overlays on map move/zoom
+    this.map.on('move', () => { this.drawSvgLines(); if (this.showAreas()) this.drawAreaBounds(); });
+    this.map.on('zoom', () => { this.drawSvgLines(); if (this.showAreas()) this.drawAreaBounds(); });
   }
 
   ngOnDestroy() {
@@ -244,6 +253,67 @@ export class RouteMapComponent implements AfterViewInit, OnDestroy {
       container.appendChild(svg);
     }
     this.svgOverlay = svg as unknown as HTMLElement;
+  }
+
+  toggleAreas() {
+    this.showAreas.set(!this.showAreas());
+    if (this.showAreas()) {
+      this.drawAreaBounds();
+    } else {
+      if (this.areaOverlay) { this.areaOverlay.remove(); this.areaOverlay = null; }
+    }
+  }
+
+  private drawAreaBounds() {
+    if (!this.map) return;
+    const areasData = this.areas();
+    const container = this.mapContainer()?.nativeElement;
+    if (!container || areasData.length === 0) return;
+
+    if (this.areaOverlay) { this.areaOverlay.remove(); this.areaOverlay = null; }
+
+    const w = container.clientWidth;
+    const h = container.clientHeight;
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', String(w));
+    svg.setAttribute('height', String(h));
+    svg.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;z-index:4;';
+
+    for (const area of areasData) {
+      const bbox = area.bbox;
+      if (!bbox) continue;
+      const topLeft = this.map.project([bbox.minLng, bbox.maxLat]);
+      const bottomRight = this.map.project([bbox.maxLng, bbox.minLat]);
+      const rx = topLeft.x;
+      const ry = topLeft.y;
+      const rw = bottomRight.x - topLeft.x;
+      const rh = bottomRight.y - topLeft.y;
+
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      rect.setAttribute('x', String(rx));
+      rect.setAttribute('y', String(ry));
+      rect.setAttribute('width', String(Math.max(rw, 0)));
+      rect.setAttribute('height', String(Math.max(rh, 0)));
+      rect.setAttribute('fill', 'rgba(74, 124, 89, 0.12)');
+      rect.setAttribute('stroke', '#4a7c59');
+      rect.setAttribute('stroke-width', '2');
+      rect.setAttribute('stroke-dasharray', '6,4');
+      rect.setAttribute('rx', '6');
+      svg.appendChild(rect);
+
+      const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      text.setAttribute('x', String(rx + 6));
+      text.setAttribute('y', String(ry + 14));
+      text.setAttribute('font-size', '11');
+      text.setAttribute('font-weight', '700');
+      text.setAttribute('fill', '#4a7c59');
+      text.textContent = area.name;
+      svg.appendChild(text);
+    }
+
+    const canvasContainer = container.querySelector('.maplibregl-canvas-container');
+    (canvasContainer || container).appendChild(svg);
+    this.areaOverlay = svg as unknown as HTMLElement;
   }
 
   flyToArea(bbox: { minLat: number; maxLat: number; minLng: number; maxLng: number }) {

@@ -12,8 +12,8 @@ export class RouteController {
   }
 
   @Get('areas')
-  async areas() {
-    return this.routeService.getAreas();
+  async areas(@Query('locale') locale?: string) {
+    return this.routeService.getAreas(locale ?? 'ru');
   }
 
   @Get('top-places')
@@ -21,11 +21,13 @@ export class RouteController {
     @Query('lat') lat: string,
     @Query('lng') lng: string,
     @Query('type') type?: string,
+    @Query('locale') locale?: string,
   ) {
     return this.routeService.getTopPlaces(
       parseFloat(lat || '41.6934'),
       parseFloat(lng || '44.8015'),
       type,
+      locale ?? 'ru',
     );
   }
 

@@ -63,7 +63,7 @@ interface CareLine {
           <div class="route__split">
             <!-- Map panel -->
             <div class="route__map-panel">
-              <app-route-map [points]="manualMapPoints()" [lines]="manualMapLines()"
+              <app-route-map [points]="manualMapPoints()" [lines]="manualMapLines()" [areas]="areas()"
                 (markerTap)="togglePoint($event)" />
             </div>
 
@@ -73,7 +73,7 @@ interface CareLine {
               @if (selectedAreaDetail()) {
                 <div class="route__area-detail">
                   <p class="route__area-desc-title">{{ selectedAreaDetail()!.name }}</p>
-                  <p class="route__area-desc">{{ selectedAreaDetail()!.whatToExpect }}</p>
+                  <p class="route__area-desc">{{ selectedAreaDetail()!.description }}</p>
                   @if (selectedAreaDetail()!.honestWarning) {
                     <p class="route__area-warn">⚠ {{ selectedAreaDetail()!.honestWarning }}</p>
                   }
@@ -112,11 +112,20 @@ interface CareLine {
                   <!-- Expanded: on tap -->
                   @if (expandedPlaceId() === place.id) {
                     <div class="route__place-detail">
-                      @if (place.photoUrl) {
-                        <img class="route__place-photo" [src]="place.photoUrl" alt="" loading="lazy"
-                          (error)="place.photoUrl = undefined" />
-                      }
-                      @if (place.hook) { <p class="route__place-hook">{{ place.hook }}</p> }
+                      <div class="route__place-photo-row">
+                        @if (place.photoUrl) {
+                          <img class="route__place-photo" [src]="place.photoUrl" alt="" loading="lazy"
+                            (error)="place.photoUrl = undefined" />
+                        } @else {
+                          <div class="route__place-photo-placeholder">
+                            <ld-icon [name]="categoryIcon(place.category)" [size]="20" />
+                          </div>
+                        }
+                        <div class="route__place-detail-text">
+                          @if (place.hook) { <p class="route__place-hook">{{ place.hook }}</p> }
+                          <span class="route__place-cat">{{ place.category }}</span>
+                        </div>
+                      </div>
                       <button class="ld-btn ld-btn--primary route__place-add-btn"
                         (click)="togglePointById(place.id); $event.stopPropagation()">
                         {{ isSelected(place.id) ? ('route.remove' | translate) : ('route.add_point' | translate) }}
@@ -441,11 +450,23 @@ interface CareLine {
     .route__place-detail {
       padding: 0 12px 10px; display: flex; flex-direction: column; gap: 6px;
     }
-    .route__place-photo {
-      width: 64px; height: 64px; border-radius: 8px; object-fit: cover;
+    .route__place-photo-row {
+      display: flex; gap: 10px; align-items: flex-start;
     }
+    .route__place-photo {
+      width: 64px; height: 64px; border-radius: 8px; object-fit: cover; flex-shrink: 0;
+    }
+    .route__place-photo-placeholder {
+      width: 64px; height: 64px; border-radius: 8px; flex-shrink: 0;
+      background: var(--ld-surface-2); display: flex; align-items: center;
+      justify-content: center; color: var(--ld-text-3);
+    }
+    .route__place-detail-text { flex: 1; min-width: 0; }
     .route__place-hook {
-      font-size: 12px; color: var(--ld-text-2); font-style: italic; margin: 0;
+      font-size: 12px; color: var(--ld-text-2); font-style: italic; margin: 0 0 2px;
+    }
+    .route__place-cat {
+      font-size: 10px; color: var(--ld-text-3); text-transform: capitalize;
     }
     .route__place-add-btn { min-height: 34px; font-size: 13px; }
 
@@ -868,7 +889,8 @@ export class RouteComponent implements OnInit {
 
   // Areas
   private loadAreas() {
-    this.http.get<any[]>('/v1/routes/areas').subscribe({
+    const locale = this.profile.locale();
+    this.http.get<any[]>(`/v1/routes/areas?locale=${locale}`).subscribe({
       next: (areas) => this.areas.set(areas),
     });
   }
@@ -926,7 +948,8 @@ export class RouteComponent implements OnInit {
 
   private fetchTopPlaces(type: string | null) {
     const pos = this.geo.position();
-    const params = `lat=${pos.lat}&lng=${pos.lng}${type ? '&type=' + type : ''}`;
+    const locale = this.profile.locale();
+    const params = `lat=${pos.lat}&lng=${pos.lng}&locale=${locale}${type ? '&type=' + type : ''}`;
     this.http.get<any[]>(`/v1/routes/top-places?${params}`).subscribe({
       next: (places) => this.topPlaces.set(places),
       error: () => {},
@@ -958,6 +981,16 @@ export class RouteComponent implements OnInit {
 
   toggleExpand(id: string) {
     this.expandedPlaceId.set(this.expandedPlaceId() === id ? null : id);
+  }
+
+  categoryIcon(category: string): string {
+    const map: Record<string, string> = {
+      restaurant: 'tools-kitchen-2', cafe: 'coffee', bakery: 'coffee',
+      bar: 'glass-cocktail', club: 'music', viewpoint: 'sun',
+      park: 'trees', museum: 'masks-theater', gallery: 'masks-theater',
+      theater: 'masks-theater', bath: 'coffee', garden: 'trees',
+    };
+    return map[category] ?? 'map-pin';
   }
 
   onDone() {
