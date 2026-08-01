@@ -123,14 +123,38 @@ interface CareLine {
                   [class.route__place-row--selected]="isSelected(place.id)"
                   [class.route__place-row--expanded]="expandedPlaceId() === place.id"
                   (click)="toggleExpand(place.id)">
-                  <!-- Rest: always visible -->
+                  <!-- Rest: icon + name + hook + tags + add button -->
                   <div class="route__place-rest">
-                    <span class="route__place-name">{{ place.name }}</span>
-                    @if (isSelected(place.id)) {
-                      <span class="route__place-idx">{{ selectedIndex(place.id) + 1 }}</span>
-                    }
+                    <div class="route__place-icon">
+                      <ld-icon [name]="categoryIcon(place.category)" [size]="18" />
+                    </div>
+                    <div class="route__place-main">
+                      <div class="route__place-header">
+                        <span class="route__place-name">{{ place.name }}</span>
+                        @if (place.walkTier === 'must_see') {
+                          <span class="route__place-badge route__place-badge--must">must-see</span>
+                        }
+                      </div>
+                      @if (place.hook) {
+                        <p class="route__place-gist">{{ place.hook }}</p>
+                      }
+                      <div class="route__place-tags">
+                        @for (tag of placeTags(place); track tag) {
+                          <span class="route__place-tag">{{ tag }}</span>
+                        }
+                      </div>
+                    </div>
+                    <button class="route__place-add"
+                      [class.route__place-add--active]="isSelected(place.id)"
+                      (click)="togglePointById(place.id); $event.stopPropagation()">
+                      @if (isSelected(place.id)) {
+                        <span>{{ selectedIndex(place.id) + 1 }}</span>
+                      } @else {
+                        <span>+</span>
+                      }
+                    </button>
                   </div>
-                  <!-- Expanded: on tap -->
+                  <!-- Expanded: photo + details -->
                   @if (expandedPlaceId() === place.id) {
                     <div class="route__place-detail">
                       <div class="route__place-photo-row">
@@ -143,14 +167,12 @@ interface CareLine {
                           </div>
                         }
                         <div class="route__place-detail-text">
-                          @if (place.hook) { <p class="route__place-hook">{{ place.hook }}</p> }
                           <span class="route__place-cat">{{ place.category }}</span>
+                          @if (place.rating) {
+                            <span class="route__place-rating">★ {{ place.rating }}</span>
+                          }
                         </div>
                       </div>
-                      <button class="ld-btn ld-btn--primary route__place-add-btn"
-                        (click)="togglePointById(place.id); $event.stopPropagation()">
-                        {{ isSelected(place.id) ? ('route.remove' | translate) : ('route.add_point' | translate) }}
-                      </button>
                     </div>
                   }
                 </div>
@@ -243,7 +265,9 @@ interface CareLine {
           </div>
 
           <!-- Map -->
-          <app-route-map [points]="mapPoints()" [lines]="mapLines()" (markerTap)="scrollToTimelinePoint($event)" #routeMap />
+          <div class="route__result-map">
+            <app-route-map [points]="mapPoints()" [lines]="mapLines()" (markerTap)="scrollToTimelinePoint($event)" #routeMap />
+          </div>
 
           <!-- Timeline -->
           <div class="route__timeline">
@@ -297,16 +321,26 @@ interface CareLine {
               </div>
               <!-- Transition -->
               @if (i < routeData()!.transitions.length) {
-                <div class="route__transition" [class.route__transition--taxi]="routeData()!.transitions[i].type === 'taxi'">
-                  <ld-icon [name]="routeData()!.transitions[i].type === 'taxi' ? 'car' : 'route'" [size]="14" />
-                  <span>
-                    {{ routeData()!.transitions[i].type === 'taxi' ? ('route.taxi' | translate) : ('route.walk' | translate) }}
-                    · {{ routeData()!.transitions[i].durationMin }} {{ 'route.min' | translate }}
-                  </span>
-                  @if (routeData()!.transitions[i].careLine) {
-                    <p class="route__transition-care">{{ routeData()!.transitions[i].careLine }}</p>
-                  }
-                </div>
+                @if (routeData()!.transitions[i].type === 'walk') {
+                  <div class="route__transition">
+                    <ld-icon name="route" [size]="14" />
+                    <span>🚶 {{ routeData()!.transitions[i].durationMin }} {{ 'route.min' | translate }}
+                      @if (routeData()!.transitions[i].durationMin > 15) { · {{ 'route.no_rush' | translate }} }
+                    </span>
+                  </div>
+                } @else {
+                  <div class="route__transition route__transition--taxi">
+                    <span class="route__transition-msg">{{ 'route.far_walk' | translate }}</span>
+                    <div class="route__transition-btns">
+                      <a class="route__transit-btn" [href]="boltLink(i)" target="_blank" rel="noopener">
+                        <ld-icon name="car" [size]="13" /> {{ 'route.taxi' | translate }}
+                      </a>
+                      <a class="route__transit-btn route__transit-btn--alt" [href]="transitLink(i)" target="_blank" rel="noopener">
+                        <ld-icon name="route" [size]="13" /> {{ 'route.transit' | translate }}
+                      </a>
+                    </div>
+                  </div>
+                }
               }
             }
           </div>
@@ -458,7 +492,7 @@ interface CareLine {
       cursor: pointer; padding: 0; font-family: inherit; text-decoration: underline;
     }
 
-    /* Place row: rest state */
+    /* Place row */
     .route__place-row {
       border: 1px solid var(--ld-border); border-radius: 10px;
       background: var(--ld-surface); color: var(--ld-text); cursor: pointer;
@@ -467,42 +501,68 @@ interface CareLine {
     .route__place-row--selected { border-color: var(--ld-primary); }
     .route__place-row--expanded { border-color: var(--ld-primary); background: var(--ld-primary-soft); }
 
+    /* Rest state: icon + main + add button */
     .route__place-rest {
-      display: flex; align-items: center; gap: 8px; padding: 12px 14px; min-height: 44px;
+      display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px;
     }
-    .route__place-tier { font-size: 14px; flex-shrink: 0; }
-    .route__place-name { flex: 1; font-size: 13px; font-weight: 600; min-width: 0;
+    .route__place-icon {
+      width: 36px; height: 36px; border-radius: 8px; flex-shrink: 0;
+      background: var(--ld-surface-2); display: flex; align-items: center;
+      justify-content: center; color: var(--ld-primary);
+    }
+    .route__place-main { flex: 1; min-width: 0; }
+    .route__place-header { display: flex; align-items: center; gap: 6px; }
+    .route__place-name { font-size: 13px; font-weight: 600; min-width: 0;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .route__place-idx {
-      width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
-      background: var(--ld-primary); color: #fff;
+    .route__place-badge {
+      font-size: 9px; font-weight: 600; padding: 1px 5px; border-radius: 6px;
+      white-space: nowrap; flex-shrink: 0;
+    }
+    .route__place-badge--must { background: var(--ld-primary-soft); color: var(--ld-primary); }
+    .route__place-gist {
+      font-size: 12px; color: var(--ld-text-2); margin: 2px 0 0; line-height: 1.3;
+      display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .route__place-tags { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
+    .route__place-tag {
+      font-size: 10px; color: var(--ld-text-3); background: var(--ld-surface-2);
+      padding: 1px 6px; border-radius: 6px;
+    }
+    .route__place-add {
+      width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
+      border: 1px solid var(--ld-border); background: var(--ld-surface);
       display: flex; align-items: center; justify-content: center;
-      font-size: 11px; font-weight: 700;
+      font-size: 16px; color: var(--ld-primary); cursor: pointer;
+      font-family: inherit; font-weight: 600; margin-top: 3px;
+    }
+    .route__place-add--active {
+      background: var(--ld-primary); color: #fff; border-color: var(--ld-primary);
+      font-size: 12px;
     }
 
-    /* Place row: expanded detail */
+    /* Expanded detail */
     .route__place-detail {
-      padding: 0 12px 10px; display: flex; flex-direction: column; gap: 6px;
+      padding: 0 12px 10px 58px; display: flex; flex-direction: column; gap: 6px;
     }
     .route__place-photo-row {
       display: flex; gap: 10px; align-items: flex-start;
     }
     .route__place-photo {
-      width: 64px; height: 64px; border-radius: 8px; object-fit: cover; flex-shrink: 0;
+      width: 54px; height: 54px; border-radius: 8px; object-fit: cover; flex-shrink: 0;
     }
     .route__place-photo-placeholder {
-      width: 64px; height: 64px; border-radius: 8px; flex-shrink: 0;
+      width: 54px; height: 54px; border-radius: 8px; flex-shrink: 0;
       background: var(--ld-surface-2); display: flex; align-items: center;
       justify-content: center; color: var(--ld-text-3);
     }
-    .route__place-detail-text { flex: 1; min-width: 0; }
-    .route__place-hook {
-      font-size: 12px; color: var(--ld-text-2); font-style: italic; margin: 0 0 2px;
-    }
+    .route__place-detail-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
     .route__place-cat {
-      font-size: 10px; color: var(--ld-text-3); text-transform: capitalize;
+      font-size: 11px; color: var(--ld-text-3); text-transform: capitalize;
     }
-    .route__place-add-btn { min-height: 34px; font-size: 13px; }
+    .route__place-rating {
+      font-size: 11px; color: var(--ld-text-2);
+    }
 
     /* Bottom bar */
     .route__bottom-bar {
@@ -517,7 +577,7 @@ interface CareLine {
 
     .route__optimize {
       padding: 12px var(--ld-space-lg); background: var(--ld-primary-soft);
-      border-radius: 12px; margin: 0 var(--ld-space-lg) 12px;
+      border-radius: 12px; margin: 0 var(--ld-space-lg) 12px; max-width: 500px;
     }
     .route__optimize-text { font-size: 14px; margin: 0 0 10px; color: var(--ld-text); line-height: 1.4; }
     .route__optimize-actions { display: flex; gap: 8px; }
@@ -543,6 +603,7 @@ interface CareLine {
     .route__loader-text { font-size: 14px; color: var(--ld-text-2); font-style: italic; }
 
     .route__result { padding: 0 var(--ld-space-lg); }
+    .route__result-map { height: 250px; border-radius: 12px; overflow: hidden; margin-bottom: 16px; }
     .route__napustvie {
       background: var(--ld-primary-soft); border-radius: 12px; padding: 14px 16px;
       font-size: 14px; color: var(--ld-text); line-height: 1.5; margin-bottom: 20px;
@@ -571,10 +632,25 @@ interface CareLine {
       padding: 8px 0 8px 40px; font-size: 12px; color: var(--ld-text-3);
       border-left: 2px dashed var(--ld-border); margin-left: 13px;
     }
-    .route__transition--taxi { border-left-color: var(--ld-primary); }
-    .route__transition-care {
-      width: 100%; font-size: 12px; color: var(--ld-primary);
-      font-style: italic; margin: 2px 0 0;
+    .route__transition--taxi {
+      border-left-color: var(--ld-primary);
+      flex-direction: column; align-items: flex-start; gap: 6px;
+    }
+    .route__transition-msg {
+      font-size: 12px; color: var(--ld-text-2); font-style: italic;
+    }
+    .route__transition-btns {
+      display: flex; gap: 6px;
+    }
+    .route__transit-btn {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 5px 10px; border-radius: 8px; font-size: 12px; font-weight: 600;
+      text-decoration: none; font-family: inherit;
+      background: var(--ld-text); color: var(--ld-bg);
+    }
+    .route__transit-btn--alt {
+      background: var(--ld-surface); color: var(--ld-text);
+      border: 1px solid var(--ld-border);
     }
 
     .route__footer-care {
@@ -902,6 +978,24 @@ export class RouteComponent implements OnInit {
     this.alternatives.set([]);
   }
 
+  boltLink(transitionIndex: number): string {
+    const data = this.routeData();
+    if (!data?.points) return '#';
+    const from = data.points[transitionIndex];
+    const to = data.points[transitionIndex + 1];
+    if (!from || !to) return '#';
+    return `https://m.bolt.eu/en/ride/?pickup_lat=${from.lat}&pickup_lng=${from.lng}&dropoff_lat=${to.lat}&dropoff_lng=${to.lng}`;
+  }
+
+  transitLink(transitionIndex: number): string {
+    const data = this.routeData();
+    if (!data?.points) return '#';
+    const from = data.points[transitionIndex];
+    const to = data.points[transitionIndex + 1];
+    if (!from || !to) return '#';
+    return `https://www.google.com/maps/dir/?api=1&origin=${from.lat},${from.lng}&destination=${to.lat},${to.lng}&travelmode=transit`;
+  }
+
   googleMapsUrl(): string {
     const data = this.routeData();
     if (!data?.points?.length) return '#';
@@ -1017,6 +1111,23 @@ export class RouteComponent implements OnInit {
 
   toggleExpand(id: string) {
     this.expandedPlaceId.set(this.expandedPlaceId() === id ? null : id);
+  }
+
+  placeTags(place: any): string[] {
+    const tags: string[] = [];
+    const catLabels: Record<string, string> = {
+      viewpoint: 'с видом', park: 'зелень', restaurant: 'еда', cafe: 'кофе',
+      bar: 'бар', museum: 'музей', gallery: 'искусство', theater: 'театр',
+      bath: 'бани', bakery: 'выпечка', garden: 'сад', church: 'храм',
+    };
+    if (catLabels[place.category]) tags.push(catLabels[place.category]);
+    const momentLabels: Record<string, string> = {
+      anchor: 'якорь', photo_spot: 'фото', rest_stop: 'отдых',
+      food_break: 'перекус', passage: 'по пути',
+    };
+    if (place.routeMoment && momentLabels[place.routeMoment]) tags.push(momentLabels[place.routeMoment]);
+    if (place.durationMin && place.durationMin <= 20) tags.push('быстро');
+    return tags.slice(0, 3);
   }
 
   categoryIcon(category: string): string {

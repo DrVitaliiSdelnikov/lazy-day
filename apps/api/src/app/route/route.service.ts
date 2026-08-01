@@ -344,12 +344,11 @@ export class RouteService {
       }
     }
 
-    // C3: taxi links
+    // C3: taxi links — honest, no fake price/ETA
     for (let i = 0; i < transitions.length; i++) {
       if (transitions[i].type === 'taxi') {
-        const costLari = Math.max(4, Math.round(transitions[i].distanceM / 1000 * 2));
-        transitions[i].careLine = `Отсюда пешком далеко — лучше такси, минут ${transitions[i].durationMin} и ~${costLari} лари`;
-        care.push({ rule: 'C3', text: transitions[i].careLine!, position: 'transition' });
+        transitions[i].careLine = undefined; // handled by frontend [Taxi][Transit] buttons
+        care.push({ rule: 'C3', text: 'Далеко пешком — тут удобнее доехать', position: 'transition' });
       }
     }
 
