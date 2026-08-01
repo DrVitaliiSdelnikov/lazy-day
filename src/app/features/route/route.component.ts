@@ -264,12 +264,10 @@ interface CareLine {
             <p>{{ routeData()!.header }}</p>
           </div>
 
-          <!-- Map -->
-          <div class="route__result-map">
-            <app-route-map [points]="mapPoints()" [lines]="mapLines()" (markerTap)="scrollToTimelinePoint($event)" #routeMap />
-          </div>
-
-          <!-- Timeline -->
+          <!-- Split: timeline + map -->
+          <div class="route__result-split">
+            <!-- Timeline (left on desktop) -->
+            <div class="route__result-timeline">
           <div class="route__timeline">
             @for (point of routeData()!.points; track point.id; let i = $index) {
               <!-- Point -->
@@ -349,6 +347,13 @@ interface CareLine {
           @for (care of footerCare(); track care.rule) {
             <p class="route__footer-care">{{ care.text }}</p>
           }
+            </div><!-- /route__result-timeline -->
+
+            <!-- Map (right on desktop, top on mobile) -->
+            <div class="route__result-map">
+              <app-route-map [points]="mapPoints()" [lines]="mapLines()" (markerTap)="scrollToTimelinePoint($event)" #routeMap />
+            </div>
+          </div><!-- /route__result-split -->
 
           <!-- Actions -->
           <div class="route__actions">
@@ -603,7 +608,27 @@ interface CareLine {
     .route__loader-text { font-size: 14px; color: var(--ld-text-2); font-style: italic; }
 
     .route__result { padding: 0 var(--ld-space-lg); }
-    .route__result-map { height: 250px; border-radius: 12px; overflow: hidden; margin-bottom: 16px; }
+
+    /* Result split: mobile stacked, desktop side-by-side */
+    .route__result-split {
+      display: flex; flex-direction: column-reverse;
+    }
+    @media (min-width: 900px) {
+      .route__result-split { flex-direction: row; gap: 16px; }
+    }
+
+    .route__result-timeline { flex: 1; min-width: 0; }
+
+    .route__result-map {
+      height: 220px; border-radius: 12px; overflow: hidden; margin-bottom: 12px;
+    }
+    @media (min-width: 900px) {
+      .route__result-map {
+        flex: 0 0 45%; height: auto; position: sticky; top: 56px;
+        align-self: flex-start; min-height: 350px;
+        margin-bottom: 0;
+      }
+    }
     .route__napustvie {
       background: var(--ld-primary-soft); border-radius: 12px; padding: 14px 16px;
       font-size: 14px; color: var(--ld-text); line-height: 1.5; margin-bottom: 20px;
