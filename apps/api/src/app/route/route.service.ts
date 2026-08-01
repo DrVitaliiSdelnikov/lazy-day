@@ -617,6 +617,92 @@ export class RouteService {
     });
   }
 
+  /**
+   * Find places within ±250m corridor along route segments.
+   * For "nearby" suggestions on result screen.
+   */
+  async getNearbyPlaces(dto: { points: { lat: number; lng: number }[]; excludeIds: string[]; locale?: string }): Promise<any[]> {
+    if (!dto.points?.length) return [];
+    const excludeSet = new Set(dto.excludeIds ?? []);
+    const corridorM = 250;
+    const corridorDeg = corridorM / 111000;
+
+    // Bounding box of all route points + corridor buffer
+    const lats = dto.points.map(p => p.lat);
+    const lngs = dto.points.map(p => p.lng);
+    const minLat = Math.min(...lats) - corridorDeg;
+    const maxLat = Math.max(...lats) + corridorDeg;
+    const minLng = Math.min(...lngs) - corridorDeg * 1.3;
+    const maxLng = Math.max(...lngs) + corridorDeg * 1.3;
+
+    const rows = await this.ds.query(`
+      SELECT p.id, v.name, v.name_en, p.category,
+        v.lat, v.lng, p.hook, p.walk_tier, p.route_moment, p.google_rating, p.photos
+      FROM places p JOIN venues v ON p.venue_id = v.id
+      WHERE p.status = 'active'
+        AND p.walk_tier IN ('must_see', 'worth_detour')
+        AND v.lat BETWEEN $1::float AND $2::float
+        AND v.lng BETWEEN $3::float AND $4::float
+      ORDER BY CASE p.walk_tier WHEN 'must_see' THEN 1 ELSE 2 END,
+        p.google_rating DESC NULLS LAST
+      LIMIT 50
+    `, [minLat, maxLat, minLng, maxLng]);
+
+    // Filter: within 250m of any route segment + not in excludeIds
+    const nearby: any[] = [];
+    for (const r of rows) {
+      if (excludeSet.has(r.id)) continue;
+      const lat = Number(r.lat);
+      const lng = Number(r.lng);
+
+      // Check distance to each segment
+      let minDist = Infinity;
+      for (let i = 0; i < dto.points.length - 1; i++) {
+        const d = this.pointToSegmentDistance(
+          lat, lng,
+          dto.points[i].lat, dto.points[i].lng,
+          dto.points[i + 1].lat, dto.points[i + 1].lng,
+        );
+        if (d < minDist) minDist = d;
+      }
+      // Also check distance to individual points (for single-point routes)
+      for (const pt of dto.points) {
+        const d = this.haversine(lat, lng, pt.lat, pt.lng);
+        if (d < minDist) minDist = d;
+      }
+
+      if (minDist <= corridorM) {
+        nearby.push({
+          id: r.id,
+          name: this.resolveTitle(r.name, r.name_en, dto.locale ?? 'ru'),
+          category: r.category,
+          lat, lng,
+          hook: r.hook,
+          walkTier: r.walk_tier,
+          distanceFromRoute: Math.round(minDist),
+          photoUrl: r.photos?.[0],
+        });
+      }
+    }
+
+    return nearby.slice(0, 4);
+  }
+
+  /** Approximate distance from point to line segment (meters) */
+  private pointToSegmentDistance(
+    px: number, py: number,
+    ax: number, ay: number, bx: number, by: number,
+  ): number {
+    const dx = bx - ax;
+    const dy = by - ay;
+    if (dx === 0 && dy === 0) return this.haversine(px, py, ax, ay);
+    let t = ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy);
+    t = Math.max(0, Math.min(1, t));
+    const closestLat = ax + t * dx;
+    const closestLng = ay + t * dy;
+    return this.haversine(px, py, closestLat, closestLng);
+  }
+
   private resolveTitle(name: string, nameEn?: string, locale = 'ru'): string {
     const isGeorgian = (s: string) => /[\u10A0-\u10FF]/.test(s);
     if (locale === 'ka') return name;

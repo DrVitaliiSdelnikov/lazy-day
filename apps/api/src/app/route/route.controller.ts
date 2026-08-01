@@ -36,6 +36,11 @@ export class RouteController {
     return this.routeService.linkPoints(dto);
   }
 
+  @Post('nearby')
+  async nearby(@Body() dto: { points: { lat: number; lng: number }[]; excludeIds: string[]; locale?: string }) {
+    return this.routeService.getNearbyPlaces(dto);
+  }
+
   @Post('alternatives')
   async alternatives(@Body() dto: {
     lat: number; lng: number; role: string;

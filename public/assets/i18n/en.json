@@ -338,6 +338,8 @@
     "far_walk": "Too far to walk — better to ride",
     "transit": "Public transport",
     "no_rush": "take your time",
+    "nearby_title": "Nearby along route",
+    "meters": "m from route",
     "more": "Read more",
     "less": "Less",
     "what_here": "What to do here",
@@ -345,7 +347,10 @@
     "add_point": "Add",
     "optimize_question": "Optimize route from your current location? Places will be reordered from nearest to farthest.",
     "optimize_yes": "Yes, from me",
-    "optimize_no": "No, keep my order"
+    "optimize_no": "No, keep my order",
+    "no_gps_question": "Location is off. With it we'll build your route from where you are — closer and more convenient. Without it you'll start from the first selected place.",
+    "enable_gps": "Enable and build from me",
+    "start_first_point": "Start from first place"
   },
   "feedback": {
     "title": "Feedback",

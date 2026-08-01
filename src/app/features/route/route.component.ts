@@ -198,11 +198,19 @@ interface CareLine {
             }
             @if (showOptimizePrompt()) {
               <div class="route__optimize">
-                <p class="route__optimize-text">{{ 'route.optimize_question' | translate }}</p>
-                <div class="route__optimize-actions">
-                  <button class="ld-btn ld-btn--primary" (click)="buildManualRoute(true)">{{ 'route.optimize_yes' | translate }}</button>
-                  <button class="ld-btn ld-btn--ghost" (click)="buildManualRoute(false)">{{ 'route.optimize_no' | translate }}</button>
-                </div>
+                @if (geo.position().source === 'gps') {
+                  <p class="route__optimize-text">{{ 'route.optimize_question' | translate }}</p>
+                  <div class="route__optimize-actions">
+                    <button class="ld-btn ld-btn--primary" (click)="buildManualRoute(true)">{{ 'route.optimize_yes' | translate }}</button>
+                    <button class="ld-btn ld-btn--ghost" (click)="buildManualRoute(false)">{{ 'route.optimize_no' | translate }}</button>
+                  </div>
+                } @else {
+                  <p class="route__optimize-text">{{ 'route.no_gps_question' | translate }}</p>
+                  <div class="route__optimize-actions">
+                    <button class="ld-btn ld-btn--primary" (click)="buildManualRoute(true)">{{ 'route.enable_gps' | translate }}</button>
+                    <button class="ld-btn ld-btn--ghost" (click)="buildManualRoute(false)">{{ 'route.start_first_point' | translate }}</button>
+                  </div>
+                }
               </div>
             }
           </div>
@@ -346,6 +354,30 @@ interface CareLine {
           <!-- Footer care -->
           @for (care of footerCare(); track care.rule) {
             <p class="route__footer-care">{{ care.text }}</p>
+          }
+
+          <!-- Nearby places -->
+          @if (nearbyPlaces().length > 0) {
+            <div class="route__nearby">
+              <p class="route__nearby-title">✨ {{ 'route.nearby_title' | translate }}</p>
+              @for (place of nearbyPlaces(); track place.id) {
+                <div class="route__nearby-item"
+                  (mouseenter)="focusNearbyOnMap(place)"
+                  (mouseleave)="clearNearbyFocus()">
+                  <div class="route__place-icon">
+                    <ld-icon [name]="categoryIcon(place.category)" [size]="16" />
+                  </div>
+                  <div class="route__nearby-info">
+                    <span class="route__place-name">{{ place.name }}</span>
+                    @if (place.hook) { <span class="route__place-gist">{{ place.hook }}</span> }
+                    <span class="route__nearby-dist">+{{ place.distanceFromRoute }} {{ 'route.meters' | translate }}</span>
+                  </div>
+                  <button class="route__place-add" (click)="addNearbyToRoute(place)">
+                    <span>+</span>
+                  </button>
+                </div>
+              }
+            </div>
           }
             </div><!-- /route__result-timeline -->
 
@@ -624,9 +656,8 @@ interface CareLine {
     }
     @media (min-width: 900px) {
       .route__result-map {
-        flex: 0 0 45%; height: auto; position: sticky; top: 56px;
-        align-self: flex-start; min-height: 350px;
-        margin-bottom: 0;
+        flex: 0 0 45%; height: 400px; position: sticky; top: 56px;
+        align-self: flex-start; margin-bottom: 0;
       }
     }
     .route__napustvie {
@@ -676,6 +707,22 @@ interface CareLine {
     .route__transit-btn--alt {
       background: var(--ld-surface); color: var(--ld-text);
       border: 1px solid var(--ld-border);
+    }
+
+    .route__nearby {
+      margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--ld-border);
+    }
+    .route__nearby-title {
+      font-size: 14px; font-weight: 700; color: var(--ld-text); margin: 0 0 8px;
+    }
+    .route__nearby-item {
+      display: flex; gap: 10px; align-items: flex-start; padding: 8px 0;
+      border-bottom: 1px solid var(--ld-border);
+    }
+    .route__nearby-item:last-child { border-bottom: none; }
+    .route__nearby-info { flex: 1; min-width: 0; }
+    .route__nearby-dist {
+      font-size: 10px; color: var(--ld-text-3); margin-top: 2px; display: block;
     }
 
     .route__footer-care {
@@ -730,7 +777,7 @@ interface CareLine {
 export class RouteComponent implements OnInit {
   private api = inject(ApiService);
   private http = inject(HttpClient);
-  private geo = inject(GeolocationService);
+  readonly geo = inject(GeolocationService);
   private profile = inject(ProfileStore);
   private router = inject(Router);
   private translate = inject(TranslateService);
@@ -748,6 +795,7 @@ export class RouteComponent implements OnInit {
   alternatives = signal<any[]>([]);
   alternativesForIndex = signal(-1);
   altLoading = signal(false);
+  nearbyPlaces = signal<any[]>([]);
 
   // Manual mode
   topPlaces = signal<any[]>([]);
@@ -912,6 +960,7 @@ export class RouteComponent implements OnInit {
         clearInterval(interval);
         this.routeData.set(data);
         this.step.set('result');
+        this.loadNearby(data);
       },
       error: () => {
         clearInterval(interval);
@@ -1001,6 +1050,91 @@ export class RouteComponent implements OnInit {
     this.routeData.set({ ...data, points, transitions });
     this.alternativesForIndex.set(-1);
     this.alternatives.set([]);
+  }
+
+  focusNearbyOnMap(place: any) {
+    if (this.routeMap()) {
+      this.routeMap()!.scrollToPoint(-1); // clear any existing popup
+      // Fly to nearby place
+      const map = (this.routeMap() as any)?.map;
+      if (map) {
+        map.flyTo({ center: [place.lng, place.lat], zoom: 16 });
+      }
+    }
+  }
+
+  clearNearbyFocus() {
+    // Optional: fly back to route bounds
+  }
+
+  addNearbyToRoute(place: any) {
+    const data = this.routeData();
+    if (!data?.points?.length) return;
+
+    // Find closest route point to this nearby place
+    let closestIdx = 0;
+    let closestDist = Infinity;
+    for (let i = 0; i < data.points.length; i++) {
+      const d = this.haversine(place.lat, place.lng, data.points[i].lat, data.points[i].lng);
+      if (d < closestDist) { closestDist = d; closestIdx = i; }
+    }
+
+    // Insert after closest point
+    const insertIdx = closestIdx + 1;
+    const newPoint: RoutePoint = {
+      id: place.id,
+      name: place.name,
+      category: place.category,
+      lat: place.lat,
+      lng: place.lng,
+      hook: place.hook,
+      role: 'passage',
+      durationMin: 20,
+      arriveAt: '',
+      photoUrl: place.photoUrl,
+    };
+
+    const points = [...data.points];
+    points.splice(insertIdx, 0, newPoint);
+
+    // Recompute transitions for affected segments
+    const transitions = [...data.transitions];
+    // Remove old transition at insertIdx-1 (if exists)
+    if (insertIdx - 1 >= 0 && insertIdx - 1 < transitions.length) {
+      transitions.splice(insertIdx - 1, 1);
+    }
+    // Add two new transitions: before → new, new → after
+    const prev = points[insertIdx - 1];
+    const next = points[insertIdx + 1];
+    const distPrev = this.haversine(prev.lat, prev.lng, newPoint.lat, newPoint.lng);
+    const distNext = next ? this.haversine(newPoint.lat, newPoint.lng, next.lat, next.lng) : 0;
+
+    const mkTransition = (distM: number): RouteTransition => {
+      const walkMin = Math.round((distM / 80) * 1.3);
+      return distM > 920
+        ? { type: 'taxi', distanceM: Math.round(distM), durationMin: Math.max(5, Math.round(distM / 500)) }
+        : { type: 'walk', distanceM: Math.round(distM), durationMin: walkMin };
+    };
+
+    transitions.splice(insertIdx - 1, 0, mkTransition(distPrev));
+    if (next) transitions.splice(insertIdx, 0, mkTransition(distNext));
+
+    this.routeData.set({ ...data, points, transitions });
+
+    // Remove from nearby list
+    this.nearbyPlaces.set(this.nearbyPlaces().filter(p => p.id !== place.id));
+  }
+
+  private loadNearby(data: any) {
+    if (!data?.points?.length) return;
+    this.http.post<any[]>('/v1/routes/nearby', {
+      points: data.points.map((p: any) => ({ lat: p.lat, lng: p.lng })),
+      excludeIds: data.points.map((p: any) => p.id),
+      locale: this.profile.locale(),
+    }).subscribe({
+      next: (places) => this.nearbyPlaces.set(places),
+      error: () => {},
+    });
   }
 
   boltLink(transitionIndex: number): string {
@@ -1167,25 +1301,24 @@ export class RouteComponent implements OnInit {
 
   onDone() {
     if (this.selectedPoints().length === 0) return;
-    const pos = this.geo.position();
-    // If GPS available (not default), ask whether to optimize from current location
-    if (pos.source === 'gps') {
-      this.showOptimizePrompt.set(true);
-    } else {
-      // No GPS — build in selection order, start from first selected point
-      this.buildManualRoute(false);
-    }
+    // Always show optimize prompt
+    this.showOptimizePrompt.set(true);
   }
 
-  buildManualRoute(optimizeFromGps: boolean) {
+  async buildManualRoute(optimizeFromGps: boolean) {
     this.showOptimizePrompt.set(false);
     if (this.selectedPoints().length === 0) return;
-    this.step.set('loading');
 
+    // If user wants GPS optimization but GPS not yet acquired — request it first
+    if (optimizeFromGps && this.geo.position().source !== 'gps') {
+      await this.geo.requestPosition();
+    }
+
+    this.step.set('loading');
     const pos = this.geo.position();
     const firstPoint = this.selectedPoints()[0];
-    const startLat = optimizeFromGps ? pos.lat : firstPoint.lat;
-    const startLng = optimizeFromGps ? pos.lng : firstPoint.lng;
+    const startLat = optimizeFromGps && pos.source === 'gps' ? pos.lat : firstPoint.lat;
+    const startLng = optimizeFromGps && pos.source === 'gps' ? pos.lng : firstPoint.lng;
 
     this.http.post<any>('/v1/routes/link', {
       pointIds: this.selectedPointIds(),
@@ -1193,7 +1326,7 @@ export class RouteComponent implements OnInit {
       startLng,
       locale: this.profile.locale(),
     }).subscribe({
-      next: (data) => { this.routeData.set(data); this.step.set('result'); },
+      next: (data) => { this.routeData.set(data); this.step.set('result'); this.loadNearby(data); },
       error: () => this.step.set('manual'),
     });
   }
