@@ -115,7 +115,7 @@ export class RouteMapComponent implements AfterViewInit, OnDestroy {
         sources: {
           osm: {
             type: 'raster',
-            tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+            tiles: ['https://tile.openstreetmap.de/{z}/{x}/{y}.png'],
             tileSize: 256,
             attribution: '&copy; OpenStreetMap',
           },

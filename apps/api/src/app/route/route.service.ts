@@ -487,19 +487,21 @@ export class RouteService {
   async getAreas(locale = 'ru'): Promise<any[]> {
     const rows = await this.ds.query(`
       SELECT id, name, name_en, name_ru, description_en, description_ru,
-        vibe, best_for, when_best, what_to_expect, honest_warning,
+        vibe, best_for, when_best, when_best_ru, what_to_expect, what_to_expect_ru,
+        honest_warning, honest_warning_ru,
         center_lat, center_lng, bbox, walk_tier
       FROM areas ORDER BY walk_tier, name_en
     `);
+    const isRu = locale === 'ru';
     return rows.map((r: any) => ({
       id: r.id,
-      name: locale === 'ru' ? (r.name_ru ?? r.name_en ?? r.name) : (r.name_en ?? r.name),
-      description: locale === 'ru' ? (r.description_ru ?? r.description_en) : r.description_en,
+      name: isRu ? (r.name_ru ?? r.name_en ?? r.name) : (r.name_en ?? r.name),
+      description: isRu ? (r.description_ru ?? r.description_en) : r.description_en,
       vibe: r.vibe,
       bestFor: r.best_for,
-      whenBest: r.when_best,
-      whatToExpect: r.what_to_expect,
-      honestWarning: r.honest_warning,
+      whenBest: isRu ? (r.when_best_ru ?? r.when_best) : r.when_best,
+      whatToExpect: isRu ? (r.what_to_expect_ru ?? r.what_to_expect) : r.what_to_expect,
+      honestWarning: isRu ? (r.honest_warning_ru ?? r.honest_warning) : r.honest_warning,
       centerLat: Number(r.center_lat),
       centerLng: Number(r.center_lng),
       bbox: r.bbox,
