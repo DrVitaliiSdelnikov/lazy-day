@@ -74,10 +74,32 @@ interface CareLine {
                 <div class="route__area-detail">
                   <p class="route__area-desc-title">{{ selectedAreaDetail()!.name }}</p>
                   <p class="route__area-desc">{{ selectedAreaDetail()!.description }}</p>
-                  @if (selectedAreaDetail()!.honestWarning) {
-                    <p class="route__area-warn">⚠ {{ selectedAreaDetail()!.honestWarning }}</p>
+                  <div class="route__area-tags">
+                    @for (tag of selectedAreaDetail()!.vibe ?? []; track tag) {
+                      <span class="route__area-tag">{{ tag }}</span>
+                    }
+                  </div>
+                  @if (areaExpanded()) {
+                    @if (selectedAreaDetail()!.fullDescription) {
+                      <p class="route__area-full">{{ selectedAreaDetail()!.fullDescription }}</p>
+                    }
+                    @if (selectedAreaDetail()!.whatToExpect) {
+                      <p class="route__area-full"><strong>{{ 'route.what_here' | translate }}:</strong> {{ selectedAreaDetail()!.whatToExpect }}</p>
+                    }
+                    @if (selectedAreaDetail()!.whoFor) {
+                      <p class="route__area-full"><strong>{{ 'route.who_for' | translate }}:</strong> {{ selectedAreaDetail()!.whoFor }}</p>
+                    }
+                    @if (selectedAreaDetail()!.practice) {
+                      <p class="route__area-full">🚶 {{ selectedAreaDetail()!.practice }}</p>
+                    }
+                    @if (selectedAreaDetail()!.honestWarning) {
+                      <p class="route__area-warn">⚠ {{ selectedAreaDetail()!.honestWarning }}</p>
+                    }
                   }
-                  <div style="display:flex;gap:8px">
+                  <div class="route__area-actions">
+                    <button class="route__area-clear" (click)="areaExpanded.set(!areaExpanded())">
+                      {{ areaExpanded() ? ('route.less' | translate) : ('route.more' | translate) }}
+                    </button>
                     <button class="route__area-clear" (click)="onFilterChipClick('areas')">{{ 'route.change_area' | translate }}</button>
                     <button class="route__area-clear" (click)="clearArea()">{{ 'route.show_all' | translate }}</button>
                   </div>
@@ -103,7 +125,6 @@ interface CareLine {
                   (click)="toggleExpand(place.id)">
                   <!-- Rest: always visible -->
                   <div class="route__place-rest">
-                    <span class="route__place-tier">{{ place.walkTier === 'must_see' ? '★' : '◆' }}</span>
                     <span class="route__place-name">{{ place.name }}</span>
                     @if (isSelected(place.id)) {
                       <span class="route__place-idx">{{ selectedIndex(place.id) + 1 }}</span>
@@ -418,7 +439,20 @@ interface CareLine {
     }
     .route__area-desc-title { font-size: 14px; font-weight: 700; margin: 0 0 4px; color: var(--ld-text); }
     .route__area-desc { font-size: 12px; color: var(--ld-text); margin: 0 0 4px; line-height: 1.4; }
-    .route__area-warn { font-size: 11px; color: var(--ld-text-2); margin: 0 0 6px; font-style: italic; }
+    .route__area-warn { font-size: 11px; color: var(--ld-text-2); margin: 4px 0; font-style: italic; }
+    .route__area-tags {
+      display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0;
+    }
+    .route__area-tag {
+      font-size: 10px; padding: 2px 6px; border-radius: 6px;
+      background: var(--ld-surface); color: var(--ld-text-2); border: 1px solid var(--ld-border);
+    }
+    .route__area-full {
+      font-size: 12px; color: var(--ld-text); margin: 4px 0; line-height: 1.5;
+    }
+    .route__area-actions {
+      display: flex; gap: 12px; margin-top: 6px;
+    }
     .route__area-clear {
       background: none; border: none; font-size: 12px; color: var(--ld-primary);
       cursor: pointer; padding: 0; font-family: inherit; text-decoration: underline;
@@ -621,6 +655,7 @@ export class RouteComponent implements OnInit {
   manualTypeFilter = signal<string | null>(null);
   expandedPlaceId = signal<string | null>(null);
   selectedAreaId = signal<string | null>(null);
+  areaExpanded = signal(false);
 
   selectedAreaDetail = computed(() => {
     const id = this.selectedAreaId();
@@ -897,6 +932,7 @@ export class RouteComponent implements OnInit {
 
   selectArea(area: any) {
     this.selectedAreaId.set(area.id);
+    this.areaExpanded.set(false);
     // Stay on 'areas' filter but show places below area detail
     // Filter places by area bbox
     const bbox = area.bbox;
