@@ -246,6 +246,14 @@ export class RouteMapComponent implements AfterViewInit, OnDestroy {
     this.svgOverlay = svg as unknown as HTMLElement;
   }
 
+  flyToArea(bbox: { minLat: number; maxLat: number; minLng: number; maxLng: number }) {
+    if (!this.map) return;
+    this.map.fitBounds(
+      [[bbox.minLng, bbox.minLat], [bbox.maxLng, bbox.maxLat]],
+      { padding: 30, maxZoom: 15 },
+    );
+  }
+
   scrollToPoint(index: number) {
     const pt = this.points()[index];
     if (pt && this.map) {

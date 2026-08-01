@@ -1,5 +1,6 @@
 import { Component, inject, signal, computed, viewChild, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { ApiService } from '../../core/services/api.service';
 import { GeolocationService } from '../../core/services/geolocation.service';
@@ -52,8 +53,9 @@ interface CareLine {
           <!-- Type filter -->
           <div class="route__filter-bar">
             @for (t of typeFilters; track t.value) {
-              <button class="ld-chip" [class.ld-chip--active]="manualTypeFilter() === t.value"
-                (click)="setManualFilter(t.value)">{{ t.labelKey | translate }}</button>
+              <button class="ld-chip"
+                [class.ld-chip--active]="t.value === 'areas' ? (manualTypeFilter() === 'areas' || selectedAreaId()) : manualTypeFilter() === t.value"
+                (click)="onFilterChipClick(t.value)">{{ t.labelKey | translate }}</button>
             }
           </div>
 
@@ -67,15 +69,42 @@ interface CareLine {
 
             <!-- List panel -->
             <div class="route__list-panel">
+              <!-- Area filter active: show info + clear -->
+              @if (selectedAreaDetail()) {
+                <div class="route__area-detail">
+                  <p class="route__area-desc-title">{{ selectedAreaDetail()!.name }}</p>
+                  <p class="route__area-desc">{{ selectedAreaDetail()!.whatToExpect }}</p>
+                  @if (selectedAreaDetail()!.honestWarning) {
+                    <p class="route__area-warn">⚠ {{ selectedAreaDetail()!.honestWarning }}</p>
+                  }
+                  <div style="display:flex;gap:8px">
+                    <button class="route__area-clear" (click)="onFilterChipClick('areas')">{{ 'route.change_area' | translate }}</button>
+                    <button class="route__area-clear" (click)="clearArea()">{{ 'route.show_all' | translate }}</button>
+                  </div>
+                </div>
+              }
+
+              <!-- Areas list (when "Районы" chip selected) -->
+              @if (manualTypeFilter() === 'areas') {
+                @for (area of areas(); track area.id) {
+                  <div class="route__area-row" (click)="selectArea(area)">
+                    <span class="route__area-name">{{ area.name }}</span>
+                    <span class="route__area-vibe">{{ area.vibe?.join(' · ') }}</span>
+                  </div>
+                }
+              }
+
+              <!-- Places list (when any other filter) -->
+              @if (manualTypeFilter() !== 'areas') {
               @for (place of topPlaces(); track place.id) {
                 <div class="route__place-row"
                   [class.route__place-row--selected]="isSelected(place.id)"
                   [class.route__place-row--expanded]="expandedPlaceId() === place.id"
                   (click)="toggleExpand(place.id)">
                   <!-- Rest: always visible -->
-                  <div class="route__place-rest">
-                    <span class="route__place-tier">{{ place.walkTier === 'must_see' ? '★' : '◆' }}</span>
-                    <span class="route__place-name">{{ place.name }}</span>
+                  <div class="route__place-rest" style="color:red;font-size:16px">
+                    <span>{{ place.walkTier === 'must_see' ? '★' : '◆' }}</span>
+                    <span style="color:red;font-size:16px;font-weight:bold">{{ place.name || 'NO NAME' }}</span>
                     @if (isSelected(place.id)) {
                       <span class="route__place-idx">{{ selectedIndex(place.id) + 1 }}</span>
                     }
@@ -95,6 +124,7 @@ interface CareLine {
                     </div>
                   }
                 </div>
+              }
               }
             </div>
           </div>
@@ -322,20 +352,80 @@ interface CareLine {
       display: flex; flex-direction: column; gap: 4px;
     }
     @media (min-width: 768px) {
-      .route__list-panel { flex: 1; max-height: 500px; overflow-y: auto; padding: 0; }
+      .route__list-panel { flex: 1; max-height: 400px; overflow-y: auto; padding: 0; }
+    }
+
+    /* Section title */
+    .route__section-title {
+      font-size: 12px; font-weight: 700; color: var(--ld-text-3);
+      text-transform: uppercase; letter-spacing: 0.5px;
+      margin: 8px 0 4px; padding: 0;
+    }
+
+    /* Areas horizontal scroll */
+    .route__areas-scroll {
+      display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px;
+      scrollbar-width: none;
+    }
+    .route__areas-scroll::-webkit-scrollbar { display: none; }
+
+    .route__area-card {
+      flex-shrink: 0; display: flex; flex-direction: column; gap: 2px;
+      padding: 8px 12px; border: 1px solid var(--ld-border); border-radius: 10px;
+      background: var(--ld-surface); cursor: pointer; text-align: left;
+      font-family: inherit; min-width: 120px; transition: border-color 0.15s;
+    }
+    .route__area-card:hover { border-color: var(--ld-primary); }
+    .route__area-card--active {
+      border-color: var(--ld-primary); background: var(--ld-primary-soft);
+    }
+    .route__area-name { font-size: 13px; font-weight: 600; white-space: nowrap; }
+    .route__area-vibe { font-size: 10px; color: var(--ld-text-3); white-space: nowrap; }
+
+    .route__area-detail {
+      padding: 8px 10px; background: var(--ld-primary-soft); border-radius: 8px;
+      margin-bottom: 8px;
+    }
+    .route__area-desc { font-size: 12px; color: var(--ld-text); margin: 0 0 4px; line-height: 1.4; }
+    .route__area-warn { font-size: 11px; color: var(--ld-text-2); margin: 0 0 6px; font-style: italic; }
+    .route__area-clear {
+      background: none; border: none; font-size: 12px; color: var(--ld-primary);
+      cursor: pointer; padding: 0; font-family: inherit; text-decoration: underline;
+    }
+
+    /* Area rows (shown when "Районы" chip active) */
+    .route__area-row {
+      display: flex; flex-direction: column; gap: 2px;
+      padding: 12px 14px; border: 1px solid var(--ld-border); border-radius: 10px;
+      background: var(--ld-surface); cursor: pointer; transition: border-color 0.15s;
+    }
+    .route__area-row:hover { border-color: var(--ld-primary); }
+    .route__area-name { font-size: 14px; font-weight: 600; color: var(--ld-text); }
+    .route__area-vibe { font-size: 11px; color: var(--ld-text-3); }
+
+    /* Area detail (shown when area selected as filter) */
+    .route__area-detail {
+      padding: 10px 12px; background: var(--ld-primary-soft); border-radius: 10px; margin-bottom: 6px;
+    }
+    .route__area-desc-title { font-size: 14px; font-weight: 700; margin: 0 0 4px; color: var(--ld-text); }
+    .route__area-desc { font-size: 12px; color: var(--ld-text); margin: 0 0 4px; line-height: 1.4; }
+    .route__area-warn { font-size: 11px; color: var(--ld-text-2); margin: 0 0 6px; font-style: italic; }
+    .route__area-clear {
+      background: none; border: none; font-size: 12px; color: var(--ld-primary);
+      cursor: pointer; padding: 0; font-family: inherit; text-decoration: underline;
     }
 
     /* Place row: rest state */
     .route__place-row {
       border: 1px solid var(--ld-border); border-radius: 10px;
-      background: var(--ld-surface); cursor: pointer; overflow: hidden;
+      background: var(--ld-surface); color: var(--ld-text); cursor: pointer;
       transition: border-color 0.15s;
     }
     .route__place-row--selected { border-color: var(--ld-primary); }
     .route__place-row--expanded { border-color: var(--ld-primary); background: var(--ld-primary-soft); }
 
     .route__place-rest {
-      display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+      display: flex; align-items: center; gap: 8px; padding: 12px 14px; min-height: 44px;
     }
     .route__place-tier { font-size: 14px; flex-shrink: 0; }
     .route__place-name { flex: 1; font-size: 13px; font-weight: 600; min-width: 0;
@@ -483,6 +573,7 @@ interface CareLine {
 })
 export class RouteComponent implements OnInit {
   private api = inject(ApiService);
+  private http = inject(HttpClient);
   private geo = inject(GeolocationService);
   private profile = inject(ProfileStore);
   private router = inject(Router);
@@ -492,6 +583,7 @@ export class RouteComponent implements OnInit {
 
   ngOnInit() {
     this.loadTopPlaces();
+    this.loadAreas();
   }
 
   step = signal<'form' | 'loading' | 'result' | 'manual'>('manual');
@@ -503,9 +595,16 @@ export class RouteComponent implements OnInit {
 
   // Manual mode
   topPlaces = signal<any[]>([]);
+  areas = signal<any[]>([]);
   selectedPointIds = signal<string[]>([]);
   manualTypeFilter = signal<string | null>(null);
   expandedPlaceId = signal<string | null>(null);
+  selectedAreaId = signal<string | null>(null);
+
+  selectedAreaDetail = computed(() => {
+    const id = this.selectedAreaId();
+    return id ? this.areas().find(a => a.id === id) ?? null : null;
+  });
 
   typeFilters = [
     { value: null, labelKey: 'route.filter_all' },
@@ -514,6 +613,7 @@ export class RouteComponent implements OnInit {
     { value: 'culture', labelKey: 'route.mood_culture' },
     { value: 'spa', labelKey: 'route.mood_spa' },
     { value: 'coffee', labelKey: 'route.mood_coffee' },
+    { value: 'areas', labelKey: 'route.areas_title' },
   ];
 
   selectedPoints = computed(() => {
@@ -766,32 +866,75 @@ export class RouteComponent implements OnInit {
     this.routeMap()?.scrollToPoint(index);
   }
 
+  // Areas
+  private loadAreas() {
+    this.http.get<any[]>('/v1/routes/areas').subscribe({
+      next: (areas) => this.areas.set(areas),
+    });
+  }
+
+  selectArea(area: any) {
+    this.selectedAreaId.set(area.id);
+    // Stay on 'areas' filter but show places below area detail
+    // Filter places by area bbox
+    const bbox = area.bbox;
+    if (bbox) {
+      this.topPlaces.set([]);
+      const pos = this.geo.position();
+      this.http.get<any[]>(`/v1/routes/top-places?lat=${pos.lat}&lng=${pos.lng}`).subscribe({
+        next: (all) => {
+          const filtered = all.filter((p: any) =>
+            p.lat >= bbox.minLat && p.lat <= bbox.maxLat &&
+            p.lng >= bbox.minLng && p.lng <= bbox.maxLng
+          );
+          this.topPlaces.set(filtered.length > 0 ? filtered : all);
+          // Switch to places view with area detail visible
+          this.manualTypeFilter.set(null);
+        },
+      });
+      // Center map on area
+      this.routeMap()?.flyToArea(bbox);
+    }
+  }
+
+  clearArea() {
+    this.selectedAreaId.set(null);
+    this.manualTypeFilter.set(null);
+    this.topPlaces.set([]);
+    this.loadTopPlaces();
+  }
+
   // Manual mode methods
   loadTopPlaces() {
     if (this.topPlaces().length > 0) return;
-    const pos = this.geo.position();
-    const type = this.manualTypeFilter();
-    const url = type
-      ? `generateRoute` // reuse, but actually we need a direct HTTP call
-      : `generateRoute`;
-    // Direct HTTP to top-places endpoint
-    const baseUrl = (typeof window !== 'undefined' && window.location.hostname !== 'localhost')
-      ? 'https://api.lazigo.app/v1' : '/v1';
-    fetch(`${baseUrl}/routes/top-places?lat=${pos.lat}&lng=${pos.lng}${type ? '&type=' + type : ''}`)
-      .then(r => r.json())
-      .then(places => this.topPlaces.set(places))
-      .catch(() => {});
+    this.fetchTopPlaces(this.manualTypeFilter());
   }
 
-  setManualFilter(type: string | null) {
+  onFilterChipClick(type: string | null) {
+    if (type === 'areas') {
+      // Always show areas list when tapping "Районы"
+      this.selectedAreaId.set(null);
+      this.manualTypeFilter.set('areas');
+      return;
+    }
+    // Any other filter → clear area selection
+    this.selectedAreaId.set(null);
     this.manualTypeFilter.set(type);
+    this.topPlaces.set([]);
+    this.fetchTopPlaces(type);
+  }
+
+  private fetchTopPlaces(type: string | null) {
     const pos = this.geo.position();
-    const baseUrl = (typeof window !== 'undefined' && window.location.hostname !== 'localhost')
-      ? 'https://api.lazigo.app/v1' : '/v1';
-    fetch(`${baseUrl}/routes/top-places?lat=${pos.lat}&lng=${pos.lng}${type ? '&type=' + type : ''}`)
-      .then(r => r.json())
-      .then(places => this.topPlaces.set(places))
-      .catch(() => {});
+    const params = `lat=${pos.lat}&lng=${pos.lng}${type ? '&type=' + type : ''}`;
+    console.log('[Route] fetching top places...');
+    this.http.get<any[]>(`/v1/routes/top-places?${params}`).subscribe({
+      next: (places) => {
+        console.log('[Route] got', places.length, 'places, first:', places[0]?.name);
+        this.topPlaces.set(places);
+      },
+      error: (err) => console.error('[Route] fetch error:', err),
+    });
   }
 
   togglePoint(mapIndex: number) {
@@ -840,27 +983,18 @@ export class RouteComponent implements OnInit {
 
     const pos = this.geo.position();
     const firstPoint = this.selectedPoints()[0];
-
-    // If optimize: start from GPS → greedy nearest-neighbor reorders all points
-    // If not: start from first selected → keeps user's selection order
     const startLat = optimizeFromGps ? pos.lat : firstPoint.lat;
     const startLng = optimizeFromGps ? pos.lng : firstPoint.lng;
 
-    const baseUrl = (typeof window !== 'undefined' && window.location.hostname !== 'localhost')
-      ? 'https://api.lazigo.app/v1' : '/v1';
-    fetch(`${baseUrl}/routes/link`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        pointIds: this.selectedPointIds(),
-        startLat,
-        startLng,
-        locale: this.profile.locale(),
-      }),
-    })
-      .then(r => r.json())
-      .then(data => { this.routeData.set(data); this.step.set('result'); })
-      .catch(() => this.step.set('manual'));
+    this.http.post<any>('/v1/routes/link', {
+      pointIds: this.selectedPointIds(),
+      startLat,
+      startLng,
+      locale: this.profile.locale(),
+    }).subscribe({
+      next: (data) => { this.routeData.set(data); this.step.set('result'); },
+      error: () => this.step.set('manual'),
+    });
   }
 
   private haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {

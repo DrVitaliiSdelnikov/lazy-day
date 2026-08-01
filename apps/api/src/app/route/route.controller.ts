@@ -11,6 +11,11 @@ export class RouteController {
     return this.routeService.generate(dto);
   }
 
+  @Get('areas')
+  async areas() {
+    return this.routeService.getAreas();
+  }
+
   @Get('top-places')
   async topPlaces(
     @Query('lat') lat: string,
