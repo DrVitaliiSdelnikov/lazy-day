@@ -102,9 +102,9 @@ interface CareLine {
                   [class.route__place-row--expanded]="expandedPlaceId() === place.id"
                   (click)="toggleExpand(place.id)">
                   <!-- Rest: always visible -->
-                  <div class="route__place-rest" style="color:red;font-size:16px">
-                    <span>{{ place.walkTier === 'must_see' ? '★' : '◆' }}</span>
-                    <span style="color:red;font-size:16px;font-weight:bold">{{ place.name || 'NO NAME' }}</span>
+                  <div class="route__place-rest">
+                    <span class="route__place-tier">{{ place.walkTier === 'must_see' ? '★' : '◆' }}</span>
+                    <span class="route__place-name">{{ place.name }}</span>
                     @if (isSelected(place.id)) {
                       <span class="route__place-idx">{{ selectedIndex(place.id) + 1 }}</span>
                     }
@@ -927,13 +927,9 @@ export class RouteComponent implements OnInit {
   private fetchTopPlaces(type: string | null) {
     const pos = this.geo.position();
     const params = `lat=${pos.lat}&lng=${pos.lng}${type ? '&type=' + type : ''}`;
-    console.log('[Route] fetching top places...');
     this.http.get<any[]>(`/v1/routes/top-places?${params}`).subscribe({
-      next: (places) => {
-        console.log('[Route] got', places.length, 'places, first:', places[0]?.name);
-        this.topPlaces.set(places);
-      },
-      error: (err) => console.error('[Route] fetch error:', err),
+      next: (places) => this.topPlaces.set(places),
+      error: () => {},
     });
   }
 
