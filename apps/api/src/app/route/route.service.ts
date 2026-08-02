@@ -52,6 +52,7 @@ export interface RouteTransition {
   distanceM: number;
   durationMin: number;
   careLine?: string;
+  geometry?: [number, number][]; // [lng, lat][] from OSRM
 }
 
 export interface CareLine {
@@ -97,8 +98,8 @@ export class RouteService {
     // 2. Build chain
     const chain = this.buildChain(candidates, dto.lat, dto.lng, targetPoints, targetMinutes, pace);
 
-    // 3. Compute transitions
-    const transitions = this.computeTransitions(chain);
+    // 3. Compute transitions (includes OSRM path fetch)
+    const transitions = await this.computeTransitions(chain);
 
     // 4. Assign times
     const now = new Date();
@@ -276,9 +277,23 @@ export class RouteService {
     return best;
   }
 
+  // Route-context duration: how long you actually spend at a place on a walking route
+  private static readonly ROUTE_DURATION: Record<string, number> = {
+    // "Сел" — main time spent here
+    restaurant: 50, bar: 45,
+    // "Зашёл" — go inside, look around
+    museum: 45, gallery: 35, bath: 60, spa: 60, cafe: 25, club: 40,
+    // "Глянул" — look, photo, move on
+    viewpoint: 15, park: 25, church: 15, theater: 15, cinema: 15,
+    entertainment: 20, mall: 20, gym: 15,
+    // "Прошёл" — quick stop
+    bakery: 10,
+  };
+
   private toPoint(c: RouteCandidate, role: string, pace: string): RoutePoint {
-    const raw = c.typical_duration_min ?? (role === 'food_break' ? 45 : role === 'anchor' ? 30 : 20);
-    const baseDuration = Math.min(raw, 60); // cap at 1h per point
+    const routeDuration = RouteService.ROUTE_DURATION[c.category];
+    const raw = routeDuration ?? (role === 'food_break' ? 45 : role === 'anchor' ? 30 : 20);
+    const baseDuration = Math.min(raw, 60);
     const durationMin = pace === 'relaxed' ? Math.round(baseDuration * 1.2) : baseDuration;
     return {
       id: c.id,
@@ -294,20 +309,40 @@ export class RouteService {
     };
   }
 
-  private computeTransitions(chain: RoutePoint[]): RouteTransition[] {
+  private async computeTransitions(chain: RoutePoint[]): Promise<RouteTransition[]> {
     const transitions: RouteTransition[] = [];
     for (let i = 0; i < chain.length - 1; i++) {
       const distM = this.haversine(chain[i].lat, chain[i].lng, chain[i + 1].lat, chain[i + 1].lng);
       const walkMin = Math.round((distM / WALK_SPEED_M_PER_MIN) * STREET_CURVE);
 
       if (distM > MAX_WALK_M) {
-        // Taxi link
-        const taxiMin = Math.max(5, Math.round(distM / 500)); // ~30km/h city
+        const taxiMin = Math.max(5, Math.round(distM / 500));
         transitions.push({ type: 'taxi', distanceM: Math.round(distM), durationMin: taxiMin });
       } else {
         transitions.push({ type: 'walk', distanceM: Math.round(distM), durationMin: walkMin });
       }
     }
+
+    // Fetch real walking paths from OSRM (parallel, with fallback)
+    await Promise.all(transitions.map(async (t, i) => {
+      try {
+        const from = chain[i];
+        const to = chain[i + 1];
+        const profile = t.type === 'taxi' ? 'driving' : 'walking';
+        const url = `https://router.project-osrm.org/route/v1/${profile}/${from.lng},${from.lat};${to.lng},${to.lat}?geometries=geojson&overview=full`;
+        const resp = await fetch(url, { signal: AbortSignal.timeout(3000) });
+        if (resp.ok) {
+          const data = await resp.json();
+          const coords = data?.routes?.[0]?.geometry?.coordinates;
+          if (coords?.length > 1) {
+            t.geometry = coords;
+          }
+        }
+      } catch {
+        // Fallback: no geometry = straight line on frontend
+      }
+    }));
+
     return transitions;
   }
 
@@ -455,8 +490,8 @@ export class RouteService {
     // Convert to RoutePoints
     const chain: RoutePoint[] = ordered.map((c) => this.toPoint(c, c.route_moment || 'anchor', 'relaxed'));
 
-    // Compute transitions
-    const transitions = this.computeTransitions(chain);
+    // Compute transitions (includes OSRM path fetch)
+    const transitions = await this.computeTransitions(chain);
 
     // Assign times
     const now = new Date();
@@ -540,7 +575,7 @@ export class RouteService {
       routeMoment: r.route_moment,
       rating: r.google_rating ? Number(r.google_rating) : undefined,
       photoUrl: r.photos?.[0],
-      durationMin: r.typical_duration_min ? Math.min(Number(r.typical_duration_min), 60) : 30,
+      durationMin: RouteService.ROUTE_DURATION[r.category] ?? Math.min(Number(r.typical_duration_min ?? 30), 60),
     }));
   }
 

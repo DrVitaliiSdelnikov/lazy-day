@@ -16,6 +16,7 @@ export interface MapLine {
   to: [number, number];
   type: 'walk' | 'taxi';
   durationMin?: number;
+  geometry?: [number, number][]; // full path coordinates [lng, lat][] from OSRM
 }
 
 @Component({
@@ -232,18 +233,40 @@ export class RouteMapComponent implements AfterViewInit, OnDestroy {
     svg.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;z-index:1;';
 
     for (const ln of lns) {
-      const from = this.map.project(ln.from as [number, number]);
-      const to = this.map.project(ln.to as [number, number]);
-      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-      line.setAttribute('x1', String(from.x));
-      line.setAttribute('y1', String(from.y));
-      line.setAttribute('x2', String(to.x));
-      line.setAttribute('y2', String(to.y));
-      line.setAttribute('stroke', ln.type === 'taxi' ? '#e67e22' : '#4a7c59');
-      line.setAttribute('stroke-width', '4');
-      line.setAttribute('stroke-linecap', 'round');
-      if (ln.type === 'taxi') line.setAttribute('stroke-dasharray', '8,6');
-      svg.appendChild(line);
+      const stroke = ln.type === 'taxi' ? '#e67e22' : '#4a7c59';
+
+      if (ln.geometry && ln.geometry.length > 1) {
+        // Real path from OSRM
+        const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+        const pts = ln.geometry
+          .map(coord => {
+            const px = this.map!.project(coord as [number, number]);
+            return `${px.x},${px.y}`;
+          })
+          .join(' ');
+        polyline.setAttribute('points', pts);
+        polyline.setAttribute('fill', 'none');
+        polyline.setAttribute('stroke', stroke);
+        polyline.setAttribute('stroke-width', '4');
+        polyline.setAttribute('stroke-linecap', 'round');
+        polyline.setAttribute('stroke-linejoin', 'round');
+        if (ln.type === 'taxi') polyline.setAttribute('stroke-dasharray', '8,6');
+        svg.appendChild(polyline);
+      } else {
+        // Fallback: straight line
+        const from = this.map.project(ln.from as [number, number]);
+        const to = this.map.project(ln.to as [number, number]);
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', String(from.x));
+        line.setAttribute('y1', String(from.y));
+        line.setAttribute('x2', String(to.x));
+        line.setAttribute('y2', String(to.y));
+        line.setAttribute('stroke', stroke);
+        line.setAttribute('stroke-width', '4');
+        line.setAttribute('stroke-linecap', 'round');
+        if (ln.type === 'taxi') line.setAttribute('stroke-dasharray', '8,6');
+        svg.appendChild(line);
+      }
     }
 
     // Append to map canvas container

@@ -16,6 +16,7 @@ interface RoutePoint {
 
 interface RouteTransition {
   type: 'walk' | 'taxi'; distanceM: number; durationMin: number; careLine?: string;
+  geometry?: [number, number][];
 }
 
 interface CareLine {
@@ -1107,6 +1108,7 @@ export class RouteComponent implements OnInit {
           to: [to.lng, to.lat],
           type: data.transitions[i].type,
           durationMin: data.transitions[i].durationMin,
+          geometry: data.transitions[i].geometry,
         });
       }
     }
