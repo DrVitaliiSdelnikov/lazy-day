@@ -77,15 +77,29 @@ export class RouteService {
 
   constructor(private readonly ds: DataSource) {}
 
-  async generate(dto: GenerateRouteDto): Promise<RouteResponse> {
+  async generate(dto: GenerateRouteDto): Promise<RouteResponse & { curatedCode?: string; allSeen?: boolean }> {
     const duration = dto.duration ?? '2-3h';
     const pace = dto.pace ?? 'relaxed';
     const moods = dto.moods ?? ['scenic', 'food'];
+    const companions = dto.companions ?? [];
     const locale = dto.locale ?? 'ru';
+    const deviceId = (dto as any).deviceId ?? '';
 
-    const targetMinutes = duration === '2-3h' ? 150 : duration === 'half-day' ? 300 : 480;
-    const targetPoints = duration === '2-3h' ? 4 : duration === 'half-day' ? 6 : 8;
-    const radiusM = duration === '2-3h' ? 3000 : duration === 'half-day' ? 5000 : 8000;
+    // Try curated route first
+    const curated = await this.findCuratedRoute(moods, duration, companions, deviceId);
+    if (curated) {
+      return this.buildFromCurated(curated, pace, locale);
+    }
+
+    // Check if all seen
+    const allSeenCheck = await this.areAllCuratedSeen(moods, duration, companions, deviceId);
+    if (allSeenCheck) {
+      // Fall through to dynamic generation, but flag it
+    }
+
+    const targetMinutes = duration === '1h' ? 60 : duration === '2-3h' ? 150 : duration === 'half-day' ? 300 : 480;
+    const targetPoints = duration === '1h' ? 3 : duration === '2-3h' ? 4 : duration === 'half-day' ? 6 : 8;
+    const radiusM = duration === '1h' ? 2000 : duration === '2-3h' ? 3000 : duration === 'half-day' ? 5000 : 8000;
 
     // 1. Fetch candidates
     const candidates = await this.fetchCandidates(dto.lat, dto.lng, radiusM, moods);
@@ -127,8 +141,120 @@ export class RouteService {
       totalMinutes,
       taxiLinks,
       header,
+      allSeen: allSeenCheck || undefined,
     };
   }
+
+  // --- Curated route logic ---
+
+  private durationToTiers(duration: string): string[] {
+    switch (duration) {
+      case '1h': return ['easy'];
+      case '2-3h': return ['easy', 'medium'];
+      case 'half-day': return ['medium', 'full_day'];
+      case 'full-day': return ['full_day'];
+      default: return ['easy', 'medium'];
+    }
+  }
+
+  private async findCuratedRoute(moods: string[], duration: string, companions: string[], deviceId: string): Promise<any | null> {
+    // Nightlife mood → only night tier
+    const tiers = moods.includes('nightlife') ? ['night'] : this.durationToTiers(duration);
+    const tiersPlaceholder = tiers.map((_, i) => `$${i + 1}`).join(',');
+
+    // Build query: match any mood, match tier, exclude seen
+    const rows = await this.ds.query(`
+      SELECT cr.* FROM curated_routes cr
+      WHERE cr.tier IN (${tiersPlaceholder})
+        AND cr.moods && $${tiers.length + 1}::text[]
+        AND (
+          $${tiers.length + 2}::text[] = '{}'::text[]
+          OR cr.companions && $${tiers.length + 2}::text[]
+          OR cr.companions = '{}'::text[]
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM seen_routes sr
+          WHERE sr.route_id = cr.id AND sr.device_id = $${tiers.length + 3}
+        )
+      ORDER BY
+        array_length(cr.moods & $${tiers.length + 1}::text[], 1) DESC NULLS LAST,
+        random()
+      LIMIT 1
+    `, [...tiers, moods, companions, deviceId]);
+
+    return rows[0] ?? null;
+  }
+
+  private async areAllCuratedSeen(moods: string[], duration: string, companions: string[], deviceId: string): Promise<boolean> {
+    if (!deviceId) return false;
+    const tiers = moods.includes('nightlife') ? ['night'] : this.durationToTiers(duration);
+    const tiersPlaceholder = tiers.map((_, i) => `$${i + 1}`).join(',');
+
+    const [{ total, seen }] = await this.ds.query(`
+      SELECT
+        COUNT(*) as total,
+        COUNT(*) FILTER (WHERE EXISTS (
+          SELECT 1 FROM seen_routes sr WHERE sr.route_id = cr.id AND sr.device_id = $${tiers.length + 3}
+        )) as seen
+      FROM curated_routes cr
+      WHERE cr.tier IN (${tiersPlaceholder})
+        AND cr.moods && $${tiers.length + 1}::text[]
+        AND (
+          $${tiers.length + 2}::text[] = '{}'::text[]
+          OR cr.companions && $${tiers.length + 2}::text[]
+          OR cr.companions = '{}'::text[]
+        )
+    `, [...tiers, moods, companions, deviceId]);
+
+    return Number(total) > 0 && Number(seen) >= Number(total);
+  }
+
+  private async buildFromCurated(curated: any, pace: string, locale: string): Promise<RouteResponse & { curatedCode?: string }> {
+    const isRu = locale === 'ru';
+    const points: RoutePoint[] = (curated.points as any[]).map((p: any, i: number) => ({
+      id: `curated-${curated.code}-${i}`,
+      name: isRu ? (p.name ?? p.name_en) : (p.name_en ?? p.name),
+      category: p.category,
+      lat: p.lat,
+      lng: p.lng,
+      hook: p.note,
+      role: i === 0 ? 'anchor' : p.category === 'restaurant' || p.category === 'bar' ? 'food_break' : 'passage',
+      durationMin: RouteService.ROUTE_DURATION[p.category] ?? p.duration_min ?? 20,
+      arriveAt: '',
+      photoUrl: undefined,
+    }));
+
+    const transitions = await this.computeTransitions(points);
+
+    const now = new Date();
+    this.assignTimes(points, transitions, (now.getUTCHours() + 4) % 24, now.getMinutes());
+
+    const totalWalkM = transitions.reduce((s, t) => s + (t.type === 'walk' ? t.distanceM : 0), 0);
+    const totalMinutes = points.reduce((s, p) => s + p.durationMin, 0) +
+      transitions.reduce((s, t) => s + t.durationMin, 0);
+    const taxiLinks = transitions.filter(t => t.type === 'taxi').length;
+    const careLines = this.computeCareLines(points, transitions, totalWalkM, totalMinutes);
+    const guideNote = isRu ? curated.guide_notes : curated.guide_notes_en;
+    const header = (isRu ? curated.description : curated.description_en) +
+      (guideNote ? `\n💡 ${guideNote}` : '');
+
+    return {
+      points, transitions, careLines,
+      totalKm: Math.round(totalWalkM / 100) / 10,
+      totalMinutes, taxiLinks, header,
+      curatedCode: curated.code,
+    };
+  }
+
+  async markSeen(deviceId: string, routeCode: string): Promise<void> {
+    await this.ds.query(`
+      INSERT INTO seen_routes (device_id, route_id)
+      SELECT $1, id FROM curated_routes WHERE code = $2
+      ON CONFLICT DO NOTHING
+    `, [deviceId, routeCode]);
+  }
+
+  // --- Dynamic route logic ---
 
   private async fetchCandidates(lat: number, lng: number, radiusM: number, moods: string[]): Promise<RouteCandidate[]> {
     // Map moods to facets

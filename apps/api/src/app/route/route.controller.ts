@@ -49,4 +49,10 @@ export class RouteController {
   }) {
     return this.routeService.getAlternatives(dto);
   }
+
+  @Post('mark-seen')
+  async markSeen(@Body() dto: { deviceId: string; routeCode: string }) {
+    await this.routeService.markSeen(dto.deviceId, dto.routeCode);
+    return { ok: true };
+  }
 }

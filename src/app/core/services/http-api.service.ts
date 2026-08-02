@@ -52,7 +52,7 @@ export class HttpApiService extends ApiService {
     return this.http.post<{ ok: boolean }>(`${this.baseUrl}/feedback`, data);
   }
 
-  generateRoute(request: { lat: number; lng: number; duration?: string; moods?: string[]; pace?: string; companions?: string[]; locale?: string }): Observable<any> {
+  generateRoute(request: { lat: number; lng: number; duration?: string; moods?: string[]; pace?: string; companions?: string[]; deviceId?: string; locale?: string }): Observable<any> {
     return this.http.post(`${this.baseUrl}/routes/generate`, request);
   }
 

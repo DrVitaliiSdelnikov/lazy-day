@@ -33,5 +33,9 @@ export class GenerateRouteDto {
 
   @IsOptional()
   @IsString()
+  deviceId?: string;
+
+  @IsOptional()
+  @IsString()
   locale?: string;
 }

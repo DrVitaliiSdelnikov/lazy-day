@@ -1258,9 +1258,16 @@ export class RouteComponent implements OnInit {
   }
 
   rebuildRoute() {
+    // Mark curated route as seen before rebuilding
+    const data = this.routeData();
+    if (data?.curatedCode) {
+      this.http.post('/v1/routes/mark-seen', {
+        deviceId: this.profile.deviceId(),
+        routeCode: data.curatedCode,
+      }).subscribe();
+    }
+
     if (this.routeSource() === 'manual') {
-      // Sync points from current result (includes nearby additions), then re-link
-      const data = this.routeData();
       if (data?.points?.length) {
         this.selectedPointIds.set(data.points.map((p: any) => p.id));
       }
@@ -1295,6 +1302,7 @@ export class RouteComponent implements OnInit {
       moods: this.selectedMoods(),
       pace: this.selectedPace(),
       companions: this.selectedCompanions(),
+      deviceId: this.profile.deviceId(),
       locale: this.profile.locale(),
     }).subscribe({
       next: (data) => this.showResult(data, 'form'),
