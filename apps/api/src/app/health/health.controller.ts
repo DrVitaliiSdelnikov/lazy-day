@@ -28,6 +28,86 @@ const MIGRATIONS: { name: string; sql: string }[] = [
   { name: '021', sql: `CREATE TABLE IF NOT EXISTS facet_cooccurrence (facet_a TEXT NOT NULL, facet_b TEXT NOT NULL, weight REAL NOT NULL, source TEXT NOT NULL DEFAULT 'places', updated_at TIMESTAMPTZ DEFAULT NOW(), PRIMARY KEY (facet_a, facet_b, source)); CREATE INDEX IF NOT EXISTS idx_cooccurrence_source ON facet_cooccurrence (source);` },
   { name: '020', sql: `ALTER TABLE places ADD COLUMN IF NOT EXISTS walk_tier TEXT; ALTER TABLE places ADD COLUMN IF NOT EXISTS walk_confidence TEXT; ALTER TABLE places ADD COLUMN IF NOT EXISTS hook TEXT; ALTER TABLE places ADD COLUMN IF NOT EXISTS blurb TEXT; ALTER TABLE places ADD COLUMN IF NOT EXISTS route_moment TEXT; ALTER TABLE places ADD COLUMN IF NOT EXISTS best_time TEXT; ALTER TABLE places ADD COLUMN IF NOT EXISTS outdoor TEXT; ALTER TABLE places ADD COLUMN IF NOT EXISTS enrich_version SMALLINT DEFAULT 0;` },
   { name: '018', sql: `ALTER TABLE venues ADD COLUMN IF NOT EXISTS osm_id BIGINT; ALTER TABLE venues ADD COLUMN IF NOT EXISTS osm_type VARCHAR(8); CREATE UNIQUE INDEX IF NOT EXISTS idx_venues_osm ON venues (osm_type, osm_id) WHERE osm_id IS NOT NULL; CREATE INDEX IF NOT EXISTS idx_venues_coords ON venues (lat, lng); ALTER TABLE places ADD COLUMN IF NOT EXISTS enriched_at TIMESTAMPTZ; ALTER TABLE places ADD COLUMN IF NOT EXISTS facet_cuisine TEXT[]; ALTER TABLE places ADD COLUMN IF NOT EXISTS facet_format TEXT[]; ALTER TABLE places ADD COLUMN IF NOT EXISTS facet_price_tier SMALLINT; ALTER TABLE places ADD COLUMN IF NOT EXISTS facet_price_conf REAL; ALTER TABLE places ADD COLUMN IF NOT EXISTS facet_atmosphere TEXT[]; ALTER TABLE places ADD COLUMN IF NOT EXISTS facet_occasion TEXT[]; ALTER TABLE places ADD COLUMN IF NOT EXISTS typical_duration_min SMALLINT; ALTER TABLE places ADD COLUMN IF NOT EXISTS time_of_day_fit TEXT[]; ALTER TABLE places ADD COLUMN IF NOT EXISTS venue_role TEXT; ALTER TABLE places ADD COLUMN IF NOT EXISTS anchor_vs_filler TEXT; CREATE TABLE IF NOT EXISTS facet_idf (facet_key TEXT PRIMARY KEY, idf REAL NOT NULL, updated_at TIMESTAMPTZ DEFAULT NOW()); CREATE TABLE IF NOT EXISTS impression_agg (device_id_hash TEXT NOT NULL, venue_id UUID NOT NULL, unengaged_count SMALLINT NOT NULL DEFAULT 0, last_shown_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), engaged BOOLEAN NOT NULL DEFAULT FALSE, PRIMARY KEY (device_id_hash, venue_id)); CREATE INDEX IF NOT EXISTS idx_impr_device ON impression_agg (device_id_hash); CREATE TABLE IF NOT EXISTS user_taste_profile (device_id_hash TEXT PRIMARY KEY, facet_weights JSONB NOT NULL DEFAULT '{}', price_pref JSONB NOT NULL DEFAULT '{}', neg_counters JSONB NOT NULL DEFAULT '{}', signal_count INT NOT NULL DEFAULT 0, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()); UPDATE places SET enriched_at = NOW() WHERE google_rating IS NOT NULL AND enriched_at IS NULL;` },
+  { name: '025', sql: `
+    CREATE TABLE IF NOT EXISTS curated_routes (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      code TEXT UNIQUE NOT NULL,
+      tier TEXT NOT NULL,
+      theme TEXT NOT NULL,
+      theme_en TEXT,
+      moods TEXT[] NOT NULL DEFAULT '{}',
+      companions TEXT[] DEFAULT '{}',
+      duration_hours NUMERIC NOT NULL,
+      distance_km NUMERIC,
+      terrain TEXT DEFAULT 'flat',
+      taxi_needed BOOLEAN DEFAULT false,
+      points JSONB NOT NULL DEFAULT '[]',
+      description TEXT,
+      description_en TEXT,
+      guide_notes TEXT,
+      guide_notes_en TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS seen_routes (
+      device_id TEXT NOT NULL,
+      route_id UUID NOT NULL REFERENCES curated_routes(id) ON DELETE CASCADE,
+      seen_at TIMESTAMPTZ DEFAULT NOW(),
+      PRIMARY KEY (device_id, route_id)
+    );
+  ` },
+  { name: '026', sql: `
+    INSERT INTO curated_routes (code, tier, theme, theme_en, moods, companions, duration_hours, distance_km, terrain, taxi_needed, points, description, description_en, guide_notes, guide_notes_en) VALUES
+    ('A1', 'easy', 'Первый вкус Старого города', 'First taste of Old Town', '{scenic,culture}', '{}', 1.5, 1.5, 'flat', false,
+     '[{"name":"Площадь Свободы","name_en":"Freedom Square","lat":41.6932,"lng":44.8015,"category":"viewpoint","duration_min":10},{"name":"Сиони","name_en":"Sioni Cathedral","lat":41.6915,"lng":44.8075,"category":"viewpoint","duration_min":15},{"name":"Анчисхати","name_en":"Anchiskhati Basilica","lat":41.6948,"lng":44.8058,"category":"viewpoint","duration_min":15},{"name":"Часовая башня Габриадзе","name_en":"Gabriadze Clock Tower","lat":41.6958,"lng":44.8065,"category":"viewpoint","duration_min":20}]',
+     'Первое знакомство со Старым городом: от площади Свободы по улочкам к башне Габриадзе', 'First stroll through the Old Town to the iconic clock tower',
+     'Ловите башню к 12:00 или 19:00 — будет кукольное шоу', 'Catch the tower at noon or 7pm for the puppet show'),
+
+    ('A2', 'easy', 'Мост Мира и закат на Рике', 'Peace Bridge & sunset at Rike', '{scenic}', '{}', 1.5, 1.2, 'flat', false,
+     '[{"name":"Площадь Свободы","name_en":"Freedom Square","lat":41.6932,"lng":44.8015,"category":"viewpoint","duration_min":10},{"name":"Мост Мира","name_en":"Peace Bridge","lat":41.6925,"lng":44.8095,"category":"viewpoint","duration_min":15},{"name":"Рике-парк","name_en":"Rike Park","lat":41.6931,"lng":44.8103,"category":"park","duration_min":25},{"name":"Канатка к Нарикале","name_en":"Cable car to Narikala","lat":41.6925,"lng":44.8108,"category":"viewpoint","duration_min":15}]',
+     'Вечерняя прогулка к мосту Мира с закатом и панорамой', 'Evening walk to Peace Bridge with sunset views',
+     'Мост подсвечивается за 90 минут до заката', 'The bridge lights up 90 minutes before sunset'),
+
+    ('A3', 'easy', 'Балконы Сололаки', 'Sololaki Balconies', '{scenic,culture}', '{}', 1.5, 1.5, 'flat', false,
+     '[{"name":"Площадь Свободы","name_en":"Freedom Square","lat":41.6932,"lng":44.8015,"category":"viewpoint","duration_min":10},{"name":"ул. Мачабели","name_en":"Machabeli Street","lat":41.6920,"lng":44.8005,"category":"viewpoint","duration_min":20},{"name":"Дом-калейдоскоп","name_en":"Kaleidoscope House","lat":41.6912,"lng":44.7998,"category":"viewpoint","duration_min":15},{"name":"Дом Мелик-Азарянца","name_en":"Melik-Azaryants House","lat":41.6940,"lng":44.7995,"category":"viewpoint","duration_min":10}]',
+     'Архитектурная прогулка по витражным подъездам и резным балконам', 'Architectural walk through stained-glass stairways and carved balconies',
+     'Загляните в подъезды — там витражи и лепнина', 'Peek into the stairways — stained glass and stucco inside'),
+
+    ('A4', 'easy', 'Квартал бань Абанотубани', 'Abanotubani Bath Quarter', '{scenic}', '{}', 1.5, 1.0, 'flat', false,
+     '[{"name":"Мейдан","name_en":"Meidan Square","lat":41.6903,"lng":44.8093,"category":"viewpoint","duration_min":10},{"name":"Хрели Абано","name_en":"Chreli Abano","lat":41.6874,"lng":44.8108,"category":"bath","duration_min":15},{"name":"Мост Любви","name_en":"Bridge of Love","lat":41.6872,"lng":44.8098,"category":"viewpoint","duration_min":10},{"name":"Водопад Легвтахеви","name_en":"Leghvtakhevi Waterfall","lat":41.6865,"lng":44.8085,"category":"viewpoint","duration_min":20}]',
+     'Серные бани, мозаичный фасад и водопад в ущелье', 'Sulfur baths, mosaic facade and a waterfall in the gorge',
+     'Приходите до 10 утра — меньше людей и лучше свет', 'Come before 10am — fewer crowds and better light'),
+
+    ('A5', 'easy', 'Метехи и вид на Старый город', 'Metekhi & Old Town view', '{scenic}', '{}', 1.0, 0.8, 'flat', false,
+     '[{"name":"Рике-парк","name_en":"Rike Park","lat":41.6931,"lng":44.8103,"category":"park","duration_min":15},{"name":"Метехский мост","name_en":"Metekhi Bridge","lat":41.6903,"lng":44.8100,"category":"viewpoint","duration_min":10},{"name":"Церковь Метехи","name_en":"Metekhi Church","lat":41.6896,"lng":44.8128,"category":"viewpoint","duration_min":20}]',
+     'Лучший вид на Старый город с обрыва Метехи', 'The best Old Town view from the Metekhi cliff',
+     'Закат ловите с площадки Метехи — она смотрит на запад', 'Catch sunset from Metekhi — it faces west'),
+
+    ('A6', 'easy', 'Проспект Руставели', 'Rustaveli Avenue', '{culture}', '{}', 1.5, 1.5, 'flat', false,
+     '[{"name":"Площадь Свободы","name_en":"Freedom Square","lat":41.6932,"lng":44.8015,"category":"viewpoint","duration_min":10},{"name":"Кашветская церковь","name_en":"Kashveti Church","lat":41.6955,"lng":44.8000,"category":"viewpoint","duration_min":15},{"name":"Парламент","name_en":"Parliament of Georgia","lat":41.6967,"lng":44.7979,"category":"viewpoint","duration_min":10},{"name":"Опера","name_en":"Opera House","lat":41.6985,"lng":44.7935,"category":"theater","duration_min":15},{"name":"Сквер 9 апреля","name_en":"April 9 Square","lat":41.6995,"lng":44.7925,"category":"park","duration_min":10}]',
+     'Главный проспект: от площади Свободы мимо Парламента к Опере', 'Main avenue: Freedom Square past Parliament to the Opera',
+     'Проспект ровный и тенистый, обратно можно на метро', 'The avenue is flat and shady, metro back from Rustaveli station'),
+
+    ('A7', 'easy', 'New Tiflis: Агмашенебели', 'New Tiflis: Aghmashenebeli', '{scenic,coffee}', '{}', 1.5, 1.2, 'flat', false,
+     '[{"name":"Марджанишвили","name_en":"Marjanishvili Square","lat":41.7088,"lng":44.7946,"category":"viewpoint","duration_min":10},{"name":"Агмашенебели","name_en":"Aghmashenebeli Ave","lat":41.7060,"lng":44.7960,"category":"viewpoint","duration_min":25},{"name":"Театр Марджанишвили","name_en":"Marjanishvili Theatre","lat":41.7088,"lng":44.7946,"category":"theater","duration_min":10},{"name":"Groovy Roasters","name_en":"Groovy Roasters","lat":41.7097,"lng":44.8025,"category":"cafe","duration_min":25}]',
+     'Отреставрированные фасады и спешелти-кофе', 'Restored facades and specialty coffee',
+     'До Фабрики отсюда 3–5 минут пешком', 'Fabrika is a 3-5 min walk from here'),
+
+    ('A8', 'easy', 'Фабрика и креативный дворик', 'Fabrika Creative Yard', '{coffee}', '{}', 1.5, 0.6, 'flat', false,
+     '[{"name":"Фабрика","name_en":"Fabrika","lat":41.7097,"lng":44.8025,"category":"restaurant","duration_min":30},{"name":"Shavi Roasters","name_en":"Shavi Roasters","lat":41.7095,"lng":44.8020,"category":"cafe","duration_min":25},{"name":"House of Camora","name_en":"House of Camora","lat":41.7090,"lng":44.8030,"category":"bar","duration_min":25}]',
+     'Стрит-арт, кофе третьей волны и дворовая атмосфера', 'Street art, third wave coffee and courtyard vibes',
+     'В первую субботу месяца — маркет во дворе', 'First Saturday of the month — market in the yard'),
+
+    ('A9', 'easy', 'Вечер вина в Сололаки', 'Wine Evening in Sololaki', '{food}', '{}', 2.0, 1.0, 'flat', false,
+     '[{"name":"Площадь Свободы","name_en":"Freedom Square","lat":41.6932,"lng":44.8015,"category":"viewpoint","duration_min":10},{"name":"Vino Underground","name_en":"Vino Underground","lat":41.6909,"lng":44.8011,"category":"bar","duration_min":45},{"name":"ул. Шардени","name_en":"Shardeni Street","lat":41.6910,"lng":44.8080,"category":"viewpoint","duration_min":30}]',
+     'Натуральное вино в подвале и барная атмосфера Шардени', 'Natural wine in a cellar and Shardeni bar vibes',
+     'Возьмите хлеб с подсолнечным маслом к вину', 'Ask for bread with sunflower oil — the local wine pairing'),
+
+    ('A10', 'easy', 'Семейный Рике', 'Family Rike', '{scenic}', '{kids}', 1.5, 1.5, 'flat', false,
+     '[{"name":"Рике-парк","name_en":"Rike Park","lat":41.6931,"lng":44.8103,"category":"park","duration_min":30},{"name":"Мост Мира","name_en":"Peace Bridge","lat":41.6925,"lng":44.8095,"category":"viewpoint","duration_min":15},{"name":"Набережная Мтквари","name_en":"Mtkvari Embankment","lat":41.6935,"lng":44.8110,"category":"viewpoint","duration_min":20}]',
+     'Фонтаны, детские площадки и прогулка по мосту', 'Fountains, playgrounds and a bridge walk',
+     'Канатка порадует детей — короткая, 1.5–2 минуты', 'Kids love the cable car — just 1.5-2 minutes')
+    ON CONFLICT (code) DO NOTHING;
+  ` },
 ];
 
 @Controller('health')
