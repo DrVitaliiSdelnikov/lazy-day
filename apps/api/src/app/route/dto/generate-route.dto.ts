@@ -10,7 +10,7 @@ export class GenerateRouteDto {
   lng!: number;
 
   @IsOptional()
-  @IsEnum(['2-3h', 'half-day', 'full-day'])
+  @IsEnum(['1h', '2-3h', 'half-day', 'full-day'])
   duration?: string;
 
   @IsOptional()
@@ -25,6 +25,11 @@ export class GenerateRouteDto {
   @IsOptional()
   @IsEnum(['relaxed', 'intense'])
   pace?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  companions?: string[];
 
   @IsOptional()
   @IsString()

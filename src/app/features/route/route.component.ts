@@ -265,11 +265,24 @@ interface CareLine {
           <div class="route__chips">
             @for (m of moodOptions; track m.value) {
               <button class="ld-chip" [class.ld-chip--active]="selectedMoods().includes(m.value)"
+                [class.ld-chip--disabled]="isMoodDisabled()(m.value)"
                 (click)="toggleMood(m.value)">
                 <ld-icon [name]="m.icon" [size]="14" /> {{ m.labelKey | translate }}
               </button>
             }
           </div>
+
+          @if (companionsVisible()) {
+            <p class="route__form-label">{{ 'route.companions' | translate }}</p>
+            <div class="route__chips">
+              @for (c of companionOptions; track c.value) {
+                <button class="ld-chip" [class.ld-chip--active]="selectedCompanions().includes(c.value)"
+                  (click)="toggleCompanion(c.value)">
+                  <ld-icon [name]="c.icon" [size]="14" /> {{ c.labelKey | translate }}
+                </button>
+              }
+            </div>
+          }
 
           <p class="route__form-label">{{ 'route.pace' | translate }}</p>
           <div class="route__chips">
@@ -455,8 +468,8 @@ interface CareLine {
 
           <!-- Actions -->
           <div class="route__actions">
-            <button class="ld-btn ld-btn--ghost" (click)="step.set('form')">{{ 'route.edit' | translate }}</button>
-            <button class="ld-btn ld-btn--primary" (click)="buildRoute()">{{ 'route.rebuild' | translate }}</button>
+            <button class="ld-btn ld-btn--ghost" (click)="editRoute()">{{ 'route.edit' | translate }}</button>
+            <button class="ld-btn ld-btn--primary" (click)="rebuildRoute()">{{ 'route.rebuild' | translate }}</button>
           </div>
           <a class="route__maps-link" [href]="googleMapsUrl()" target="_blank" rel="noopener">
             <ld-icon name="map-pin" [size]="14" /> {{ 'route.open_maps' | translate }}
@@ -958,6 +971,7 @@ export class RouteComponent implements OnInit {
   step = signal<'form' | 'loading' | 'result' | 'manual'>('loading');
   showOptimizePrompt = signal(false);
   routeData = signal<any>(null);
+  routeSource = signal<'manual' | 'generate'>('manual');
   alternatives = signal<any[]>([]);
   alternativesForIndex = signal(-1);
   altLoading = signal(false);
@@ -1038,8 +1052,10 @@ export class RouteComponent implements OnInit {
   selectedDuration = signal('2-3h');
   selectedMoods = signal<string[]>(['scenic', 'food']);
   selectedPace = signal('relaxed');
+  selectedCompanions = signal<string[]>([]);
 
   durationOptions = [
+    { value: '1h', labelKey: 'route.dur_hour' },
     { value: '2-3h', labelKey: 'route.dur_short' },
     { value: 'half-day', labelKey: 'route.dur_half' },
     { value: 'full-day', labelKey: 'route.dur_full' },
@@ -1051,12 +1067,30 @@ export class RouteComponent implements OnInit {
     { value: 'culture', labelKey: 'route.mood_culture', icon: 'masks-theater' },
     { value: 'nature', labelKey: 'route.mood_nature', icon: 'trees' },
     { value: 'coffee', labelKey: 'route.mood_coffee', icon: 'coffee' },
+    { value: 'nightlife', labelKey: 'route.mood_nightlife', icon: 'glass-cocktail' },
+  ];
+
+  companionOptions = [
+    { value: 'kids', labelKey: 'route.companion_kids', icon: 'users' },
+    { value: 'dog', labelKey: 'route.companion_dog', icon: 'dog' },
   ];
 
   paceOptions = [
     { value: 'relaxed', labelKey: 'route.pace_relaxed' },
     { value: 'intense', labelKey: 'route.pace_intense' },
   ];
+
+  // Compatibility: nightlife excludes companions; dog excludes culture
+  isNightlife = computed(() => this.selectedMoods().includes('nightlife'));
+  companionsVisible = computed(() => !this.isNightlife());
+  isMoodDisabled = computed(() => {
+    const companions = this.selectedCompanions();
+    return (mood: string) => {
+      if (mood === 'nightlife' && companions.length > 0) return true;
+      if (mood === 'culture' && companions.includes('dog')) return true;
+      return false;
+    };
+  });
 
   private loaderPhrases = [
     'route.loader_1', 'route.loader_2', 'route.loader_3', 'route.loader_4',
@@ -1121,11 +1155,31 @@ export class RouteComponent implements OnInit {
   });
 
   toggleMood(mood: string) {
+    if (this.isMoodDisabled()(mood)) return;
     const current = this.selectedMoods();
     if (current.includes(mood)) {
       this.selectedMoods.set(current.filter(m => m !== mood));
     } else {
       this.selectedMoods.set([...current, mood]);
+      // Nightlife selected → clear companions
+      if (mood === 'nightlife') {
+        this.selectedCompanions.set([]);
+      }
+    }
+  }
+
+  toggleCompanion(companion: string) {
+    const current = this.selectedCompanions();
+    if (current.includes(companion)) {
+      this.selectedCompanions.set(current.filter(c => c !== companion));
+    } else {
+      this.selectedCompanions.set([...current, companion]);
+      // Companion selected → remove nightlife from moods
+      this.selectedMoods.update(moods => moods.filter(m => m !== 'nightlife'));
+      // Dog selected → remove culture
+      if (companion === 'dog') {
+        this.selectedMoods.update(moods => moods.filter(m => m !== 'culture'));
+      }
     }
   }
 
@@ -1203,7 +1257,34 @@ export class RouteComponent implements OnInit {
     this.loadNearby(data);
   }
 
+  rebuildRoute() {
+    if (this.routeSource() === 'manual') {
+      // Sync points from current result (includes nearby additions), then re-link
+      const data = this.routeData();
+      if (data?.points?.length) {
+        this.selectedPointIds.set(data.points.map((p: any) => p.id));
+      }
+      this.buildManualRoute(false);
+    } else {
+      this.buildRoute();
+    }
+  }
+
+  editRoute() {
+    if (this.routeSource() === 'manual') {
+      // Sync selectedPointIds from current routeData (includes nearby additions)
+      const data = this.routeData();
+      if (data?.points?.length) {
+        this.selectedPointIds.set(data.points.map((p: any) => p.id));
+      }
+      this.step.set('manual');
+    } else {
+      this.step.set('form');
+    }
+  }
+
   buildRoute() {
+    this.routeSource.set('generate');
     this.startLoader();
 
     const pos = this.geo.position();
@@ -1213,6 +1294,7 @@ export class RouteComponent implements OnInit {
       duration: this.selectedDuration(),
       moods: this.selectedMoods(),
       pace: this.selectedPace(),
+      companions: this.selectedCompanions(),
       locale: this.profile.locale(),
     }).subscribe({
       next: (data) => this.showResult(data, 'form'),
@@ -1561,6 +1643,7 @@ export class RouteComponent implements OnInit {
       await this.geo.requestPosition();
     }
 
+    this.routeSource.set('manual');
     this.startLoader();
     const pos = this.geo.position();
     const firstPoint = this.selectedPoints()[0];

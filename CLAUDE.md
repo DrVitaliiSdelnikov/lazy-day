@@ -163,6 +163,7 @@ Full spec: `.workbench/specs/feed-cards-ui-spec.md`
 - [ ] Проверить фильтр "События" на фронте — отделяет ли type=event от type=place
 - [ ] UI flows: landing → discover, onboarding, chips → ProfileStore, language switcher
 - [ ] QA: полный пользовательский путь на проде (landing → discover → карточка → share)
+- [ ] **Facet stabilization** — фасеты показываются в неправильном порядке / с зависимостями. Пример: фасет "Свидание" появляется только после выбора "Традиционный", хотя должен быть доступен сразу. Нужно: проверить логику `suggestedFacets` и фильтрацию — фасеты не должны зависеть друг от друга, каждый доступен независимо.
 
 #### 0.1c Landing + UX improvements — DONE (2026-07-23)
 - [x] **Event poster thumbnails** on feed cards (tkt.ge, google_events, biletebi via proxy)
