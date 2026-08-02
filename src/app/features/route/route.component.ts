@@ -54,7 +54,7 @@ interface CareLine {
           <div class="route__filter-bar">
             @for (t of typeFilters; track t.value) {
               <button class="ld-chip"
-                [class.ld-chip--active]="t.value === 'areas' ? (manualTypeFilter() === 'areas' || selectedAreaId()) : manualTypeFilter() === t.value"
+                [class.ld-chip--active]="manualTypeFilter() === t.value"
                 (click)="onFilterChipClick(t.value)">{{ t.labelKey | translate }}</button>
             }
           </div>
@@ -69,55 +69,87 @@ interface CareLine {
 
             <!-- List panel -->
             <div class="route__list-panel">
-              <!-- Area filter active: show info + clear -->
-              @if (selectedAreaDetail()) {
-                <div class="route__area-detail">
-                  <p class="route__area-desc-title">{{ selectedAreaDetail()!.name }}</p>
-                  <p class="route__area-desc">{{ selectedAreaDetail()!.description }}</p>
-                  <div class="route__area-tags">
-                    @for (tag of selectedAreaDetail()!.vibe ?? []; track tag) {
-                      <span class="route__area-tag">{{ tag }}</span>
-                    }
-                  </div>
-                  @if (areaExpanded()) {
-                    @if (selectedAreaDetail()!.fullDescription) {
-                      <p class="route__area-full">{{ selectedAreaDetail()!.fullDescription }}</p>
-                    }
-                    @if (selectedAreaDetail()!.whatToExpect) {
-                      <p class="route__area-full"><strong>{{ 'route.what_here' | translate }}:</strong> {{ selectedAreaDetail()!.whatToExpect }}</p>
-                    }
-                    @if (selectedAreaDetail()!.whoFor) {
-                      <p class="route__area-full"><strong>{{ 'route.who_for' | translate }}:</strong> {{ selectedAreaDetail()!.whoFor }}</p>
-                    }
-                    @if (selectedAreaDetail()!.practice) {
-                      <p class="route__area-full">🚶 {{ selectedAreaDetail()!.practice }}</p>
-                    }
-                    @if (selectedAreaDetail()!.honestWarning) {
-                      <p class="route__area-warn">⚠ {{ selectedAreaDetail()!.honestWarning }}</p>
-                    }
-                  }
-                  <div class="route__area-actions">
-                    <button class="route__area-clear" (click)="areaExpanded.set(!areaExpanded())">
-                      {{ areaExpanded() ? ('route.less' | translate) : ('route.more' | translate) }}
-                    </button>
-                    <button class="route__area-clear" (click)="onFilterChipClick('areas')">{{ 'route.change_area' | translate }}</button>
-                    <button class="route__area-clear" (click)="clearArea()">{{ 'route.show_all' | translate }}</button>
-                  </div>
-                </div>
-              }
-
-              <!-- Areas list (when "Районы" chip selected) -->
-              @if (manualTypeFilter() === 'areas') {
+              <!-- Areas accordion (shown in "Все" filter, i.e. no type filter) -->
+              @if (!manualTypeFilter()) {
                 @for (area of areas(); track area.id) {
-                  <div class="route__area-row" (click)="selectArea(area)">
-                    <span class="route__area-name">{{ area.name }}</span>
-                    <span class="route__area-vibe">{{ area.vibe?.join(' · ') }}</span>
+                  <div class="route__area-card" [class.route__area-card--open]="selectedAreaId() === area.id">
+                    <!-- Area header (tap to expand/collapse) -->
+                    <div class="route__area-header" (click)="toggleArea(area)">
+                      <div class="route__area-info">
+                        <span class="route__area-name">{{ area.name }}</span>
+                        <p class="route__area-short-desc">{{ area.description }}</p>
+                        <span class="route__area-vibe">{{ translateTags(area.vibe) }}</span>
+                      </div>
+                      <span class="route__area-arrow" [class.route__area-arrow--open]="selectedAreaId() === area.id">›</span>
+                    </div>
+
+                    <!-- Expanded: full info + places -->
+                    @if (selectedAreaId() === area.id) {
+                      <div class="route__area-body">
+                        <p class="route__area-desc">{{ area.description }}</p>
+
+                        @if (areaExpanded()) {
+                          @if (area.whatToExpect) {
+                            <p class="route__area-field"><strong>{{ 'route.what_here' | translate }}:</strong> {{ area.whatToExpect }}</p>
+                          }
+                          @if (area.whenBest) {
+                            <p class="route__area-field"><strong>{{ 'route.when_best' | translate }}:</strong> {{ area.whenBest }}</p>
+                          }
+                          @if (area.honestWarning) {
+                            <p class="route__area-warn">{{ area.honestWarning }}</p>
+                          }
+                          @if (area.bestFor?.length) {
+                            <div class="route__area-tags">
+                              @for (tag of area.bestFor; track tag) {
+                                <span class="route__area-tag">{{ ('tag.' + tag) | translate }}</span>
+                              }
+                            </div>
+                          }
+                        }
+                        <button class="route__area-toggle" (click)="areaExpanded.set(!areaExpanded()); $event.stopPropagation()">
+                          {{ areaExpanded() ? ('route.less' | translate) : ('route.more' | translate) }}
+                        </button>
+
+                        <!-- Places inside this area -->
+                        @if (areaPlaces().length > 0) {
+                          <div class="route__area-places">
+                            @for (place of areaPlaces(); track place.id) {
+                              <div class="route__place-row"
+                                [class.route__place-row--selected]="isSelected(place.id)">
+                                <div class="route__place-rest">
+                                  <div class="route__place-icon">
+                                    <ld-icon [name]="categoryIcon(place.category)" [size]="18" />
+                                  </div>
+                                  <div class="route__place-main">
+                                    <span class="route__place-name">{{ place.name }}</span>
+                                    @if (place.hook) {
+                                      <p class="route__place-gist">{{ place.hook }}</p>
+                                    }
+                                  </div>
+                                  <button class="route__place-add"
+                                    [class.route__place-add--active]="isSelected(place.id)"
+                                    (click)="togglePointById(place.id); $event.stopPropagation()">
+                                    @if (isSelected(place.id)) {
+                                      <span>{{ selectedIndex(place.id) + 1 }}</span>
+                                    } @else {
+                                      <span>+</span>
+                                    }
+                                  </button>
+                                </div>
+                              </div>
+                            }
+                          </div>
+                        } @else {
+                          <p class="route__area-loading">{{ 'route.loader_1' | translate }}</p>
+                        }
+                      </div>
+                    }
                   </div>
                 }
               }
 
-              <!-- Places list (when any other filter) -->
-              @if (manualTypeFilter() !== 'areas') {
+              <!-- Places list (shown for category filters: scenic, food, etc.) -->
+              @if (manualTypeFilter()) {
               @for (place of topPlaces(); track place.id) {
                 <div class="route__place-row"
                   [class.route__place-row--selected]="isSelected(place.id)"
@@ -255,12 +287,45 @@ interface CareLine {
       <!-- Step: Loading -->
       @if (step() === 'loading') {
         <section class="route__loading">
-          <div class="route__loader-pins">
-            <span class="pin"><ld-icon name="map-pin" [size]="20" /></span>
-            <span class="pin"><ld-icon name="map-pin" [size]="20" /></span>
-            <span class="pin"><ld-icon name="map-pin" [size]="20" /></span>
+          <!-- Schematic map: sky + river + roads + animated pins + route line -->
+          <div class="route__loader-scene">
+            <svg class="route__loader-svg" viewBox="0 0 320 200" preserveAspectRatio="xMidYMid slice">
+              <!-- Sky gradient -->
+              <defs>
+                <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" class="route__sky-top" />
+                  <stop offset="100%" class="route__sky-bottom" />
+                </linearGradient>
+              </defs>
+              <rect width="320" height="200" fill="url(#skyGrad)" />
+
+              <!-- Roads (subtle) -->
+              <line x1="0" y1="140" x2="320" y2="120" class="route__loader-road" />
+              <line x1="60" y1="200" x2="180" y2="80" class="route__loader-road" />
+
+              <!-- River curve -->
+              <path d="M0 160 Q80 140 160 155 Q240 170 320 150" class="route__loader-river" />
+
+              <!-- Route line (dashed, grows with pins) -->
+              @if (loaderPinCount() >= 2) {
+                <polyline [attr.points]="loaderLinePoints()" class="route__loader-line" />
+              }
+
+              <!-- Pins drop one by one -->
+              @for (pin of loaderPins(); track pin.idx) {
+                <g class="route__loader-pin" [style.animation-delay]="pin.idx * 520 + 'ms'">
+                  <!-- Pin body -->
+                  <circle [attr.cx]="pin.x" [attr.cy]="pin.y" r="12" class="route__loader-pin-bg" />
+                  <text [attr.x]="pin.x" [attr.y]="pin.y + 4" text-anchor="middle"
+                    class="route__loader-pin-num">{{ pin.idx + 1 }}</text>
+                </g>
+              }
+            </svg>
           </div>
-          <p class="route__loader-text">{{ loaderPhrase() }}</p>
+
+          <!-- Friend's voice phrase -->
+          <p class="route__loader-text" [class.route__loader-text--fade]="loaderFading()">{{ loaderPhrase() | translate }}</p>
+          <p class="route__loader-hint">{{ 'route.loader_hint' | translate }}</p>
         </section>
       }
 
@@ -338,7 +403,7 @@ interface CareLine {
                   <div class="route__transition route__transition--taxi">
                     <span class="route__transition-msg">{{ 'route.far_walk' | translate }}</span>
                     <div class="route__transition-btns">
-                      <a class="route__transit-btn" [href]="boltLink(i)" target="_blank" rel="noopener">
+                      <a class="route__transit-btn route__transit-btn--mobile" [href]="boltLink(i)" target="_blank" rel="noopener">
                         <ld-icon name="car" [size]="13" /> {{ 'route.taxi' | translate }}
                       </a>
                       <a class="route__transit-btn route__transit-btn--alt" [href]="transitLink(i)" target="_blank" rel="noopener">
@@ -359,7 +424,7 @@ interface CareLine {
           <!-- Nearby places -->
           @if (nearbyPlaces().length > 0) {
             <div class="route__nearby">
-              <p class="route__nearby-title">✨ {{ 'route.nearby_title' | translate }}</p>
+              <p class="route__nearby-title">{{ 'route.nearby_title' | translate }}</p>
               @for (place of nearbyPlaces(); track place.id) {
                 <div class="route__nearby-item"
                   (mouseenter)="focusNearbyOnMap(place)"
@@ -494,39 +559,61 @@ interface CareLine {
       cursor: pointer; padding: 0; font-family: inherit; text-decoration: underline;
     }
 
-    /* Area rows (shown when "Районы" chip active) */
-    .route__area-row {
-      display: flex; flex-direction: column; gap: 2px;
-      padding: 12px 14px; border: 1px solid var(--ld-border); border-radius: 10px;
-      background: var(--ld-surface); cursor: pointer; transition: border-color 0.15s;
+    /* Area accordion cards */
+    .route__area-card {
+      border: 1px solid var(--ld-border); border-radius: 10px;
+      background: var(--ld-surface); overflow: hidden;
+      transition: border-color 0.15s;
     }
-    .route__area-row:hover { border-color: var(--ld-primary); }
+    .route__area-card--open { border-color: var(--ld-primary); }
+    .route__area-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 14px; cursor: pointer;
+    }
+    .route__area-header:hover { background: var(--ld-primary-soft); }
+    .route__area-info { display: flex; flex-direction: column; gap: 2px; }
     .route__area-name { font-size: 14px; font-weight: 600; color: var(--ld-text); }
-    .route__area-vibe { font-size: 11px; color: var(--ld-text-3); }
-
-    /* Area detail (shown when area selected as filter) */
-    .route__area-detail {
-      padding: 10px 12px; background: var(--ld-primary-soft); border-radius: 10px; margin-bottom: 6px;
+    .route__area-short-desc {
+      font-size: 12px; color: var(--ld-text-2); margin: 2px 0 4px; line-height: 1.4;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
     }
-    .route__area-desc-title { font-size: 14px; font-weight: 700; margin: 0 0 4px; color: var(--ld-text); }
-    .route__area-desc { font-size: 12px; color: var(--ld-text); margin: 0 0 4px; line-height: 1.4; }
-    .route__area-warn { font-size: 11px; color: var(--ld-text-2); margin: 4px 0; font-style: italic; }
+    .route__area-card--open .route__area-short-desc { display: none; }
+    .route__area-vibe { font-size: 11px; color: var(--ld-text-3); }
+    .route__area-arrow {
+      font-size: 18px; color: var(--ld-text-3); transition: transform 0.2s;
+      font-weight: 600;
+    }
+    .route__area-arrow--open { transform: rotate(90deg); color: var(--ld-primary); }
+    .route__area-body {
+      padding: 0 14px 12px; border-top: 1px solid var(--ld-border);
+    }
+    .route__area-desc {
+      font-size: 12px; color: var(--ld-text); margin: 10px 0 4px; line-height: 1.5;
+    }
+    .route__area-expect {
+      font-size: 12px; color: var(--ld-text-2); margin: 4px 0; line-height: 1.4;
+    }
+    .route__area-warn {
+      font-size: 11px; color: var(--ld-warn, #D99A26); margin: 4px 0; font-style: italic;
+    }
+    .route__area-field {
+      font-size: 12px; color: var(--ld-text); margin: 6px 0; line-height: 1.5;
+    }
+    .route__area-field strong { color: var(--ld-text-2); font-weight: 600; }
     .route__area-tags {
-      display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0;
+      display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0;
     }
     .route__area-tag {
       font-size: 10px; padding: 2px 6px; border-radius: 6px;
       background: var(--ld-surface); color: var(--ld-text-2); border: 1px solid var(--ld-border);
     }
-    .route__area-full {
-      font-size: 12px; color: var(--ld-text); margin: 4px 0; line-height: 1.5;
-    }
-    .route__area-actions {
-      display: flex; gap: 12px; margin-top: 6px;
-    }
-    .route__area-clear {
+    .route__area-toggle {
       background: none; border: none; font-size: 12px; color: var(--ld-primary);
-      cursor: pointer; padding: 0; font-family: inherit; text-decoration: underline;
+      cursor: pointer; padding: 4px 0; font-family: inherit; text-decoration: underline;
+    }
+    .route__area-places { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+    .route__area-loading {
+      font-size: 12px; color: var(--ld-text-3); font-style: italic; margin: 8px 0 0;
     }
 
     /* Place row */
@@ -625,19 +712,61 @@ interface CareLine {
     .route__chips { display: flex; flex-wrap: wrap; gap: 6px; }
     .route__submit { width: 100%; margin-top: 24px; min-height: 48px; font-size: 16px; }
 
-    .route__loading { text-align: center; padding: 80px var(--ld-space-lg); }
-    .route__loader-pins { display: flex; justify-content: center; gap: 4px; margin-bottom: 16px; }
-    .route__loader-pins .pin {
-      display: inline-block; transform-origin: bottom center; color: var(--ld-primary);
-      animation: pinHop 1.05s ease-in-out infinite;
+    .route__loading { text-align: center; padding: 24px var(--ld-space-lg) 40px; }
+    .route__loader-scene {
+      width: 100%; max-width: 360px; margin: 0 auto 20px;
+      border-radius: 16px; overflow: hidden;
+      box-shadow: var(--ld-shadow-card);
     }
-    .route__loader-pins .pin:nth-child(2) { animation-delay: 0.14s; }
-    .route__loader-pins .pin:nth-child(3) { animation-delay: 0.28s; }
-    @keyframes pinHop {
-      0%, 70%, 100% { transform: translateY(0) scale(1); opacity: 0.55; }
-      35% { transform: translateY(-7px) scale(1.12); opacity: 1; }
+    .route__loader-svg { display: block; width: 100%; height: auto; }
+
+    /* Sky gradient uses theme colors */
+    .route__sky-top { stop-color: var(--ld-primary-soft); }
+    .route__sky-bottom { stop-color: var(--ld-surface-2); }
+
+    .route__loader-road {
+      stroke: var(--ld-border); stroke-width: 2; stroke-dasharray: 6 4; opacity: 0.5;
     }
-    .route__loader-text { font-size: 14px; color: var(--ld-text-2); font-style: italic; }
+    .route__loader-river {
+      fill: none; stroke: var(--ld-secondary, #6FA07C); stroke-width: 3;
+      opacity: 0.4; stroke-linecap: round;
+    }
+    .route__loader-line {
+      fill: none; stroke: var(--ld-primary); stroke-width: 2.5;
+      stroke-dasharray: 6 4; stroke-linecap: round; opacity: 0.8;
+    }
+
+    /* Pin group — pinDrop animation */
+    .route__loader-pin {
+      opacity: 0; animation: pinDrop 0.4s cubic-bezier(.34,1.5,.5,1) forwards;
+      transform-origin: center center;
+    }
+    .route__loader-pin-bg { fill: var(--ld-primary); }
+    .route__loader-pin-num {
+      fill: var(--ld-on-primary, #fff); font-size: 11px; font-weight: 700;
+      font-family: 'Manrope', sans-serif;
+    }
+
+    @keyframes pinDrop {
+      0%   { opacity: 0; transform: translateY(-16px) scale(0.5); }
+      60%  { opacity: 1; transform: translateY(2px) scale(1.1); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .route__loader-text {
+      font-size: 15px; color: var(--ld-text); font-style: italic;
+      margin: 0 0 6px; min-height: 22px;
+      transition: opacity 0.3s ease;
+    }
+    .route__loader-text--fade { opacity: 0; }
+    .route__loader-hint {
+      font-size: 12px; color: var(--ld-text-3); margin: 0;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .route__loader-pin { animation: none !important; opacity: 1; }
+      .route__loader-text { transition: none; }
+    }
 
     .route__result { padding: 0 var(--ld-space-lg); }
 
@@ -667,6 +796,16 @@ interface CareLine {
 
     .route__timeline { position: relative; padding-left: 40px; }
     .route__point { display: flex; gap: 12px; margin-bottom: 4px; position: relative; }
+    /* Dashed line running through points (behind marker) */
+    .route__point::before {
+      content: ''; position: absolute;
+      left: 13px; top: 0; bottom: 0;
+      border-left: 2px dashed var(--ld-border);
+    }
+    /* Hide line above first point */
+    .route__point:first-child::before { top: 14px; }
+    /* Hide line below last point (when no transition follows) */
+    .route__point:last-child::before { bottom: calc(100% - 14px); }
     .route__point-time {
       position: absolute; left: -40px; top: 2px;
       font-size: 12px; font-weight: 600; color: var(--ld-text-2); width: 36px; text-align: right;
@@ -676,6 +815,7 @@ interface CareLine {
       background: var(--ld-primary); color: var(--ld-bg);
       display: flex; align-items: center; justify-content: center;
       font-size: 13px; font-weight: 700;
+      position: relative; z-index: 1;
     }
     .route__point-body { flex: 1; min-width: 0; }
     .route__point-name { font-size: 15px; font-weight: 600; margin: 0 0 2px; }
@@ -689,7 +829,6 @@ interface CareLine {
       border-left: 2px dashed var(--ld-border); margin-left: 13px;
     }
     .route__transition--taxi {
-      border-left-color: var(--ld-primary);
       flex-direction: column; align-items: flex-start; gap: 6px;
     }
     .route__transition-msg {
@@ -707,6 +846,9 @@ interface CareLine {
     .route__transit-btn--alt {
       background: var(--ld-surface); color: var(--ld-text);
       border: 1px solid var(--ld-border);
+    }
+    @media (min-width: 900px) {
+      .route__transit-btn--mobile { display: none; }
     }
 
     .route__nearby {
@@ -785,11 +927,34 @@ export class RouteComponent implements OnInit {
   private routeMap = viewChild<RouteMapComponent>('routeMap');
 
   ngOnInit() {
-    this.loadTopPlaces();
-    this.loadAreas();
+    this.startLoader();
+    const initStart = Date.now();
+    let placesReady = false;
+    let areasReady = false;
+
+    const checkReady = () => {
+      if (!placesReady || !areasReady) return;
+      const elapsed = Date.now() - initStart;
+      const delay = Math.max(4000 - elapsed, 0);
+      setTimeout(() => {
+        this.stopLoader();
+        this.step.set('manual');
+      }, delay);
+    };
+
+    const pos = this.geo.position();
+    const locale = this.profile.locale();
+    this.http.get<any[]>(`/v1/routes/top-places?lat=${pos.lat}&lng=${pos.lng}&locale=${locale}`).subscribe({
+      next: (places) => { this.topPlaces.set(places); placesReady = true; checkReady(); },
+      error: () => { placesReady = true; checkReady(); },
+    });
+    this.http.get<any[]>(`/v1/routes/areas?locale=${locale}`).subscribe({
+      next: (areas) => { this.areas.set(areas); areasReady = true; checkReady(); },
+      error: () => { areasReady = true; checkReady(); },
+    });
   }
 
-  step = signal<'form' | 'loading' | 'result' | 'manual'>('manual');
+  step = signal<'form' | 'loading' | 'result' | 'manual'>('loading');
   showOptimizePrompt = signal(false);
   routeData = signal<any>(null);
   alternatives = signal<any[]>([]);
@@ -806,6 +971,8 @@ export class RouteComponent implements OnInit {
   selectedAreaId = signal<string | null>(null);
   areaExpanded = signal(false);
 
+  areaPlaces = signal<any[]>([]);
+
   selectedAreaDetail = computed(() => {
     const id = this.selectedAreaId();
     return id ? this.areas().find(a => a.id === id) ?? null : null;
@@ -818,7 +985,6 @@ export class RouteComponent implements OnInit {
     { value: 'culture', labelKey: 'route.mood_culture' },
     { value: 'spa', labelKey: 'route.mood_spa' },
     { value: 'coffee', labelKey: 'route.mood_coffee' },
-    { value: 'areas', labelKey: 'route.areas_title' },
   ];
 
   selectedPoints = computed(() => {
@@ -891,10 +1057,34 @@ export class RouteComponent implements OnInit {
     { value: 'intense', labelKey: 'route.pace_intense' },
   ];
 
-  private loaderPhrases = ['route.loader_1', 'route.loader_2', 'route.loader_3'];
+  private loaderPhrases = [
+    'route.loader_1', 'route.loader_2', 'route.loader_3', 'route.loader_4',
+  ];
   private loaderIdx = 0;
+  private loaderStartTime = 0;
+  private loaderPhraseInterval: ReturnType<typeof setInterval> | null = null;
+  private loaderPinInterval: ReturnType<typeof setInterval> | null = null;
+  private loaderMinTimer: ReturnType<typeof setTimeout> | null = null;
+  private pendingResult: { data: any; source: 'generate' | 'link' } | null = null;
 
   loaderPhrase = signal(this.loaderPhrases[0]);
+  loaderFading = signal(false);
+  loaderPinCount = signal(0);
+
+  // Schematic pin positions on the SVG (decorative, not real coords)
+  private readonly pinPositions = [
+    { x: 70, y: 135 }, { x: 145, y: 95 }, { x: 220, y: 120 }, { x: 275, y: 85 },
+  ];
+
+  loaderPins = computed(() => {
+    const count = this.loaderPinCount();
+    return this.pinPositions.slice(0, count).map((p, i) => ({ ...p, idx: i }));
+  });
+
+  loaderLinePoints = computed(() => {
+    const pins = this.loaderPins();
+    return pins.map(p => `${p.x},${p.y}`).join(' ');
+  });
 
   mapPoints = computed<MapPoint[]>(() => {
     const data = this.routeData();
@@ -937,15 +1127,82 @@ export class RouteComponent implements OnInit {
     }
   }
 
-  buildRoute() {
+  private startLoader() {
     this.step.set('loading');
+    this.loaderStartTime = Date.now();
     this.loaderIdx = 0;
+    this.loaderPinCount.set(0);
+    this.loaderFading.set(false);
+    this.pendingResult = null;
     this.loaderPhrase.set(this.loaderPhrases[0]);
 
-    const interval = setInterval(() => {
-      this.loaderIdx = (this.loaderIdx + 1) % this.loaderPhrases.length;
-      this.loaderPhrase.set(this.loaderPhrases[this.loaderIdx]);
-    }, 1200);
+    // Pins drop one by one every 520ms
+    let pinIdx = 0;
+    this.loaderPinInterval = setInterval(() => {
+      pinIdx++;
+      if (pinIdx <= this.pinPositions.length) {
+        this.loaderPinCount.set(pinIdx);
+      } else {
+        // Cycle: reset and replay
+        pinIdx = 0;
+        this.loaderPinCount.set(0);
+      }
+    }, 520);
+
+    // Phrases cycle every 1s with fade (4 phrases in ~4s)
+    this.loaderPhraseInterval = setInterval(() => {
+      this.loaderFading.set(true);
+      setTimeout(() => {
+        this.loaderIdx = (this.loaderIdx + 1) % this.loaderPhrases.length;
+        this.loaderPhrase.set(this.loaderPhrases[this.loaderIdx]);
+        this.loaderFading.set(false);
+      }, 200);
+    }, 1000);
+  }
+
+  private stopLoader() {
+    if (this.loaderPhraseInterval) { clearInterval(this.loaderPhraseInterval); this.loaderPhraseInterval = null; }
+    if (this.loaderPinInterval) { clearInterval(this.loaderPinInterval); this.loaderPinInterval = null; }
+    if (this.loaderMinTimer) { clearTimeout(this.loaderMinTimer); this.loaderMinTimer = null; }
+  }
+
+  private showResult(data: any, fallbackStep: 'form' | 'manual') {
+    const elapsed = Date.now() - this.loaderStartTime;
+    const MIN_DISPLAY = 2000;
+    const SKIP_THRESHOLD = 400;
+
+    // Very fast (<400ms) — skip loader entirely
+    if (elapsed < SKIP_THRESHOLD && this.step() === 'loading') {
+      this.stopLoader();
+      this.routeData.set(data);
+      this.step.set('result');
+      this.loadNearby(data);
+      return;
+    }
+
+    // If min display time not reached — wait
+    if (elapsed < MIN_DISPLAY) {
+      this.pendingResult = { data, source: fallbackStep === 'form' ? 'generate' : 'link' };
+      this.loaderMinTimer = setTimeout(() => {
+        this.stopLoader();
+        if (this.pendingResult) {
+          this.routeData.set(this.pendingResult.data);
+          this.step.set('result');
+          this.loadNearby(this.pendingResult.data);
+          this.pendingResult = null;
+        }
+      }, MIN_DISPLAY - elapsed);
+      return;
+    }
+
+    this.stopLoader();
+    this.routeData.set(data);
+    this.step.set('result');
+    this.loadNearby(data);
+  }
+
+  buildRoute() {
+    this.startLoader();
 
     const pos = this.geo.position();
     this.api.generateRoute({
@@ -956,16 +1213,8 @@ export class RouteComponent implements OnInit {
       pace: this.selectedPace(),
       locale: this.profile.locale(),
     }).subscribe({
-      next: (data) => {
-        clearInterval(interval);
-        this.routeData.set(data);
-        this.step.set('result');
-        this.loadNearby(data);
-      },
-      error: () => {
-        clearInterval(interval);
-        this.step.set('form');
-      },
+      next: (data) => this.showResult(data, 'form'),
+      error: () => { this.stopLoader(); this.step.set('form'); },
     });
   }
 
@@ -1053,18 +1302,11 @@ export class RouteComponent implements OnInit {
   }
 
   focusNearbyOnMap(place: any) {
-    if (this.routeMap()) {
-      this.routeMap()!.scrollToPoint(-1); // clear any existing popup
-      // Fly to nearby place
-      const map = (this.routeMap() as any)?.map;
-      if (map) {
-        map.flyTo({ center: [place.lng, place.lat], zoom: 16 });
-      }
-    }
+    this.routeMap()?.showNearbyDot(place.lat, place.lng);
   }
 
   clearNearbyFocus() {
-    // Optional: fly back to route bounds
+    this.routeMap()?.hideNearbyDot();
   }
 
   addNearbyToRoute(place: any) {
@@ -1183,27 +1425,31 @@ export class RouteComponent implements OnInit {
     });
   }
 
-  selectArea(area: any) {
+  toggleArea(area: any) {
+    // Collapse if already open
+    if (this.selectedAreaId() === area.id) {
+      this.selectedAreaId.set(null);
+      this.areaPlaces.set([]);
+      return;
+    }
+
     this.selectedAreaId.set(area.id);
-    this.areaExpanded.set(false);
-    // Stay on 'areas' filter but show places below area detail
-    // Filter places by area bbox
+    this.areaPlaces.set([]);
+
+    // Load places inside this area's bbox
     const bbox = area.bbox;
     if (bbox) {
-      this.topPlaces.set([]);
       const pos = this.geo.position();
-      this.http.get<any[]>(`/v1/routes/top-places?lat=${pos.lat}&lng=${pos.lng}`).subscribe({
+      const locale = this.profile.locale();
+      this.http.get<any[]>(`/v1/routes/top-places?lat=${pos.lat}&lng=${pos.lng}&locale=${locale}`).subscribe({
         next: (all) => {
           const filtered = all.filter((p: any) =>
             p.lat >= bbox.minLat && p.lat <= bbox.maxLat &&
             p.lng >= bbox.minLng && p.lng <= bbox.maxLng
           );
-          this.topPlaces.set(filtered.length > 0 ? filtered : all);
-          // Switch to places view with area detail visible
-          this.manualTypeFilter.set(null);
+          this.areaPlaces.set(filtered);
         },
       });
-      // Center map on area
       this.routeMap()?.flyToArea(bbox);
     }
   }
@@ -1222,14 +1468,8 @@ export class RouteComponent implements OnInit {
   }
 
   onFilterChipClick(type: string | null) {
-    if (type === 'areas') {
-      // Always show areas list when tapping "Районы"
-      this.selectedAreaId.set(null);
-      this.manualTypeFilter.set('areas');
-      return;
-    }
-    // Any other filter → clear area selection
     this.selectedAreaId.set(null);
+    this.areaPlaces.set([]);
     this.manualTypeFilter.set(type);
     this.topPlaces.set([]);
     this.fetchTopPlaces(type);
@@ -1289,6 +1529,11 @@ export class RouteComponent implements OnInit {
     return tags.slice(0, 3);
   }
 
+  translateTags(tags: string[] | undefined): string {
+    if (!tags?.length) return '';
+    return tags.map(t => this.translate.instant('tag.' + t)).join(' · ');
+  }
+
   categoryIcon(category: string): string {
     const map: Record<string, string> = {
       restaurant: 'tools-kitchen-2', cafe: 'coffee', bakery: 'coffee',
@@ -1314,7 +1559,7 @@ export class RouteComponent implements OnInit {
       await this.geo.requestPosition();
     }
 
-    this.step.set('loading');
+    this.startLoader();
     const pos = this.geo.position();
     const firstPoint = this.selectedPoints()[0];
     const startLat = optimizeFromGps && pos.source === 'gps' ? pos.lat : firstPoint.lat;
@@ -1326,8 +1571,8 @@ export class RouteComponent implements OnInit {
       startLng,
       locale: this.profile.locale(),
     }).subscribe({
-      next: (data) => { this.routeData.set(data); this.step.set('result'); this.loadNearby(data); },
-      error: () => this.step.set('manual'),
+      next: (data) => this.showResult(data, 'manual'),
+      error: () => { this.stopLoader(); this.step.set('manual'); },
     });
   }
 

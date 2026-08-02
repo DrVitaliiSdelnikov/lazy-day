@@ -484,9 +484,9 @@ export class RouteService {
   }
 
   async getAreas(locale = 'ru'): Promise<any[]> {
+    // Only select columns that exist in the table
     const rows = await this.ds.query(`
       SELECT id, name, name_en, name_ru, description_en, description_ru,
-        full_description_ru, full_description_en, who_for_ru, practice_ru,
         vibe, best_for, when_best, when_best_ru, what_to_expect, what_to_expect_ru,
         honest_warning, honest_warning_ru,
         center_lat, center_lng, bbox, walk_tier
@@ -497,9 +497,7 @@ export class RouteService {
       id: r.id,
       name: isRu ? (r.name_ru ?? r.name_en ?? r.name) : (r.name_en ?? r.name),
       description: isRu ? (r.description_ru ?? r.description_en) : r.description_en,
-      fullDescription: isRu ? (r.full_description_ru ?? r.full_description_en ?? r.description_en) : (r.full_description_en ?? r.description_en),
-      whoFor: isRu ? r.who_for_ru : undefined,
-      practice: isRu ? r.practice_ru : undefined,
+      fullDescription: isRu ? (r.description_ru ?? r.description_en) : r.description_en,
       vibe: r.vibe,
       bestFor: r.best_for,
       whenBest: isRu ? (r.when_best_ru ?? r.when_best) : r.when_best,

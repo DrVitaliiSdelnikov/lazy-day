@@ -171,6 +171,7 @@ export class RouteMapComponent implements AfterViewInit, OnDestroy {
         display:flex; align-items:center; justify-content:center;
         font-weight:700; font-size:13px; font-family:inherit;
         border:2px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,.3);
+        z-index:10;
       `;
 
       el.addEventListener('click', () => this.markerTap.emit(pt.index));
@@ -330,5 +331,21 @@ export class RouteMapComponent implements AfterViewInit, OnDestroy {
       this.map.flyTo({ center: [pt.lng, pt.lat], zoom: 16 });
       this.markers[index]?.togglePopup();
     }
+  }
+
+  private nearbyDot: Marker | null = null;
+
+  showNearbyDot(lat: number, lng: number) {
+    this.hideNearbyDot();
+    if (!this.map) return;
+    const el = document.createElement('div');
+    el.style.cssText = 'width:12px;height:12px;border-radius:50%;background:var(--ld-primary,#E8862D);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.3);';
+    this.nearbyDot = new Marker({ element: el }).setLngLat([lng, lat]).addTo(this.map);
+    this.map.flyTo({ center: [lng, lat], zoom: 16 });
+  }
+
+  hideNearbyDot() {
+    this.nearbyDot?.remove();
+    this.nearbyDot = null;
   }
 }

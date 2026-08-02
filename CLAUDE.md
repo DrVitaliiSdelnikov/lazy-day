@@ -248,6 +248,7 @@ Vitest via `vitest-angular` (Angular 21 default). Zoneless. ~2 дня total.
 - [ ] Кнопка фильтров (discover__filter-btn) — скрыта. Решить: добавить price_level через Google enrichment ($20/1K Enterprise) или переделать фильтр (open now, distance, type). 0% мест с ценами, 88% событий.
 - [ ] Bolt такси — нет public API/deeplink. Идея: кнопка "Такси" → копирует адрес в clipboard + открывает приложение. Универсально для любого такси-провайдера.
 - [ ] Такси UX улучшение — вместо отдельных кнопок провайдеров: одна кнопка "Такси" → копирует адрес/координаты → toast "Адрес скопирован" → открывает выбранное такси-приложение. Работает для Bolt, Yandex, любого.
+- [ ] Карта: латинские подписи — CartoDB Voyager raster tiles рендерят только грузинские надписи (улицы, районы). Нужен дубляж латиницей. Варианты: MapTiler raster (`?language=latin`), vector tiles (полный контроль стиля), или CartoDB с `language` param. Raster = быстро, vector = гибко.
 
 ### Phase A: Data Foundation — ✅ COMPLETE + DEPLOYED (2026-07-19)
 Full spec: `.workbench/specs/phase-A-data-spec.md`
@@ -283,19 +284,33 @@ Full summary: `laziGoDocs/product/v2-roadmap-summary.md`
 
 **Engagement ladder**: Decide for me → Facets → Route → Curator
 
-#### v2 Phase 1: Facets Stability (NEXT)
-- [ ] session_seed — deterministic results within session
-- [ ] Frozen shown-set — no twitching on scroll
-- [ ] Cursor pagination — proper "show more"
-- [ ] RouteReuseStrategy — preserve feed state on back-navigation
-- [ ] Voice layers: honesty line, card voice from Gemini hook
+#### v2 Phase 1: Facets Stability — ✅ COMPLETE
+- [x] session_seed — deterministic results within session
+- [x] Cursor pagination — offset/limit, append-only "show more"
+- [x] Type filter + count endpoint — server-side filtering, section badges
+- [x] SQL LIMIT 3000 — broader candidate pool
+- [x] Scroll restore — cache + scrollIntoView on back-navigation
+
+#### v2 Phase 1b: Voice — ✅ COMPLETE (EN)
+- [x] M2 honesty line — landing "Билеты и такси — сами..." (ru/en/ka)
+- [x] Gemini voice enrichment — migration 020, gemini-3.5-flash, 2524 hooks + 884 blurbs (EN)
+- [x] M4 card voice — hook on feed cards
+- [ ] Voice enrichment RU — перепрогнать step2 на русском → hook_ru/blurb_ru по locale
 
 #### v2 Phase 2: Route ("Создай маршрут")
 Full spec: `.workbench/mvp_lazy_day/v2-upd/lazigo-route-feature-spec.md`
-- [ ] Chain 3-8 POIs: walk_tier, role alternation, time budget
-- [ ] Care rules C1-C8: water, weather, taxi, hungry, sunset, tiring, late return
-- [ ] Own map: MapLibre/Leaflet + OSM (not Google)
-- [ ] Edit: replace/remove/add-detour + care recalc
+- [x] Chain 3-8 POIs: walk_tier, role alternation, time budget
+- [x] Care rules C1-C8: water, weather, taxi, hungry, sunset, tiring, late return
+- [x] Own map: MapLibre (CartoDB Voyager raster tiles, SVG overlay for lines)
+- [x] Edit: replace/remove/add-detour + care recalc
+- [x] Manual mode: top-places selection, live assembly, GPS optimize prompt
+- [x] Areas/districts: 11 zones with RU descriptions, map bounds
+- [x] Nearby places: ±250m corridor, insert into route
+- [x] Desktop two-column layout (timeline + sticky map)
+- [x] Honest taxi transitions (Bolt/Yandex deeplinks, no fake price)
+- [x] Route loading screen: animated SVG scene with pinDrop, themed by `--ld-*` vars, friend phrases with fade, min 4s display, prefers-reduced-motion support
+- [ ] Areas as nested options: tap district → see places inside (hierarchical selection)
+- [ ] Auto-generation quality: diversity, opening hours filter, seed dithering
 
 #### v2 Phase 3: Curator ("Собери вечер")
 Full spec: `.workbench/mvp_lazy_day/v2-upd/lazigo-curator-feature-spec.md`
