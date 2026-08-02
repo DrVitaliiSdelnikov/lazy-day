@@ -108,6 +108,112 @@ const MIGRATIONS: { name: string; sql: string }[] = [
      'Канатка порадует детей — короткая, 1.5–2 минуты', 'Kids love the cable car — just 1.5-2 minutes')
     ON CONFLICT (code) DO NOTHING;
   ` },
+  { name: '027', sql: `
+    INSERT INTO curated_routes (code, tier, theme, theme_en, moods, companions, duration_hours, distance_km, terrain, taxi_needed, points, description, description_en, guide_notes, guide_notes_en) VALUES
+    ('B1', 'medium', 'Старый город: глубокое погружение', 'Old Town Deep Dive', '{scenic,food,culture}', '{}', 3.0, 3.0, 'flat', false,
+     '[{"name":"Площадь Свободы","name_en":"Freedom Square","lat":41.6932,"lng":44.8015,"category":"viewpoint","duration_min":10},{"name":"Сиони","name_en":"Sioni Cathedral","lat":41.6915,"lng":44.8075,"category":"viewpoint","duration_min":15},{"name":"Анчисхати","name_en":"Anchiskhati","lat":41.6948,"lng":44.8058,"category":"viewpoint","duration_min":15},{"name":"Часовая башня","name_en":"Gabriadze Tower","lat":41.6958,"lng":44.8065,"category":"viewpoint","duration_min":15},{"name":"Мейдан","name_en":"Meidan Square","lat":41.6903,"lng":44.8093,"category":"viewpoint","duration_min":10},{"name":"Абанотубани","name_en":"Abanotubani","lat":41.6876,"lng":44.8113,"category":"viewpoint","duration_min":15},{"name":"Водопад Легвтахеви","name_en":"Leghvtakhevi Waterfall","lat":41.6865,"lng":44.8085,"category":"viewpoint","duration_min":20}]',
+     'Полное погружение в Старый город за одно утро', 'Full Old Town immersion in one morning',
+     'Начинайте утром до жары, наличные пригодятся для чурчхелы', 'Start in the morning before the heat, cash handy for churchkhela'),
+
+    ('B2', 'medium', 'Сололаки + Вифлеемские лестницы + Нарикала', 'Sololaki + Bethlehem Stairs + Narikala', '{scenic,culture}', '{}', 3.0, 2.5, 'steep', false,
+     '[{"name":"Площадь Свободы","name_en":"Freedom Square","lat":41.6932,"lng":44.8015,"category":"viewpoint","duration_min":10},{"name":"Дворы Сололаки","name_en":"Sololaki Yards","lat":41.6918,"lng":44.8000,"category":"viewpoint","duration_min":20},{"name":"Вифлеемские лестницы","name_en":"Bethlehem Stairs","lat":41.6900,"lng":44.8055,"category":"viewpoint","duration_min":25},{"name":"Betlemi Rise","name_en":"Betlemi Rise","lat":41.6895,"lng":44.8060,"category":"viewpoint","duration_min":15},{"name":"Нарикала","name_en":"Narikala","lat":41.6877,"lng":44.8087,"category":"viewpoint","duration_min":20}]',
+     'Балконы, витражи, крутой подъём и лучшая панорама', 'Balconies, stained glass, steep climb and the best panorama',
+     'Возьмите воду — подъём крутой, вниз канаткой к Рике', 'Bring water — steep climb, cable car down to Rike'),
+
+    ('B3', 'medium', 'Нарикала, Мать-Грузия и Ботанический сад', 'Narikala, Mother Georgia & Botanical Garden', '{scenic,nature}', '{}', 3.5, 3.0, 'uphill', false,
+     '[{"name":"Рике-парк","name_en":"Rike Park","lat":41.6931,"lng":44.8103,"category":"park","duration_min":10},{"name":"Канатка","name_en":"Cable car","lat":41.6925,"lng":44.8108,"category":"viewpoint","duration_min":5},{"name":"Нарикала","name_en":"Narikala","lat":41.6877,"lng":44.8087,"category":"viewpoint","duration_min":20},{"name":"Картлис Деда","name_en":"Mother of Kartli","lat":41.6881,"lng":44.8046,"category":"viewpoint","duration_min":10},{"name":"Ботанический сад","name_en":"Botanical Garden","lat":41.6851,"lng":44.8040,"category":"park","duration_min":45},{"name":"Абанотубани","name_en":"Abanotubani","lat":41.6876,"lng":44.8113,"category":"viewpoint","duration_min":10}]',
+     'Канатка наверх, крепость, статуя и сад с водопадом', 'Cable car up, fortress, statue and garden with waterfall',
+     'Наверх канаткой, чтобы силы остались на сад', 'Take cable car up so you have energy for the garden'),
+
+    ('B4', 'medium', 'Руставели: культурная прогулка', 'Rustaveli Cultural Walk', '{culture}', '{}', 3.5, 2.0, 'flat', false,
+     '[{"name":"Площадь Свободы","name_en":"Freedom Square","lat":41.6932,"lng":44.8015,"category":"viewpoint","duration_min":10},{"name":"Кашвети","name_en":"Kashveti Church","lat":41.6955,"lng":44.8000,"category":"viewpoint","duration_min":15},{"name":"Национальный музей","name_en":"National Museum","lat":41.6960,"lng":44.8002,"category":"museum","duration_min":45},{"name":"Национальная галерея","name_en":"National Gallery","lat":41.6970,"lng":44.7995,"category":"gallery","duration_min":35},{"name":"Опера","name_en":"Opera House","lat":41.6985,"lng":44.7935,"category":"theater","duration_min":15},{"name":"Сквер 9 апреля","name_en":"April 9 Square","lat":41.6995,"lng":44.7925,"category":"park","duration_min":15}]',
+     'Музеи, галереи и театры главного проспекта', 'Museums, galleries and theaters of the main avenue',
+     'Музеи закрыты по понедельникам, берите единый билет', 'Museums closed on Mondays, get a combined ticket'),
+
+    ('B5', 'medium', 'Чугурети — креативный район', 'Chugureti Creative District', '{food,coffee}', '{}', 3.0, 2.5, 'flat', false,
+     '[{"name":"Марджанишвили","name_en":"Marjanishvili","lat":41.7088,"lng":44.7946,"category":"viewpoint","duration_min":10},{"name":"Агмашенебели","name_en":"Aghmashenebeli","lat":41.7060,"lng":44.7960,"category":"viewpoint","duration_min":25},{"name":"Фабрика","name_en":"Fabrika","lat":41.7097,"lng":44.8025,"category":"restaurant","duration_min":30},{"name":"Дезертирский рынок","name_en":"Deserter Bazaar","lat":41.7130,"lng":44.7960,"category":"viewpoint","duration_min":25}]',
+     'Фасады, кофе, рынок и вечер у Фабрики', 'Facades, coffee, market and evening at Fabrika',
+     'На рынке попробуйте сыр и чурчхелу', 'Try cheese and churchkhela at the market'),
+
+    ('B6', 'medium', 'Авлабари и Самеба', 'Avlabari & Sameba', '{scenic,culture}', '{}', 3.0, 2.5, 'uphill', false,
+     '[{"name":"Авлабари","name_en":"Avlabari","lat":41.6955,"lng":44.8155,"category":"viewpoint","duration_min":10},{"name":"Дворец Дареджан","name_en":"Darejan Palace","lat":41.6960,"lng":44.8170,"category":"viewpoint","duration_min":15},{"name":"Самеба","name_en":"Holy Trinity Cathedral","lat":41.6975,"lng":44.8165,"category":"viewpoint","duration_min":25},{"name":"Метехи","name_en":"Metekhi Church","lat":41.6896,"lng":44.8129,"category":"viewpoint","duration_min":15},{"name":"Метехский мост","name_en":"Metekhi Bridge","lat":41.6903,"lng":44.8100,"category":"viewpoint","duration_min":10}]',
+     'Армянский квартал, собор Самеба и вид с обрыва Метехи', 'Armenian quarter, Sameba cathedral and Metekhi cliff view',
+     'Плечи и колени прикрыть в Самеба', 'Cover shoulders and knees in Sameba'),
+
+    ('B7', 'medium', 'Вино и бары: вечер', 'Wine & Bars Evening', '{food}', '{}', 3.5, 2.5, 'flat', false,
+     '[{"name":"Vino Underground","name_en":"Vino Underground","lat":41.6909,"lng":44.8011,"category":"bar","duration_min":45},{"name":"Pheasant''s Tears","name_en":"Pheasant''s Tears","lat":41.6912,"lng":44.8070,"category":"restaurant","duration_min":45},{"name":"ул. Шардени","name_en":"Shardeni Street","lat":41.6910,"lng":44.8080,"category":"viewpoint","duration_min":20},{"name":"g.Vino","name_en":"g.Vino","lat":41.6885,"lng":44.8095,"category":"bar","duration_min":40},{"name":"8000 Vintages","name_en":"8000 Vintages","lat":41.7213,"lng":44.7647,"category":"bar","duration_min":40}]',
+     'Винный маршрут: от погреба к погребу через Старый город', 'Wine route: cellar to cellar through Old Town',
+     'Дегустация — 3–5 бокалов, до 8000 Vintages Bolt за пару лари', 'Tastings 3-5 glasses, Bolt to 8000 Vintages for a few lari'),
+
+    ('B8', 'medium', 'Гастро-Вера', 'Gastro-Vera', '{food,coffee}', '{}', 3.5, 2.5, 'flat', false,
+     '[{"name":"Pulp","name_en":"Pulp","lat":41.7070,"lng":44.7590,"category":"cafe","duration_min":25},{"name":"Дом Пиросмани","name_en":"Pirosmani House","lat":41.7085,"lng":44.7680,"category":"museum","duration_min":15},{"name":"Парк Веры","name_en":"Vera Park","lat":41.7100,"lng":44.7700,"category":"park","duration_min":15},{"name":"Barbarestan","name_en":"Barbarestan","lat":41.7132,"lng":44.7945,"category":"restaurant","duration_min":50},{"name":"Café Littera","name_en":"Cafe Littera","lat":41.6902,"lng":44.7998,"category":"restaurant","duration_min":50}]',
+     'Спешелти-кофе, музей Пиросмани и лучшие рестораны Тбилиси', 'Specialty coffee, Pirosmani museum and Tbilisi top restaurants',
+     'В Barbarestan и Littera бронируйте заранее', 'Book Barbarestan and Littera in advance'),
+
+    ('B9', 'medium', 'Советский модернизм', 'Soviet Modernism', '{scenic,culture}', '{}', 3.5, 0, 'flat', true,
+     '[{"name":"Дом-калейдоскоп","name_en":"Kaleidoscope House","lat":41.6912,"lng":44.7998,"category":"viewpoint","duration_min":15},{"name":"Biltmore / IMELI","name_en":"Biltmore IMELI","lat":41.6945,"lng":44.7999,"category":"viewpoint","duration_min":10},{"name":"Дворец молодёжи","name_en":"Youth Palace","lat":41.7050,"lng":44.7880,"category":"viewpoint","duration_min":15},{"name":"HQ Банка Грузии","name_en":"Bank of Georgia HQ","lat":41.7270,"lng":44.7570,"category":"viewpoint","duration_min":15},{"name":"Sky Bridge Нуцубидзе","name_en":"Nutsubidze Sky Bridge","lat":41.7350,"lng":44.7480,"category":"viewpoint","duration_min":20}]',
+     'Брутализм и модернизм: от калейдоскопа до мостов-домов', 'Brutalism and modernism: from kaleidoscope to bridge-houses',
+     'До HQ и Нуцубидзе только на такси', 'Taxi only to Bank HQ and Nutsubidze'),
+
+    ('B10', 'medium', 'Ваке и Черепашье озеро', 'Vake & Turtle Lake', '{scenic,nature}', '{kids}', 3.0, 2.0, 'uphill', false,
+     '[{"name":"Парк Ваке","name_en":"Vake Park","lat":41.7087,"lng":44.7476,"category":"park","duration_min":30},{"name":"Канатка","name_en":"Cable car","lat":41.7100,"lng":44.7450,"category":"viewpoint","duration_min":5},{"name":"Черепашье озеро","name_en":"Turtle Lake","lat":41.7200,"lng":44.7380,"category":"park","duration_min":40},{"name":"Кафе у воды","name_en":"Lakeside cafe","lat":41.7195,"lng":44.7385,"category":"cafe","duration_min":25}]',
+     'Парк с лучшими дорожками, канатка и озеро наверху', 'Park with the best paths, cable car and hilltop lake',
+     'Пешком вверх очень круто — берите канатку за 1 GEL', 'Walking up is very steep — take the cable car for 1 GEL')
+    ON CONFLICT (code) DO NOTHING;
+  ` },
+  { name: '028', sql: `
+    INSERT INTO curated_routes (code, tier, theme, theme_en, moods, companions, duration_hours, distance_km, terrain, taxi_needed, points, description, description_en, guide_notes, guide_notes_en) VALUES
+    ('C1', 'full_day', 'Весь Старый город + Нарикала + Мтацминда', 'Full Old Town + Narikala + Mtatsminda', '{scenic,culture}', '{}', 7.5, 7.5, 'steep', false,
+     '[{"name":"Площадь Свободы","name_en":"Freedom Square","lat":41.6932,"lng":44.8015,"category":"viewpoint","duration_min":10},{"name":"Сиони","name_en":"Sioni","lat":41.6915,"lng":44.8075,"category":"viewpoint","duration_min":10},{"name":"Габриадзе","name_en":"Gabriadze Tower","lat":41.6958,"lng":44.8065,"category":"viewpoint","duration_min":15},{"name":"Мейдан","name_en":"Meidan","lat":41.6903,"lng":44.8093,"category":"viewpoint","duration_min":10},{"name":"Абанотубани","name_en":"Abanotubani","lat":41.6876,"lng":44.8113,"category":"viewpoint","duration_min":15},{"name":"Нарикала","name_en":"Narikala","lat":41.6877,"lng":44.8087,"category":"viewpoint","duration_min":20},{"name":"Картлис Деда","name_en":"Kartlis Deda","lat":41.6881,"lng":44.8046,"category":"viewpoint","duration_min":10},{"name":"Мост Мира","name_en":"Peace Bridge","lat":41.6925,"lng":44.8095,"category":"viewpoint","duration_min":10},{"name":"Метехи","name_en":"Metekhi","lat":41.6896,"lng":44.8129,"category":"viewpoint","duration_min":15},{"name":"Самеба","name_en":"Sameba","lat":41.6975,"lng":44.8165,"category":"viewpoint","duration_min":20}]',
+     'Максимум за один день — от площади до горы', 'Maximum in one day — from the square to the mountain',
+     'Старт рано утром, на Мтацминду фуникулёром на закат', 'Start early, funicular to Mtatsminda for sunset'),
+
+    ('C3', 'full_day', 'Марафон смотровых', 'Viewpoint Marathon', '{scenic}', '{}', 7.0, 6.0, 'steep', false,
+     '[{"name":"Метехи","name_en":"Metekhi","lat":41.6896,"lng":44.8129,"category":"viewpoint","duration_min":15},{"name":"Мост Мира","name_en":"Peace Bridge","lat":41.6925,"lng":44.8095,"category":"viewpoint","duration_min":10},{"name":"Нарикала","name_en":"Narikala","lat":41.6877,"lng":44.8087,"category":"viewpoint","duration_min":20},{"name":"Картлис Деда","name_en":"Kartlis Deda","lat":41.6881,"lng":44.8046,"category":"viewpoint","duration_min":10},{"name":"Betlemi Rise","name_en":"Betlemi Rise","lat":41.6895,"lng":44.8060,"category":"viewpoint","duration_min":15},{"name":"Мтацминда","name_en":"Mtatsminda","lat":41.6930,"lng":44.7812,"category":"viewpoint","duration_min":30}]',
+     'Все лучшие панорамы Тбилиси за один день', 'Every best Tbilisi panorama in one day',
+     'Закат с Мтацминды, к Табору обувь закрытая', 'Sunset from Mtatsminda, closed shoes for Tabor'),
+
+    ('C4', 'full_day', 'Природная петля: Ботанический → Черепашье', 'Nature Loop: Botanical → Turtle Lake', '{nature}', '{}', 6.5, 9.0, 'steep', false,
+     '[{"name":"Ботанический сад","name_en":"Botanical Garden","lat":41.6851,"lng":44.8040,"category":"park","duration_min":60},{"name":"Хребет за Нарикалой","name_en":"Ridge trail","lat":41.6900,"lng":44.7950,"category":"viewpoint","duration_min":30},{"name":"Черепашье озеро","name_en":"Turtle Lake","lat":41.7200,"lng":44.7380,"category":"park","duration_min":40},{"name":"Этнографический музей","name_en":"Ethnography Museum","lat":41.7180,"lng":44.7400,"category":"museum","duration_min":40}]',
+     'Горный хайк через лес от Нарикалы к озёрам', 'Mountain hike through forest from Narikala to the lakes',
+     'Берите воду на весь маршрут — по пути мало точек', 'Bring water for the whole route — few stops along the way'),
+
+    ('C6', 'full_day', 'Кофейно-винный забег', 'Coffee-Wine Marathon', '{food,coffee}', '{}', 6.0, 5.0, 'flat', false,
+     '[{"name":"Erti Kava","name_en":"Erti Kava","lat":41.6965,"lng":44.8010,"category":"cafe","duration_min":25},{"name":"Pulp","name_en":"Pulp","lat":41.7070,"lng":44.7590,"category":"cafe","duration_min":25},{"name":"Barbarestan","name_en":"Barbarestan","lat":41.7132,"lng":44.7945,"category":"restaurant","duration_min":50},{"name":"g.Vino","name_en":"g.Vino","lat":41.6885,"lng":44.8095,"category":"bar","duration_min":40},{"name":"Vino Underground","name_en":"Vino Underground","lat":41.6909,"lng":44.8011,"category":"bar","duration_min":40},{"name":"8000 Vintages","name_en":"8000 Vintages","lat":41.7213,"lng":44.7647,"category":"bar","duration_min":40}]',
+     'От кофе к вину: лучшие заведения Тбилиси за день', 'From coffee to wine: Tbilisi best spots in one day',
+     'Чередуйте вино с едой и водой, бронируйте Barbarestan', 'Alternate wine with food and water, book Barbarestan'),
+
+    ('C8', 'night', 'Ночной андеграунд-краул', 'Night Underground Crawl', '{nightlife}', '{}', 8.0, 0, 'flat', true,
+     '[{"name":"Бар Aprili","name_en":"Aprili Bar","lat":41.7090,"lng":44.7950,"category":"bar","duration_min":60},{"name":"Mtkvarze","name_en":"Mtkvarze","lat":41.6920,"lng":44.8050,"category":"club","duration_min":120},{"name":"Khidi","name_en":"Khidi","lat":41.6910,"lng":44.8140,"category":"club","duration_min":120},{"name":"Bassiani","name_en":"Bassiani","lat":41.7270,"lng":44.7730,"category":"club","duration_min":180}]',
+     'Вся ночь: от бара через клубы до рассвета', 'All night: from bar through clubs to sunrise',
+     'Наличные в лари, вызывайте Bolt, не берите уличных', 'Cash in lari, use Bolt, never street taxis'),
+
+    ('NIGHT_BAR1', 'night', 'Fabrika Crawl', 'Fabrika Crawl', '{nightlife,food}', '{}', 4.5, 1.5, 'flat', false,
+     '[{"name":"Wine Merchants","name_en":"Wine Merchants","lat":41.7095,"lng":44.8028,"category":"bar","duration_min":45},{"name":"Фабрика","name_en":"Fabrika","lat":41.7097,"lng":44.8025,"category":"restaurant","duration_min":60},{"name":"Dedaena Bar","name_en":"Dedaena Bar","lat":41.7011,"lng":44.8045,"category":"bar","duration_min":60}]',
+     'Расслабленный бар-краул по Чугурети', 'Relaxed bar crawl through Chugureti',
+     'Вечером двор Фабрики превращается в бар', 'Fabrika courtyard becomes a bar in the evening'),
+
+    ('NIGHT_BAR2', 'night', 'Vera Wine & Cocktails', 'Vera Wine & Cocktails', '{nightlife,food}', '{}', 4.0, 2.0, 'flat', false,
+     '[{"name":"Kikodze Bar","name_en":"Kikodze Bar","lat":41.7080,"lng":44.7800,"category":"bar","duration_min":50},{"name":"Wine Not?","name_en":"Wine Not?","lat":41.7060,"lng":44.7820,"category":"bar","duration_min":40},{"name":"L''ADO by Valiko","name_en":"L''ADO by Valiko","lat":41.6940,"lng":44.8010,"category":"bar","duration_min":50}]',
+     'Дейт-найт: коктейли и вино в районе Вера', 'Date night: cocktails and wine in Vera district',
+     'Smart-casual, любой вечер', 'Smart-casual, any evening'),
+
+    ('FAM_RIKE', 'family', 'Рике + Нарикала: фонтаны и полёт', 'Rike + Narikala: Fountains & Flight', '{scenic}', '{kids}', 3.0, 2.0, 'uphill', false,
+     '[{"name":"Рике-парк","name_en":"Rike Park","lat":41.6931,"lng":44.8103,"category":"park","duration_min":30},{"name":"Канатка","name_en":"Cable car","lat":41.6925,"lng":44.8108,"category":"viewpoint","duration_min":5},{"name":"Нарикала","name_en":"Narikala","lat":41.6877,"lng":44.8087,"category":"viewpoint","duration_min":20},{"name":"Ботанический сад","name_en":"Botanical Garden","lat":41.6851,"lng":44.8040,"category":"park","duration_min":40}]',
+     'Канатка — главный вау для детей, фонтаны в финале', 'Cable car is the wow factor, fountains as finale',
+     'Купите карту MetroMoney заранее', 'Buy MetroMoney card in advance'),
+
+    ('FAM_DEDAENA', 'family', 'Дедаэна + набережная: фонтаны и скейт', 'Dedaena + Waterfront', '{scenic}', '{kids,dog}', 2.5, 1.5, 'flat', false,
+     '[{"name":"Дедаэна-парк","name_en":"Dedaena Park","lat":41.7006,"lng":44.8045,"category":"park","duration_min":35},{"name":"Набережная","name_en":"Embankment","lat":41.6950,"lng":44.8100,"category":"viewpoint","duration_min":15},{"name":"Мост Мира","name_en":"Peace Bridge","lat":41.6925,"lng":44.8095,"category":"viewpoint","duration_min":10},{"name":"Рике-парк","name_en":"Rike Park","lat":41.6931,"lng":44.8103,"category":"park","duration_min":30}]',
+     'Дети в фонтанах, собака на набережной, кофе из фудтрака', 'Kids in fountains, dog on embankment, coffee from food truck',
+     'Берите сменную футболку — промокнут гарантированно', 'Bring a change of shirt — they will get soaked'),
+
+    ('FAM_VAKE_DOG', 'family', 'Ваке-парк: тенистый круг для собаки', 'Vake Park: Shady Dog Loop', '{nature}', '{dog}', 1.5, 2.5, 'flat', false,
+     '[{"name":"Ваке-парк (нижний вход)","name_en":"Vake Park (lower entrance)","lat":41.7087,"lng":44.7476,"category":"park","duration_min":20},{"name":"Тенистые аллеи","name_en":"Shady alleys","lat":41.7100,"lng":44.7460,"category":"park","duration_min":25},{"name":"Верхняя часть","name_en":"Upper section","lat":41.7110,"lng":44.7440,"category":"park","duration_min":20},{"name":"Кафе у Чавчавадзе","name_en":"Cafe on Chavchavadze","lat":41.7090,"lng":44.7490,"category":"cafe","duration_min":20}]',
+     'Лучший собачий парк в центре — тень, вода, кафе с миской', 'Best dog park in center — shade, water, cafe with bowl',
+     'Наверх к Черепашьему на канатку с собакой не суйтесь', 'Don''t take the cable car with a dog — too cramped')
+    ON CONFLICT (code) DO NOTHING;
+  ` },
 ];
 
 @Controller('health')
