@@ -310,8 +310,20 @@ Full spec: `.workbench/mvp_lazy_day/v2-upd/lazigo-route-feature-spec.md`
 - [x] Desktop two-column layout (timeline + sticky map)
 - [x] Honest taxi transitions (Bolt/Yandex deeplinks, no fake price)
 - [x] Route loading screen: animated SVG scene with pinDrop, themed by `--ld-*` vars, friend phrases with fade, min 4s display, prefers-reduced-motion support
-- [ ] Areas as nested options: tap district → see places inside (hierarchical selection)
-- [ ] Auto-generation quality: diversity, opening hours filter, seed dithering
+- [x] Areas as nested accordion in "All" filter with places inside each area
+- [x] OSRM real walking paths on map (SVG polyline from route API)
+- [x] Route-context duration matrix (theater 15min, restaurant 50min, etc.)
+- [x] Map markers z-index above SVG lines, nearby dot on hover
+- [x] Dark MapLibre popup, taxi button mobile-only
+- [x] Continuous dashed timeline line through points and transitions
+- [x] "Edit" / "Rebuild" respect route source (manual vs generate)
+- [x] Nightlife mood + companions (kids/dog) filters with compatibility matrix
+- [x] Curated routes: 30 seeded (10 easy + 10 medium + 4 full_day + 3 night + 3 family)
+- [x] Curated route selection logic: mood + tier + companions, seen tracking per device
+- [ ] **Phase 4: District spreading** — 2-3h routes spread across 2-3 neighboring districts, min 300m between points
+- [ ] **Phase 5: "Ещё интересные места" sidebar** — 45 curated POI minus route points, add to route
+- [ ] Auto-generation quality: opening hours filter, seed dithering
+- [ ] Seed remaining curated routes (C2, C5, C7, C9, C10 + more nightlife/family)
 
 #### v2 Phase 3: Curator ("Собери вечер")
 Full spec: `.workbench/mvp_lazy_day/v2-upd/lazigo-curator-feature-spec.md`
