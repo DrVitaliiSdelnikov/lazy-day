@@ -83,7 +83,7 @@ export class RouteService {
     const moods = dto.moods ?? ['scenic', 'food'];
     const companions = dto.companions ?? [];
     const locale = dto.locale ?? 'ru';
-    const deviceId = (dto as any).deviceId ?? '';
+    const deviceId = dto.deviceId ?? '';
 
     // Try curated route first
     const curated = await this.findCuratedRoute(moods, duration, companions, deviceId);
@@ -180,7 +180,7 @@ export class RouteService {
           WHERE sr.route_id = cr.id AND sr.device_id = $${tiers.length + 3}
         )
       ORDER BY
-        array_length(cr.moods & $${tiers.length + 1}::text[], 1) DESC NULLS LAST,
+        (SELECT COUNT(*) FROM unnest(cr.moods) m WHERE m = ANY($${tiers.length + 1}::text[])) DESC,
         random()
       LIMIT 1
     `, [...tiers, moods, companions, deviceId]);
