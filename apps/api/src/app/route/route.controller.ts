@@ -55,4 +55,19 @@ export class RouteController {
     await this.routeService.markSeen(dto.deviceId, dto.routeCode);
     return { ok: true };
   }
+
+  @Get('interesting-places')
+  async interestingPlaces(
+    @Query('excludeIds') excludeIds?: string,
+    @Query('lat') lat?: string,
+    @Query('lng') lng?: string,
+    @Query('locale') locale?: string,
+  ) {
+    return this.routeService.getInterestingPlaces(
+      excludeIds ? excludeIds.split(',') : [],
+      parseFloat(lat || '41.6934'),
+      parseFloat(lng || '44.8015'),
+      locale ?? 'ru',
+    );
+  }
 }

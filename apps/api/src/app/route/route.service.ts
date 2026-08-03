@@ -257,6 +257,40 @@ export class RouteService {
     `, [deviceId, routeCode]);
   }
 
+  async getInterestingPlaces(excludeIds: string[], lat: number, lng: number, locale = 'ru'): Promise<any[]> {
+    const excludePlaceholders = excludeIds.length > 0
+      ? `AND p.id NOT IN (${excludeIds.map((_, i) => `$${i + 1}`).join(',')})`
+      : '';
+
+    const rows = await this.ds.query(`
+      SELECT p.id, v.name, v.name_en, p.category,
+        v.lat, v.lng, p.hook, p.walk_tier, p.route_moment,
+        p.google_rating, p.photos
+      FROM places p
+      JOIN venues v ON p.venue_id = v.id
+      WHERE p.status = 'active'
+        AND p.walk_tier IN ('must_see', 'worth_detour')
+        ${excludePlaceholders}
+      ORDER BY
+        CASE p.walk_tier WHEN 'must_see' THEN 1 ELSE 2 END,
+        p.google_rating DESC NULLS LAST
+      LIMIT 30
+    `, excludeIds);
+
+    return rows.map((r: any) => ({
+      id: r.id,
+      name: this.resolveTitle(r.name, r.name_en, locale),
+      category: r.category,
+      lat: Number(r.lat),
+      lng: Number(r.lng),
+      hook: r.hook,
+      walkTier: r.walk_tier,
+      rating: r.google_rating ? Number(r.google_rating) : undefined,
+      photoUrl: r.photos?.[0],
+      distanceM: Math.round(this.haversine(lat, lng, Number(r.lat), Number(r.lng))),
+    }));
+  }
+
   // --- Dynamic route logic ---
 
   private async fetchCandidates(lat: number, lng: number, radiusM: number, moods: string[]): Promise<RouteCandidate[]> {

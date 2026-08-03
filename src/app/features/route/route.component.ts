@@ -474,6 +474,38 @@ interface CareLine {
           <a class="route__maps-link" [href]="googleMapsUrl()" target="_blank" rel="noopener">
             <ld-icon name="map-pin" [size]="14" /> {{ 'route.open_maps' | translate }}
           </a>
+
+          <!-- Interesting places -->
+          @if (interestingPlaces().length > 0) {
+            <div class="route__interesting">
+              <h3 class="route__interesting-title">{{ 'route.interesting_title' | translate }}</h3>
+              <div class="route__interesting-list">
+                @for (place of interestingPlaces(); track place.id) {
+                  <div class="route__interesting-item"
+                    (mouseenter)="focusNearbyOnMap(place)"
+                    (mouseleave)="clearNearbyFocus()">
+                    <div class="route__place-icon">
+                      <ld-icon [name]="categoryIcon(place.category)" [size]="16" />
+                    </div>
+                    <div class="route__interesting-info">
+                      <span class="route__place-name">{{ place.name }}</span>
+                      @if (place.hook) {
+                        <p class="route__place-gist">{{ place.hook }}</p>
+                      }
+                      <span class="route__interesting-meta">
+                        {{ place.category }}
+                        @if (place.rating) { · ★ {{ place.rating }} }
+                        · {{ place.distanceM < 1000 ? place.distanceM + ' м' : (place.distanceM / 1000).toFixed(1) + ' км' }}
+                      </span>
+                    </div>
+                    <button class="route__place-add" (click)="addInterestingToRoute(place); $event.stopPropagation()">
+                      <span>+</span>
+                    </button>
+                  </div>
+                }
+              </div>
+            </div>
+          }
         </section>
       }
     </div>
@@ -928,6 +960,28 @@ interface CareLine {
       font-size: 13px; color: var(--ld-primary); text-decoration: none;
       border: 1px solid var(--ld-primary); border-radius: 10px;
     }
+
+    .route__interesting {
+      margin-top: 24px; padding-top: 16px;
+      border-top: 1px solid var(--ld-border);
+    }
+    .route__interesting-title {
+      font-size: 15px; font-weight: 700; color: var(--ld-text); margin: 0 0 12px;
+    }
+    .route__interesting-list {
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .route__interesting-item {
+      display: flex; gap: 10px; align-items: flex-start;
+      padding: 10px 12px; border: 1px solid var(--ld-border); border-radius: 10px;
+      background: var(--ld-surface); cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .route__interesting-item:hover { border-color: var(--ld-primary); }
+    .route__interesting-info { flex: 1; min-width: 0; }
+    .route__interesting-meta {
+      font-size: 11px; color: var(--ld-text-3); margin-top: 2px; display: block;
+    }
   `,
 })
 export class RouteComponent implements OnInit {
@@ -976,6 +1030,7 @@ export class RouteComponent implements OnInit {
   alternativesForIndex = signal(-1);
   altLoading = signal(false);
   nearbyPlaces = signal<any[]>([]);
+  interestingPlaces = signal<any[]>([]);
 
   // Manual mode
   topPlaces = signal<any[]>([]);
@@ -1469,6 +1524,23 @@ export class RouteComponent implements OnInit {
       next: (places) => this.nearbyPlaces.set(places),
       error: () => {},
     });
+    this.loadInterestingPlaces(data);
+  }
+
+  private loadInterestingPlaces(data: any) {
+    if (!data?.points?.length) return;
+    const excludeIds = data.points.map((p: any) => p.id).join(',');
+    const pos = this.geo.position();
+    this.http.get<any[]>(`/v1/routes/interesting-places?excludeIds=${excludeIds}&lat=${pos.lat}&lng=${pos.lng}&locale=${this.profile.locale()}`).subscribe({
+      next: (places) => this.interestingPlaces.set(places),
+      error: () => {},
+    });
+  }
+
+  addInterestingToRoute(place: any) {
+    this.addNearbyToRoute(place);
+    // Remove from interesting list
+    this.interestingPlaces.update(list => list.filter(p => p.id !== place.id));
   }
 
   boltLink(transitionIndex: number): string {
