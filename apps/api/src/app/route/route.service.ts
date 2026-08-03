@@ -109,8 +109,11 @@ export class RouteService {
       return this.emptyFallback(dto, locale);
     }
 
-    // 2. Build chain
-    const chain = this.buildChain(candidates, dto.lat, dto.lng, targetPoints, targetMinutes, pace);
+    // 2. Fetch areas for district spreading
+    const areas = await this.ds.query('SELECT id, bbox FROM areas WHERE bbox IS NOT NULL');
+
+    // 3. Build chain with district spreading
+    const chain = this.buildChain(candidates, dto.lat, dto.lng, targetPoints, targetMinutes, pace, areas, duration);
 
     // 3. Compute transitions (includes OSRM path fetch)
     const transitions = await this.computeTransitions(chain);
@@ -304,20 +307,39 @@ export class RouteService {
     return rows;
   }
 
+  // Min distance between consecutive route points (meters)
+  private static readonly MIN_POINT_DISTANCE = 300;
+
+  private getAreaForCoords(lat: number, lng: number, areas: any[]): string | null {
+    for (const a of areas) {
+      if (!a.bbox) continue;
+      if (lat >= a.bbox.minLat && lat <= a.bbox.maxLat &&
+          lng >= a.bbox.minLng && lng <= a.bbox.maxLng) {
+        return a.id;
+      }
+    }
+    return null;
+  }
+
   private buildChain(
     candidates: RouteCandidate[],
     startLat: number, startLng: number,
     targetPoints: number, targetMinutes: number,
     pace: string,
+    areas: any[] = [],
+    duration?: string,
   ): RoutePoint[] {
     const used = new Set<string>();
     const chain: RoutePoint[] = [];
+    const usedAreas = new Set<string>();
+
+    // District spreading config based on duration
+    const targetDistricts = duration === '1h' ? 1 : duration === '2-3h' ? 2 : 3;
 
     // Role sequence: anchor → photo_spot → food_break → rest_stop → anchor...
     const roleSequence = ['anchor', 'photo_spot', 'food_break', 'rest_stop'];
     let roleIdx = 0;
 
-    // Start with nearest anchor/must_see
     let curLat = startLat;
     let curLng = startLng;
 
@@ -331,10 +353,12 @@ export class RouteService {
         curLat = nearest.lat;
         curLng = nearest.lng;
         roleIdx = 1;
+        const area = this.getAreaForCoords(nearest.lat, nearest.lng, areas);
+        if (area) usedAreas.add(area);
       }
     }
 
-    // Fill remaining slots
+    // Fill remaining slots with district spreading + min distance
     let totalMin = chain.reduce((s, p) => s + p.durationMin, 0);
     const needFood = targetMinutes >= 180;
     let hasFoodBreak = false;
@@ -344,21 +368,46 @@ export class RouteService {
       const actualRole = (needFood && !hasFoodBreak && chain.length >= Math.floor(targetPoints / 2))
         ? 'food_break' : desiredRole;
 
-      const candidate = this.findByRole(candidates, used, curLat, curLng, actualRole);
+      // Filter candidates: unused + min distance from last point
+      const eligible = candidates.filter(c => {
+        if (used.has(c.id)) return false;
+        const dist = this.haversine(curLat, curLng, c.lat, c.lng);
+        if (dist < RouteService.MIN_POINT_DISTANCE) return false;
+        return true;
+      });
+
+      // If we have enough districts, prefer candidates from already-used districts (coherent route)
+      // If we need more districts, prefer candidates from NEW districts
+      let preferred = eligible;
+      if (usedAreas.size < targetDistricts && areas.length > 0) {
+        // Need more districts — prefer new areas
+        const fromNewArea = eligible.filter(c => {
+          const area = this.getAreaForCoords(c.lat, c.lng, areas);
+          return area && !usedAreas.has(area);
+        });
+        if (fromNewArea.length > 0) preferred = fromNewArea;
+      }
+
+      const candidate = this.findByRoleFrom(preferred, curLat, curLng, actualRole)
+        ?? this.findByRoleFrom(eligible, curLat, curLng, actualRole);
+
       if (!candidate) {
-        // Fallback: any unused nearby
-        const fallback = this.nearest(candidates.filter(c => !used.has(c.id)), curLat, curLng);
+        const fallback = this.nearest(eligible, curLat, curLng);
         if (!fallback) break;
         chain.push(this.toPoint(fallback, fallback.route_moment || 'passage', pace));
         used.add(fallback.id);
         curLat = fallback.lat;
         curLng = fallback.lng;
+        const area = this.getAreaForCoords(fallback.lat, fallback.lng, areas);
+        if (area) usedAreas.add(area);
       } else {
         chain.push(this.toPoint(candidate, actualRole, pace));
         used.add(candidate.id);
         curLat = candidate.lat;
         curLng = candidate.lng;
         if (actualRole === 'food_break') hasFoodBreak = true;
+        const area = this.getAreaForCoords(candidate.lat, candidate.lng, areas);
+        if (area) usedAreas.add(area);
       }
 
       totalMin = chain.reduce((s, p) => s + p.durationMin, 0);
@@ -368,9 +417,8 @@ export class RouteService {
     return chain;
   }
 
-  private findByRole(
-    candidates: RouteCandidate[], used: Set<string>,
-    lat: number, lng: number, role: string,
+  private findByRoleFrom(
+    pool: RouteCandidate[], lat: number, lng: number, role: string,
   ): RouteCandidate | null {
     const categoryMap: Record<string, string[]> = {
       food_break: ['restaurant', 'cafe', 'bakery'],
@@ -378,19 +426,14 @@ export class RouteService {
       photo_spot: ['viewpoint', 'park', 'attraction', 'garden'],
       anchor: ['viewpoint', 'museum', 'gallery', 'theater', 'bath'],
     };
-
     const validCategories = categoryMap[role] ?? [];
-    // Try strict match first (category OR route_moment)
-    const strict = candidates.filter(c => {
-      if (used.has(c.id)) return false;
-      return validCategories.includes(c.category) || c.route_moment === role;
-    });
-    if (strict.length > 0) return this.nearest(strict, lat, lng);
-
-    // Fallback: any unused nearby
-    const unused = candidates.filter(c => !used.has(c.id));
-    return unused.length > 0 ? this.nearest(unused, lat, lng) : null;
+    const matched = pool.filter(c =>
+      validCategories.includes(c.category) || c.route_moment === role
+    );
+    return matched.length > 0 ? this.nearest(matched, lat, lng) : null;
   }
+
+
 
   private nearest(candidates: RouteCandidate[], lat: number, lng: number): RouteCandidate | null {
     if (candidates.length === 0) return null;
