@@ -405,7 +405,6 @@ export class SettingsComponent implements OnInit {
   languages = [
     { value: 'ru', label: 'Рус' },
     { value: 'en', label: 'Eng' },
-    { value: 'ka', label: 'ქარ' },
   ];
 
   themes = [

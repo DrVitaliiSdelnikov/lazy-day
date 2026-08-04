@@ -9,7 +9,15 @@
     "find": "Find",
     "empty": "Nothing found. Try different interests or a wider radius.",
     "results": "results",
-    "show_more": "Show more"
+    "show_more": "Show more",
+    "mode_browse": "Browse places",
+    "mode_route": "Build route",
+    "mode_route_sub": "for you or DIY",
+    "mood_label": "Mood · pick one",
+    "refine": "Refine",
+    "refine_for": "Refinements for",
+    "clear": "Clear",
+    "clear_filters": "Clear filters"
   },
   "palette": {
     "refine": "want something specific?"
@@ -249,6 +257,8 @@
     "company": "Company",
     "with_pet": "With a pet",
     "time": "When",
+    "filters": "Filters",
+    "show_results": "Show",
     "reset_all": "Reset all",
     "my_location": "My location",
     "detect": "Detect",
@@ -388,7 +398,12 @@
     "local": "• Everything is stored on your device"
   },
   "card": {
-    "hours_unknown": "Hours not confirmed"
+    "hours_unknown": "Hours not confirmed",
+    "navigate": "Navigate",
+    "taxi": "Taxi",
+    "ticket": "Ticket",
+    "details": "Details",
+    "full_info": "More info"
   },
   "loader": {
     "aria": "Finding places and events",

@@ -220,7 +220,6 @@ export class AppShellComponent implements OnInit {
   langs = [
     { code: 'ru', label: 'RU' },
     { code: 'en', label: 'EN' },
-    { code: 'ka', label: 'KA' },
   ];
   currentLang = signal(this.profileStore.locale());
 

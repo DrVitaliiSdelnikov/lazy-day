@@ -266,10 +266,13 @@ export class RecommendationService {
       // Interest hard filter:
       // - If strict interests exist (weight >= 0.7): venue must match at least one strict tag
       // - If only soft interests (all < 0.7): no hard filter, just scoring
+      // - Events bypass hard filter for culture/active/nightlife/entertainment moods
+      const eventFriendlyInterests = new Set(['culture', 'active', 'nightlife', 'entertainment', 'food']);
+      const hasEventFriendlyInterest = Object.keys(dto.profile.interests ?? {}).some(k => eventFriendlyInterests.has(k));
       if (hasStrictInterests) {
-        scored = scored.filter((c) => c.hasStrictMatch);
+        scored = scored.filter((c) => c.hasStrictMatch || (c.type === 'event' && hasEventFriendlyInterest));
       } else if (hasInterests) {
-        scored = scored.filter((c) => c.primaryTags.length > 0);
+        scored = scored.filter((c) => c.primaryTags.length > 0 || c.type === 'event');
       }
 
       // Availability filter: exclude places confirmed closed at requested time
@@ -364,7 +367,10 @@ export class RecommendationService {
         this.fetchEvents(dto.lat, dto.lng, radiusM, tomorrowDto.timeWindow),
       ]);
 
-      let candidates: CandidateRow[] = [...places, ...events];
+      const typeFilter2 = (dto as any).typeFilter as string | undefined;
+      let candidates: CandidateRow[] = typeFilter2 === 'place' ? [...places]
+        : typeFilter2 === 'event' ? [...events]
+        : [...places, ...events];
       candidates = candidates.filter((c) => {
         if (hiddenIds.includes(c.id)) return false;
         if (dto.profile.budgetMax != null) {
@@ -378,10 +384,12 @@ export class RecommendationService {
         this.scoreCandidate(c, tomorrowDto, radiusM, expandedWeights),
       );
 
+      const eventFriendlyInterests2 = new Set(['culture', 'active', 'nightlife', 'entertainment', 'food']);
+      const hasEventFriendly2 = Object.keys(dto.profile.interests ?? {}).some(k => eventFriendlyInterests2.has(k));
       if (hasStrictInterests) {
-        tomorrowScored = tomorrowScored.filter((c) => c.hasStrictMatch);
+        tomorrowScored = tomorrowScored.filter((c) => c.hasStrictMatch || (c.type === 'event' && hasEventFriendly2));
       } else if (hasInterests) {
-        tomorrowScored = tomorrowScored.filter((c) => c.primaryTags.length > 0);
+        tomorrowScored = tomorrowScored.filter((c) => c.primaryTags.length > 0 || c.type === 'event');
       }
 
       // Availability filter for tomorrow midpoint
@@ -478,6 +486,33 @@ export class RecommendationService {
 
     // F1.4: Inject epsilon-explore slot (same seed for determinism within session)
     this.impressionService.injectEpsilonSlot(cards, scored, discountMap, deviceIdHash ?? '', sessionSeed);
+
+    // Format any raw explore slots that were injected
+    for (let i = 0; i < cards.length; i++) {
+      const c = cards[i] as any;
+      if (c._isExplore && !c.source) {
+        const isGeorgian = (s: string) => /[\u10A0-\u10FF]/.test(s);
+        let title: string;
+        if (dto.locale === 'ka') { title = c.title_ka ?? c.title; }
+        else if (dto.locale === 'en') { title = c.title_en ?? (isGeorgian(c.title) ? c.title_en ?? c.title : c.title); }
+        else { title = (!isGeorgian(c.title) ? c.title : null) ?? c.title_en ?? c.title; }
+        const os = c.type === 'place' ? checkOpenStatus(c.opening_hours, timeMid) : undefined;
+        (cards as any[])[i] = {
+          id: c.id, type: c.type, title, category: c.category,
+          lat: c.lat, lng: c.lng,
+          distanceM: c.distance_m != null ? Math.round(c.distance_m) : null,
+          walkMinutes: c.distance_m != null && c.distance_m > 0 ? Math.round((c.distance_m / 80) * 1.3) : null,
+          explanations: [],
+          source: 'canonical', address: c.address,
+          rating: c.google_rating ? Number(c.google_rating) : c.rating ? Number(c.rating) : undefined,
+          ratingCount: c.google_rating_count ?? c.rating_count,
+          primaryTags: c.primaryTags ?? [], secondaryTags: c.secondaryTags ?? [],
+          openStatus: os && os !== 'unknown' ? getOpenLabel(os, dto.locale) : undefined,
+          googlePlaceId: c.google_place_id, isChain: c.is_chain ?? false,
+          hook: c.hook,
+        };
+      }
+    }
 
     const sessionId = crypto.randomUUID();
 
@@ -718,15 +753,29 @@ export class RecommendationService {
       }
     }
 
-    // Top facets from shown cards (sorted by frequency)
-    const activeFacets = [...facetCounts.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 8)
-      .map(([f]) => f);
+    // Helper: check if candidate has facet
+    const hasFacet = (c: ScoredCandidate, f: string) =>
+      (c.facet_atmosphere ?? []).includes(f) || (c.facet_occasion ?? []).includes(f);
 
-    if (activeFacets.length === 0) return [];
+    // All facets from shown cards, excluding already-active filters
+    const allFacets = [...facetCounts.entries()]
+      .filter(([f]) => !currentFacetFilters.includes(f))
+      .sort((a, b) => b[1] - a[1]);
 
-    // Query co-occurrence graph for suggestions
+    if (allFacets.length === 0) return [];
+
+    // Direct facets: top facets from cards with count >= 3
+    const directSuggestions = allFacets
+      .slice(0, 12)
+      .map(([facet, rawCount]) => {
+        const allFilters = [...currentFacetFilters, facet];
+        const count = allScored.filter(c => allFilters.every(f => hasFacet(c, f))).length;
+        return { facet, count, sources: ['places'] as string[], _score: rawCount };
+      })
+      .filter(s => s.count >= 3);
+
+    // Co-occurrence suggestions (enrich with graph connections)
+    const topFacets = allFacets.slice(0, 8).map(([f]) => f);
     try {
       const rows = await this.dataSource.query(`
         SELECT
@@ -736,43 +785,37 @@ export class RecommendationService {
         WHERE (facet_a = ANY($1::text[]) OR facet_b = ANY($1::text[]))
           AND NOT (facet_a = ANY($1::text[]) AND facet_b = ANY($1::text[]))
         ORDER BY weight DESC
-      `, [activeFacets]);
+      `, [topFacets]);
 
-      // Aggregate by suggested facet
-      const agg = new Map<string, { score: number; sources: Set<string> }>();
       for (const r of rows) {
-        const entry = agg.get(r.suggested) ?? { score: 0, sources: new Set<string>() };
-        entry.score += Number(r.weight);
-        entry.sources.add(r.source);
-        agg.set(r.suggested, entry);
+        const existing = directSuggestions.find(s => s.facet === r.suggested);
+        if (existing) {
+          if (!existing.sources.includes(r.source)) existing.sources.push(r.source);
+          existing._score += Number(r.weight);
+        } else {
+          const allFilters = [...currentFacetFilters, r.suggested];
+          const count = allScored.filter(c => allFilters.every(f => hasFacet(c, f))).length;
+          if (count >= 3) {
+            directSuggestions.push({
+              facet: r.suggested, count,
+              sources: [r.source], _score: Number(r.weight),
+            });
+          }
+        }
       }
+    } catch { /* co-occurrence graph optional */ }
 
-      // Count = "how many would remain if this facet is added to current filters"
-      // i.e. intersection of current facetFilters + this new facet
-      const hasFacet = (c: ScoredCandidate, f: string) =>
-        (c.facet_atmosphere ?? []).includes(f) || (c.facet_occasion ?? []).includes(f);
-
-      const suggestions = [...agg.entries()]
-        .filter(([f]) => !activeFacets.includes(f))
-        .sort((a, b) => b[1].score - a[1].score)
-        .slice(0, 5)
-        .map(([facet, data]) => {
-          const allFilters = [...currentFacetFilters, facet];
-          const count = allScored.filter(c =>
-            allFilters.every(f => hasFacet(c, f))
-          ).length;
-          return {
-            facet,
-            count,
-            sources: [...data.sources],
-          };
-        })
-        .filter(s => s.count >= 3); // dead-end prevention
-
-      return suggestions;
-    } catch {
-      return [];
+    // Sort by combined score, deduplicate, take top
+    directSuggestions.sort((a, b) => b._score - a._score);
+    const seen = new Set<string>();
+    const result: { facet: string; count: number; sources: string[] }[] = [];
+    for (const s of directSuggestions) {
+      if (seen.has(s.facet) || currentFacetFilters.includes(s.facet)) continue;
+      seen.add(s.facet);
+      result.push({ facet: s.facet, count: s.count, sources: s.sources });
+      if (result.length >= 8) break;
     }
+    return result;
   }
 
   /**

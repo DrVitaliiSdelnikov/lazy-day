@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, isDevMode, OnInit, signal, viewChild } from '@angular/core';
+import { Component, computed, effect, ElementRef, HostListener, inject, isDevMode, OnInit, AfterViewInit, signal, viewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { ProfileStore } from '../../core/stores/profile.store';
@@ -36,8 +36,17 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
   providers: [...apiProviders],
   template: `
     <div class="discover">
-      <!-- Desktop sidebar (≥1024) -->
-      <aside class="discover__sidebar">
+      <!-- Filters drawer overlay (desktop: right side, mobile: bottom sheet) -->
+      @if (filtersDrawerOpen()) {
+        <div class="drawer__backdrop" (click)="filtersDrawerOpen.set(false)"></div>
+      }
+      <aside class="drawer__panel" [class.drawer__panel--open]="filtersDrawerOpen()">
+        <div class="drawer__header">
+          <h4 class="drawer__title">{{ 'sidebar.filters' | translate }}</h4>
+          <button class="drawer__close" (click)="filtersDrawerOpen.set(false)">
+            <ld-icon name="x" [size]="16" />
+          </button>
+        </div>
         <div class="sidebar__section">
           <p class="sidebar__label">{{ 'sidebar.location' | translate }}</p>
           <div class="sidebar__location" [class.sidebar__location--default]="geo.position().source === 'default'">
@@ -45,13 +54,13 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
             @if (geo.position().source === 'gps') {
               <span>{{ 'sidebar.my_location' | translate }}</span>
             } @else {
-              <span style="white-space:nowrap">{{ geo.position().label }}<br><span style="color:var(--ld-text-3);font-size:10px">{{ 'geo.default' | translate }}</span></span>
+              <span style="white-space:nowrap">{{ geo.position().label }}</span>
               <button class="sidebar__geo-hint" (click)="requestGps()">{{ 'geo.enable' | translate }}</button>
             }
           </div>
         </div>
         <div class="sidebar__section">
-          <p class="sidebar__label">{{ 'sidebar.radius' | translate }} · {{ sidebarRadius() }} км</p>
+          <p class="sidebar__label">{{ 'sidebar.radius' | translate }} · {{ sidebarRadius() }} {{ 'route.km' | translate }}</p>
           <input type="range" class="ld-slider" aria-label="Radius"
             [value]="sidebarRadius()" (input)="onSidebarRadiusChange($event)" min="1" max="15" step="1" />
         </div>
@@ -102,7 +111,7 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
             }
           </div>
         </div>
-        <button class="ld-btn ld-btn--ghost" style="color: var(--ld-primary); font-size: 12px; margin-top: 8px"
+        <button class="ld-btn ld-btn--ghost" style="color: var(--ld-primary); font-size: 12px; margin-top: 16px; width: 100%"
           (click)="resetSidebar()">{{ 'sidebar.reset_all' | translate }}</button>
       </aside>
 
@@ -114,78 +123,95 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
         <h1 class="discover__greeting ld-display">{{ greeting() }}</h1>
       </header>
 
-      <!-- Context bar: mobile only -->
-      <app-context-bar class="discover__context-bar" (changed)="onContextChanged()" />
+      <!-- Context bar removed: drawer filters are the single source of truth -->
 
-      <!-- Quick presets + filter button -->
-      <div class="discover__toolbar">
-        <div class="discover__presets">
-          @for (p of presets; track p.key) {
-            <button class="ld-chip"
-              [class.ld-chip--active]="activePreset() === p.key"
-              (click)="applyPreset(p.key)">
-              <ld-icon [name]="p.icon" [size]="14" />
-              {{ p.labelKey | translate }}
-              @if (activePreset() === p.key) {
-                <ld-icon name="x" [size]="12" class="ld-chip__clear" />
+      <!-- Mode switcher: Browse places / Build route -->
+      <div class="discover__mode">
+        <button class="discover__mode-btn" [class.discover__mode-btn--active]="true">
+          <ld-icon name="layout-grid" [size]="16" /> {{ 'discover.mode_browse' | translate }}
+        </button>
+        <button class="discover__mode-btn" (click)="openRoute()">
+          <ld-icon name="route" [size]="16" /> {{ 'discover.mode_route' | translate }}
+          <span class="discover__mode-sub">{{ 'discover.mode_route_sub' | translate }}</span>
+        </button>
+      </div>
+
+      <!-- Mood categories: single-select, always visible -->
+      <div class="discover__mood-section">
+        <p class="discover__mood-label">{{ 'discover.mood_label' | translate }}</p>
+        <div class="discover__mood-row">
+          @if (moodsOverflowing()) {
+            <button class="discover__mood-arrow" (click)="scrollMoods(-1)" aria-label="Scroll left">‹</button>
+          }
+          <div class="discover__moods" #moodsScroll>
+            @for (p of presets; track p.key) {
+              <button class="discover__mood-chip"
+                [class.discover__mood-chip--active]="activePreset() === p.key"
+                (click)="applyPreset(p.key)">
+                <ld-icon [name]="p.icon" [size]="15" />
+                <span>{{ p.labelKey | translate }}</span>
+              </button>
+            }
+          </div>
+          @if (moodsOverflowing()) {
+            <button class="discover__mood-arrow" (click)="scrollMoods(1)" aria-label="Scroll right">›</button>
+          }
+          <div class="discover__mood-actions">
+            @if (hasActiveFilters()) {
+              <button class="discover__clear-text-btn" (click)="clearAllFilters()">
+                {{ 'discover.clear_filters' | translate }}
+              </button>
+            }
+            <button class="discover__filters-btn" (click)="filtersDrawerOpen.set(true)">
+              <ld-icon name="adjustments-horizontal" [size]="14" />
+              {{ 'sidebar.filters' | translate }}
+              @if (activeFilterCount() > 0) {
+                <span class="discover__filters-badge">{{ activeFilterCount() }}</span>
               }
             </button>
-          }
+          </div>
         </div>
-        @if (hasActiveFilters()) {
-          <button class="discover__clear-btn" (click)="clearAllFilters()">
-            <ld-icon name="x" [size]="12" />
+      </div>
+
+      <!-- Refine row: "Уточнить" button + active facet chips + decide button -->
+      <div class="discover__refine-row">
+        @if (paletteChips().length > 0) {
+          <button class="discover__refine-btn" [class.discover__refine-btn--open]="refineOpen()"
+            (click)="refineOpen.set(!refineOpen())">
+            {{ 'discover.refine' | translate }}
+            @if (activeFacetCount() > 0) {
+              <span class="discover__refine-badge">{{ activeFacetCount() }}</span>
+            }
           </button>
         }
+        @for (chip of activeFacetChips(); track chip.facet) {
+          <button class="discover__active-facet" (click)="applyFacetFilter(chip.facet)">
+            {{ facetLabel(chip.facet) }} <ld-icon name="x" [size]="10" />
+          </button>
+        }
+        <span style="flex:1"></span>
         <button class="discover__decide-btn" (click)="openDecide()"
           [disabled]="loading() || cards().length === 0"
           [attr.aria-label]="'decide.button' | translate">
           <ld-icon name="compass" [size]="15" />
         </button>
-        <button class="discover__route-btn" (click)="openRoute()"
-          [attr.aria-label]="'route.title' | translate">
-          <ld-icon name="route" [size]="15" />
-        </button>
-        <!-- Filter button hidden: 0% places have price data. TODO: decide how to use -->
-        <!-- <button class="discover__filter-btn" (click)="openFilters()" aria-label="Filters">
-          &#9776;
-          @if (activeFilterCount() > 0) {
-            <span class="filter-badge">{{ activeFilterCount() }}</span>
-          }
-        </button> -->
       </div>
 
-      <!-- Type filter: places / events / all -->
-      <div class="discover__type-filter">
-        @for (tf of typeFilters; track tf.value) {
-          <button class="ld-chip"
-            [class.ld-chip--active]="activeTypeFilter() === tf.value"
-            (click)="setTypeFilter(tf.value)">
-            @if (tf.icon) { <ld-icon [name]="tf.icon" [size]="13" /> }
-            {{ tf.labelKey | translate }}
-          </button>
-        }
-      </div>
-
-      <!-- Palette: independent section, never hides under feed loader -->
-      @if (paletteChips().length > 0 || paletteLoading()) {
-        <div class="discover__palette" [class.discover__palette--loading]="paletteLoading()">
-          <span class="discover__palette-label">{{ 'palette.refine' | translate }}</span>
-          @for (chip of paletteChips(); track chip.facet) {
-            <button class="ld-chip"
-              [class.ld-chip--active]="chip.active"
-              (click)="applyFacetFilter(chip.facet)">
-              {{ facetLabel(chip.facet) }}
-              @if (chip.active) { <ld-icon name="x" [size]="12" class="ld-chip__clear" /> }
-            </button>
-          }
-          @if (paletteLoading()) {
-            <span class="discover__palette-pins">
-              <span class="pin"><ld-icon name="map-pin" [size]="16" /></span>
-              <span class="pin"><ld-icon name="map-pin" [size]="16" /></span>
-              <span class="pin"><ld-icon name="map-pin" [size]="16" /></span>
-            </span>
-          }
+      <!-- Facets inline panel (under refine button, contextual to mood) -->
+      @if (refineOpen() && paletteChips().length > 0) {
+        <div class="discover__facets-panel">
+          <p class="discover__facets-context">
+            {{ 'discover.refine_for' | translate }} <strong>{{ activePresetLabel() }}</strong>
+          </p>
+          <div class="discover__facets-grid">
+            @for (chip of paletteChips(); track chip.facet) {
+              <button class="discover__facet-chip"
+                [class.discover__facet-chip--active]="chip.active"
+                (click)="applyFacetFilter(chip.facet)">
+                {{ facetLabel(chip.facet) }}
+              </button>
+            }
+          </div>
         </div>
       }
 
@@ -308,36 +334,51 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
     }
   `,
   styles: `
-    /* ─── Desktop layout ─── */
-    @media (min-width: 1024px) {
-      .discover {
-        display: flex;
-        min-height: 100%;
-      }
-      .discover__context-bar { display: none; }
-      .discover__toolbar .discover__filter-btn { display: none; }
-    }
+    /* ─── Layout ─── */
+    /* context-bar removed — drawer filters are single source of truth */
 
-    .discover__sidebar {
-      display: none;
+    /* Drawer overlay */
+    .drawer__backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.3);
+      z-index: 100; animation: fadeIn 0.2s ease;
     }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-    @media (min-width: 1024px) {
-      .discover__sidebar {
-        display: block;
-        width: 260px;
-        flex-shrink: 0;
-        border-right: 1px solid var(--ld-border);
-        padding: 16px;
-        background: var(--ld-surface);
-        align-self: flex-start;
-        position: sticky;
-        top: 0;
-        max-height: calc(100vh - 52px);
-        overflow-y: auto;
-      }
-      .discover__main { flex: 1; min-width: 0; }
+    .drawer__panel {
+      position: fixed; z-index: 101; background: var(--ld-surface);
+      overflow-y: auto; padding: 20px;
+      transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
     }
+    /* Desktop: right side drawer */
+    @media (min-width: 768px) {
+      .drawer__panel {
+        top: 0; right: 0; bottom: 0; width: 320px;
+        border-left: 1px solid var(--ld-border);
+        box-shadow: -8px 0 24px rgba(0,0,0,0.08);
+        transform: translateX(100%);
+      }
+      .drawer__panel--open { transform: translateX(0); }
+    }
+    /* Mobile: bottom sheet */
+    @media (max-width: 767px) {
+      .drawer__panel {
+        left: 0; right: 0; bottom: 0;
+        max-height: 85vh; border-radius: 20px 20px 0 0;
+        box-shadow: 0 -8px 24px rgba(0,0,0,0.12);
+        transform: translateY(100%);
+      }
+      .drawer__panel--open { transform: translateY(0); }
+    }
+    .drawer__header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 16px;
+    }
+    .drawer__title { margin: 0; font-size: 16px; font-weight: 700; color: var(--ld-text); }
+    .drawer__close {
+      border: 0; background: 0; color: var(--ld-text-3); cursor: pointer;
+      padding: 4px; display: flex;
+    }
+    /* drawer__apply removed — filters auto-apply on change */
 
     .sidebar__section {
       margin-bottom: 20px;
@@ -462,6 +503,30 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
     .discover__header {
       padding: 10px var(--ld-space-lg) 4px;
     }
+    .discover__mood-row {
+      display: flex; align-items: center; position: relative; justify-content: space-between;
+    }
+    .discover__mood-arrow {
+      flex-shrink: 0; border: none; background: var(--ld-surface);
+      border-radius: 50%; width: 20px; height: 20px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 700; color: var(--ld-text-3);
+      cursor: pointer; box-shadow: var(--ld-shadow-card);
+      transition: color 150ms, background 150ms; margin: 0 10px;
+    }
+    .discover__mood-arrow:hover { color: var(--ld-text); background: var(--ld-surface-2); }
+    .discover__mood-actions {
+      display: flex; align-items: center; gap: 6px;
+      flex-shrink: 0; padding-left: 12px; z-index: 1;
+      background: linear-gradient(to right, transparent, var(--ld-bg) 12px);
+    }
+    .discover__clear-text-btn {
+      border: none; background: none; font-size: 12px;
+      color: var(--ld-primary); cursor: pointer; font-family: inherit;
+      font-weight: 600; white-space: nowrap; padding: 6px 0;
+      transition: opacity 150ms;
+    }
+    .discover__clear-text-btn:hover { opacity: 0.7; }
 
     .discover__context {
       font-size: 11px;
@@ -478,6 +543,122 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
 
     .theme-evening .discover__greeting {
       color: var(--ld-primary);
+    }
+
+    .discover__filters-btn {
+      display: flex; align-items: center; gap: 6px;
+      border: 1px solid var(--ld-border); background: var(--ld-surface);
+      border-radius: 10px; padding: 8px 13px;
+      font-size: 12px; font-weight: 600; color: var(--ld-text);
+      cursor: pointer; font-family: inherit; white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .discover__filters-badge {
+      background: var(--ld-primary); color: var(--ld-on-primary, #fff);
+      border-radius: 7px; font-size: 10px; padding: 0 5px; font-weight: 700;
+    }
+
+    /* Mode switcher */
+    .discover__mode {
+      display: flex; gap: 6px;
+      padding: 4px; margin: 0 var(--ld-space-lg) 12px;
+      background: var(--ld-surface); border: 1px solid var(--ld-border);
+      border-radius: 14px;
+    }
+    .discover__mode-btn {
+      flex: 1; border: 0; border-radius: 11px; padding: 10px 8px;
+      font-size: 13px; font-weight: 700; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      background: transparent; color: var(--ld-text-2);
+      font-family: inherit; transition: background 150ms, color 150ms;
+    }
+    .discover__mode-btn--active {
+      background: var(--ld-primary); color: var(--ld-on-primary, #fff);
+    }
+    .discover__mode-sub {
+      font-weight: 400; font-size: 10px; opacity: 0.8;
+    }
+
+    /* Mood categories */
+    .discover__mood-section {
+      padding: 0 var(--ld-space-lg); margin-bottom: 10px;
+    }
+    .discover__mood-label {
+      font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;
+      color: var(--ld-text-3); font-weight: 600; margin: 0 0 6px;
+    }
+    .discover__moods {
+      display: flex; gap: 6px; overflow-x: auto;
+      scrollbar-width: none; padding-bottom: 2px;
+    }
+    .discover__moods::-webkit-scrollbar { display: none; }
+    .discover__mood-chip {
+      display: flex; align-items: center; gap: 5px;
+      padding: 8px 14px; border-radius: 20px;
+      font-size: 13px; font-weight: 500; white-space: nowrap;
+      cursor: pointer; font-family: inherit;
+      border: 1px solid var(--ld-border); background: var(--ld-surface);
+      color: var(--ld-text-2); transition: all 150ms;
+    }
+    .discover__mood-chip--active {
+      background: var(--ld-primary); color: var(--ld-on-primary, #fff);
+      border-color: var(--ld-primary);
+    }
+
+    /* Refine row */
+    .discover__refine-row {
+      display: flex; align-items: center; gap: 6px;
+      padding: 0 var(--ld-space-lg); margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .discover__refine-btn {
+      display: flex; align-items: center; gap: 5px;
+      border: 1px solid var(--ld-border); background: var(--ld-surface);
+      border-radius: 10px; padding: 7px 12px;
+      font-size: 12px; font-weight: 600; color: var(--ld-text);
+      cursor: pointer; font-family: inherit;
+    }
+    .discover__refine-btn--open {
+      background: var(--ld-primary-soft); border-color: var(--ld-primary);
+      color: var(--ld-on-primary-soft, var(--ld-primary));
+    }
+    .discover__refine-badge {
+      background: var(--ld-primary); color: var(--ld-on-primary, #fff);
+      border-radius: 7px; font-size: 10px; padding: 0 5px;
+    }
+    .discover__active-facet {
+      display: flex; align-items: center; gap: 4px;
+      border: 1px dashed var(--ld-primary); background: var(--ld-primary-soft);
+      border-radius: 14px; padding: 5px 10px;
+      font-size: 12px; color: var(--ld-on-primary-soft, var(--ld-primary));
+      cursor: pointer; font-family: inherit;
+    }
+
+    /* Facets inline panel */
+    .discover__facets-panel {
+      margin: 0 var(--ld-space-lg) 10px;
+      padding: 12px 14px; background: var(--ld-surface);
+      border: 1px solid var(--ld-primary); border-radius: 12px;
+    }
+    .discover__facets-context {
+      font-size: 11px; color: var(--ld-text-3); margin: 0 0 8px;
+    }
+    .discover__facets-context strong {
+      color: var(--ld-on-primary-soft, var(--ld-primary)); font-weight: 700;
+    }
+    .discover__facets-grid {
+      display: flex; gap: 6px; flex-wrap: wrap;
+    }
+    .discover__facet-chip {
+      border: 1px solid var(--ld-border); background: var(--ld-surface-2);
+      border-radius: 14px; padding: 5px 11px;
+      font-size: 12px; color: var(--ld-text-2);
+      cursor: pointer; font-family: inherit;
+      transition: all 150ms;
+    }
+    .discover__facet-chip--active {
+      background: var(--ld-primary-soft); border-color: var(--ld-primary);
+      color: var(--ld-on-primary-soft, var(--ld-primary)); font-weight: 600;
     }
 
     .discover__toolbar {
@@ -894,7 +1075,7 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
 
   `,
 })
-export class DiscoverComponent implements OnInit {
+export class DiscoverComponent implements OnInit, AfterViewInit {
   readonly profileStore = inject(ProfileStore);
   readonly savedStore = inject(SavedStore);
   private api = inject(ApiService);
@@ -1004,6 +1185,32 @@ export class DiscoverComponent implements OnInit {
   });
   readonly loading = signal(false);
   readonly loaded = signal(false);
+  readonly filtersDrawerOpen = signal(false);
+  private moodsScroll = viewChild<ElementRef>('moodsScroll');
+  readonly moodsOverflowing = signal(false);
+
+  scrollMoods(direction: number) {
+    const el = this.moodsScroll()?.nativeElement;
+    if (el) el.scrollBy({ left: direction * 150, behavior: 'smooth' });
+  }
+
+  private checkMoodsOverflow() {
+    const el = this.moodsScroll()?.nativeElement;
+    if (el) {
+      this.moodsOverflowing.set(el.scrollWidth > el.clientWidth);
+    }
+  }
+  readonly refineOpen = signal(false);
+
+  readonly activeFacetChips = computed(() => this.paletteChips().filter(c => c.active));
+  readonly activeFacetCount = computed(() => this.activeFacetChips().length);
+
+  activePresetLabel(): string {
+    const key = this.activePreset();
+    if (!key) return '';
+    const p = this.presets.find(pr => pr.key === key);
+    return p ? this.translate.instant(p.labelKey) : key;
+  }
   readonly hasMoreFromServer = signal(true);
   readonly totalFromServer = signal(0);
   readonly sectionCounts = signal<{ places: number; events: number; total: number }>({ places: 0, events: 0, total: 0 });
@@ -1116,6 +1323,13 @@ export class DiscoverComponent implements OnInit {
     });
   }
 
+  ngAfterViewInit() {
+    setTimeout(() => this.checkMoodsOverflow(), 100);
+  }
+
+  @HostListener('window:resize')
+  onResize() { this.checkMoodsOverflow(); }
+
   ngOnInit() {
     // F3.4: No gate — show feed immediately with popularity fallback.
     // Onboarding is optional (accessible from settings).
@@ -1203,12 +1417,9 @@ export class DiscoverComponent implements OnInit {
 
   showMore() {
     const current = this.allCards();
-    const ctx = this.contextBar();
     const pos = this.geo.position();
-    const isDesktop = window.innerWidth >= 1024;
-    const defaultRadius = pos.source === 'default' ? 3000 : 5000;
-    const radiusM = isDesktop ? this.sidebarRadius() * 1000 : (ctx ? ctx.getRadiusM() : defaultRadius);
-    const timeWindow = isDesktop ? this.getTimeWindowForValue(this.sidebarTime()) : (ctx ? ctx.getTimeWindow() : this.defaultTimeWindow());
+    const radiusM = this.sidebarRadius() * 1000;
+    const timeWindow = this.getTimeWindowForValue(this.sidebarTime());
     const preset = this.activePreset();
     const mood = preset ? this.MOOD_PRESETS[preset] : null;
     const interests = mood?.interests ?? this.profileStore.interests();
@@ -1216,7 +1427,7 @@ export class DiscoverComponent implements OnInit {
 
     this.api.discover({
       lat: pos.lat, lng: pos.lng,
-      radiusM: mood?.radiusM ?? radiusM,
+      radiusM,
       timeWindow,
       profile: { interests, company, hasPet: this.profileStore.hasPet() || undefined },
       hiddenIds: this.profileStore.hiddenIds(),
@@ -1228,8 +1439,12 @@ export class DiscoverComponent implements OnInit {
       limit: 15,
     }).subscribe({
       next: (res) => {
-        this.allCards.set([...current, ...res.cards]);
-        this.hasMoreFromServer.set(res.hasMore);
+        const existingIds = new Set(current.map((c: any) => c.id));
+        const newCards = res.cards.filter((c: any) => !existingIds.has(c.id));
+        this.allCards.set([...current, ...newCards]);
+        this.totalFromServer.set((res as any).total ?? this.totalFromServer());
+        // If no new unique cards came back, stop pagination
+        this.hasMoreFromServer.set(newCards.length > 0 && res.hasMore);
       },
     });
   }
@@ -1345,12 +1560,9 @@ export class DiscoverComponent implements OnInit {
     this.loading.set(true);
     const loaderStart = Date.now();
 
-    const ctx = this.contextBar();
     const pos = this.geo.position();
-    const defaultRadius = pos.source === 'default' ? 3000 : 5000;
-    const isDesktop = window.innerWidth >= 1024;
-    const radiusM = isDesktop ? this.sidebarRadius() * 1000 : (ctx ? ctx.getRadiusM() : defaultRadius);
-    const timeWindow = isDesktop ? this.getTimeWindowForValue(this.sidebarTime()) : (ctx ? ctx.getTimeWindow() : this.defaultTimeWindow());
+    const radiusM = this.sidebarRadius() * 1000;
+    const timeWindow = this.getTimeWindowForValue(this.sidebarTime());
     const preset = this.activePreset();
     const f = this.currentFilters();
 
@@ -1662,12 +1874,9 @@ export class DiscoverComponent implements OnInit {
   }
 
   private silentRevalidate() {
-    const ctx = this.contextBar();
     const pos = this.geo.position();
-    const isDesktop = window.innerWidth >= 1024;
-    const defaultRadius = pos.source === 'default' ? 3000 : 5000;
-    const radiusM = isDesktop ? this.sidebarRadius() * 1000 : (ctx ? ctx.getRadiusM() : defaultRadius);
-    const timeWindow = isDesktop ? this.getTimeWindowForValue(this.sidebarTime()) : (ctx ? ctx.getTimeWindow() : this.defaultTimeWindow());
+    const radiusM = this.sidebarRadius() * 1000;
+    const timeWindow = this.getTimeWindowForValue(this.sidebarTime());
     const preset = this.activePreset();
     const mood = preset ? this.MOOD_PRESETS[preset] : null;
     const interests = mood?.interests ?? this.profileStore.interests();

@@ -163,7 +163,7 @@ Full spec: `.workbench/specs/feed-cards-ui-spec.md`
 - [ ] Проверить фильтр "События" на фронте — отделяет ли type=event от type=place
 - [ ] UI flows: landing → discover, onboarding, chips → ProfileStore, language switcher
 - [ ] QA: полный пользовательский путь на проде (landing → discover → карточка → share)
-- [ ] **Facet stabilization** — фасеты показываются в неправильном порядке / с зависимостями. Пример: фасет "Свидание" появляется только после выбора "Традиционный", хотя должен быть доступен сразу. Нужно: проверить логику `suggestedFacets` и фильтрацию — фасеты не должны зависеть друг от друга, каждый доступен независимо.
+- [x] **Facet stabilization** — DONE. suggestedFacets теперь включают прямые фасеты из карточек (не только co-occurrence). "Свидание" доступен сразу при "Поесть".
 
 #### 0.1c Landing + UX improvements — DONE (2026-07-23)
 - [x] **Event poster thumbnails** on feed cards (tkt.ge, google_events, biletebi via proxy)
@@ -320,8 +320,16 @@ Full spec: `.workbench/mvp_lazy_day/v2-upd/lazigo-route-feature-spec.md`
 - [x] Nightlife mood + companions (kids/dog) filters with compatibility matrix
 - [x] Curated routes: 30 seeded (10 easy + 10 medium + 4 full_day + 3 night + 3 family)
 - [x] Curated route selection logic: mood + tier + companions, seen tracking per device
-- [ ] **Phase 4: District spreading** — 2-3h routes spread across 2-3 neighboring districts, min 300m between points
-- [ ] **Phase 5: "Ещё интересные места" sidebar** — 45 curated POI minus route points, add to route
+- [x] **Phase 4: District spreading** — 2-3h routes spread across 2-3 neighboring districts, min 300m between points
+- [x] **Phase 5: "Ещё интересные места"** — must_see/worth_detour POI on result screen, add to route, hover → map dot
+- [x] **Discovery UI переработка**: mode switcher, mood categories (single-select), "Уточнить" facets panel (direct + co-occurrence), sidebar→drawer overlay (desktop right / mobile bottom sheet), card redesign (why line + navigate/taxi actions + eye detail), scroll arrows, "Очистить фильтры", context-bar removed (drawer = single source of truth)
+- [x] **Facet stabilization** — suggestedFacets now use direct facets from cards (top-12 by frequency) + co-occurrence as bonus. "Свидание" shows immediately for "Поесть" without needing "Традиционный" first.
+- [x] **Events bypass interest hard filter** — events pass through for culture/active/nightlife/entertainment/food moods. typeFilter respected in tomorrow fallback.
+- [x] **Epsilon explore formatting** — raw explore slots now mapped to card format (title, openStatus, distanceM)
+- [x] **Дупликация при "Показать ещё"** — frontend dedup by ID + stops pagination when no new unique cards
+- [x] **Radius consistency** — showMore uses sidebarRadius (was using mood override, causing total mismatch)
+- [x] **KA language removed** — switcher removed from nav + settings (ka.json stays as fallback)
+- [ ] **Расширение списка мест для конструктора** — top-places в районах показывает мало мест (LIMIT 60 глобальный, фильтр по bbox на фронте). Нужно: передать bbox на бэк, искать внутри района без глобального лимита.
 - [ ] Auto-generation quality: opening hours filter, seed dithering
 - [ ] Seed remaining curated routes (C2, C5, C7, C9, C10 + more nightlife/family)
 
