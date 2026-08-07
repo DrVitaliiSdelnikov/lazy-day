@@ -48,6 +48,12 @@ import { LdIconComponent } from '../../../core/components/ld-icon.component';
                 }
               }
             </p>
+            @if (card().petStatus) {
+              <span class="card__pet" [class.card__pet--confirmed]="card().petStatus === 'pet_friendly'">
+                <ld-icon [name]="card().petStatus === 'pet_friendly' ? 'dog' : 'sun'" [size]="11" />
+                {{ card().petStatus === 'pet_friendly' ? ('card.pet_friendly' | translate) : ('card.outdoor_seating' | translate) }}
+              </span>
+            }
           </div>
           <button
             class="card__heart"
@@ -201,6 +207,12 @@ import { LdIconComponent } from '../../../core/components/ld-icon.component';
     .card__status-inline--secondary { color: var(--ld-text-2); }
 
     .card__rating-count { color: var(--ld-text-3); font-weight: 400; }
+
+    .card__pet {
+      display: inline-flex; align-items: center; gap: 3px;
+      font-size: 10px; color: var(--ld-text-3); margin-top: 3px;
+    }
+    .card__pet--confirmed { color: var(--ld-open); font-weight: 600; }
 
     /* Two action buttons */
     .card__actions {

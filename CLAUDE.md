@@ -329,9 +329,11 @@ Full spec: `.workbench/mvp_lazy_day/v2-upd/lazigo-route-feature-spec.md`
 - [x] **Дупликация при "Показать ещё"** — frontend dedup by ID + stops pagination when no new unique cards
 - [x] **Radius consistency** — showMore uses sidebarRadius (was using mood override, causing total mismatch)
 - [x] **KA language removed** — switcher removed from nav + settings (ka.json stays as fallback)
+- [x] **Pet-friendly badges** — petStatus on cards (pet_friendly / outdoor_seating), additive score boost (0.25/0.15/0.12), pet-friendly places sort to top when hasPet=true
+- [x] **Seed remaining curated routes** — migration 029, 16 more routes. Total: 46 (10 easy + 10 medium + 9 full_day + 7 night + 10 family)
 - [ ] **Расширение списка мест для конструктора** — top-places в районах показывает мало мест (LIMIT 60 глобальный, фильтр по bbox на фронте). Нужно: передать bbox на бэк, искать внутри района без глобального лимита.
 - [ ] Auto-generation quality: opening hours filter, seed dithering
-- [ ] Seed remaining curated routes (C2, C5, C7, C9, C10 + more nightlife/family)
+- [ ] **Стабилизация и разработка скоринга** — ревью весов (distance vs interest vs pet), A/B тестирование, метрики качества выдачи, баланс diversity vs relevance
 
 #### v2 Phase 3: Curator ("Собери вечер")
 Full spec: `.workbench/mvp_lazy_day/v2-upd/lazigo-curator-feature-spec.md`

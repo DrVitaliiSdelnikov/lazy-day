@@ -480,6 +480,7 @@ export class RecommendationService {
         googlePlaceId: c.google_place_id,
         isChain: c.is_chain || false,
         hook: c.hook ?? undefined,
+        petStatus: this.resolvePetStatus(c),
         whyLabel: this.resolveWhyLabel(c, userProfile, wPersonal, dto.locale),
       };
     });
@@ -918,18 +919,20 @@ export class RecommendationService {
     }
 
     // Pet modifier — use Google attributes when available, fallback to tag proxy
+    // When hasPet=true, pet-friendly/outdoor places get a strong additive boost
+    // so they sort above places with no pet data (not just multiply interestScore)
+    let petBoost = 0;
     if (dto.profile.hasPet) {
       const attrs = c.attributes as Record<string, unknown> | undefined;
       if (attrs?.['allowsDogs'] === true) {
-        interestScore = Math.min(1.0, interestScore * 1.5);
+        petBoost = 0.25; // strong boost — confirmed pet-friendly
         if (companyFit !== 'penalized') companyFit = 'boosted';
+      } else if (attrs?.['outdoorSeating'] === true) {
+        petBoost = 0.15; // moderate boost — outdoor seating as proxy
       } else if (attrs?.['allowsDogs'] === false && attrs?.['outdoorSeating'] !== true) {
-        // No dogs allowed AND no outdoor seating → strong penalty
+        // No dogs allowed AND no outdoor seating → penalty
         interestScore = interestScore * 0.1;
         if (!companyFit) companyFit = 'penalized';
-      } else if (attrs?.['allowsDogs'] === false && attrs?.['outdoorSeating'] === true) {
-        // No dogs inside but has terrace → mild, neutral-ish
-        interestScore = interestScore * 0.7;
       } else {
         // No Google data — fallback to tag proxy
         const hasPetBoost = tags.some((t) => PET_MODIFIER.boost.includes(t));
@@ -940,7 +943,7 @@ export class RecommendationService {
           if (!companyFit) companyFit = 'penalized';
         }
         if (hasPetBoost) {
-          interestScore = Math.min(1.0, interestScore * 1.3);
+          petBoost = 0.12; // mild boost — tag proxy
           if (companyFit !== 'penalized') companyFit = 'boosted';
         }
       }
@@ -965,7 +968,8 @@ export class RecommendationService {
       WEIGHTS.distanceDecay * distance +
       WEIGHTS.timeFit * time +
       WEIGHTS.cardQuality * quality +
-      WEIGHTS.sourceConfidence * source;
+      WEIGHTS.sourceConfidence * source +
+      petBoost;
 
     // Chain penalty: lower discovery value, applied on final score
     if (c.is_chain && c.type === 'place') {
@@ -1271,6 +1275,18 @@ export class RecommendationService {
    * F3.1: Contextual "why" label — explains why this venue is shown.
    * Priority: explore > saved > vibe match > company > interest > nearby.
    */
+  private resolvePetStatus(c: ScoredCandidate): 'pet_friendly' | 'outdoor_seating' | undefined {
+    if (c.type !== 'place') return undefined;
+    const attrs = c.attributes as Record<string, unknown> | undefined;
+    if (attrs?.['allowsDogs'] === true) return 'pet_friendly';
+    if (attrs?.['outdoorSeating'] === true) return 'outdoor_seating';
+    // Tag proxy: outdoor categories suggest outdoor seating possibility
+    const outdoorTags = ['terrace', 'outdoor', 'garden', 'patio'];
+    const tags = [...(c.facet_atmosphere ?? []), ...(c.tags ?? [])];
+    if (tags.some(t => outdoorTags.includes(t))) return 'outdoor_seating';
+    return undefined;
+  }
+
   private resolveWhyLabel(
     c: ScoredCandidate,
     profile: any,

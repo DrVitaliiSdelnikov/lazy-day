@@ -42,6 +42,7 @@ export interface RecommendationCard {
   googlePlaceId?: string;
   isChain?: boolean;
   hook?: string;
+  petStatus?: 'pet_friendly' | 'outdoor_seating';
   whyLabel?: string;
   source: string;
 }
