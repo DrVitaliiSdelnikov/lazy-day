@@ -435,25 +435,73 @@ interface CareLine {
             <p class="route__footer-care">{{ care.text }}</p>
           }
 
-          <!-- Nearby places -->
-          @if (nearbyPlaces().length > 0) {
-            <div class="route__nearby">
-              <p class="route__nearby-title">{{ 'route.nearby_title' | translate }}</p>
-              @for (place of nearbyPlaces(); track place.id) {
-                <div class="route__nearby-item"
-                  (mouseenter)="focusNearbyOnMap(place)"
-                  (mouseleave)="clearNearbyFocus()">
-                  <div class="route__place-icon">
-                    <ld-icon [name]="categoryIcon(place.category)" [size]="16" />
-                  </div>
-                  <div class="route__nearby-info">
-                    <span class="route__place-name">{{ place.name }}</span>
-                    @if (place.hook) { <span class="route__place-gist">{{ place.hook }}</span> }
-                    <span class="route__nearby-dist">+{{ place.distanceFromRoute }} {{ 'route.meters' | translate }}</span>
-                  </div>
-                  <button class="route__place-add" (click)="addNearbyToRoute(place)">
-                    <span>+</span>
-                  </button>
+          <!-- Nearby + Interesting tabs -->
+          @if (nearbyPlaces().length > 0 || interestingPlaces().length > 0) {
+            <div class="route__extra">
+              <div class="route__extra-tabs">
+                <button class="route__extra-tab" [class.route__extra-tab--active]="extraTab() === 'nearby'"
+                  (click)="extraTab.set('nearby')">
+                  {{ 'route.nearby_title' | translate }}
+                  @if (nearbyPlaces().length > 0) { <span class="route__extra-badge">{{ nearbyPlaces().length }}</span> }
+                </button>
+                <button class="route__extra-tab" [class.route__extra-tab--active]="extraTab() === 'interesting'"
+                  (click)="extraTab.set('interesting')">
+                  {{ 'route.interesting_title' | translate }}
+                  @if (interestingPlaces().length > 0) { <span class="route__extra-badge">{{ interestingPlaces().length }}</span> }
+                </button>
+              </div>
+
+              @if (extraTab() === 'nearby') {
+                <div class="route__extra-list">
+                  @for (place of nearbyPlaces(); track place.id) {
+                    <div class="route__extra-item"
+                      (mouseenter)="focusNearbyOnMap(place)"
+                      (mouseleave)="clearNearbyFocus()">
+                      <div class="route__place-icon">
+                        <ld-icon [name]="categoryIcon(place.category)" [size]="16" />
+                      </div>
+                      <div class="route__extra-info">
+                        <span class="route__place-name">{{ place.name }}</span>
+                        @if (place.hook) { <span class="route__place-gist">{{ place.hook }}</span> }
+                        <span class="route__extra-meta">+{{ place.distanceFromRoute }} {{ 'route.meters' | translate }}</span>
+                      </div>
+                      <button class="route__place-add" (click)="addNearbyToRoute(place)">
+                        <span>+</span>
+                      </button>
+                    </div>
+                  }
+                  @if (nearbyPlaces().length === 0) {
+                    <p class="route__extra-empty">{{ 'route.no_nearby' | translate }}</p>
+                  }
+                </div>
+              }
+
+              @if (extraTab() === 'interesting') {
+                <div class="route__extra-list">
+                  @for (place of interestingPlaces(); track place.id) {
+                    <div class="route__extra-item"
+                      (mouseenter)="focusNearbyOnMap(place)"
+                      (mouseleave)="clearNearbyFocus()">
+                      <div class="route__place-icon">
+                        <ld-icon [name]="categoryIcon(place.category)" [size]="16" />
+                      </div>
+                      <div class="route__extra-info">
+                        <span class="route__place-name">{{ place.name }}</span>
+                        @if (place.hook) { <p class="route__place-gist">{{ place.hook }}</p> }
+                        <span class="route__extra-meta">
+                          {{ place.category }}
+                          @if (place.rating) { · ★ {{ place.rating }} }
+                          · {{ place.distanceM < 1000 ? place.distanceM + ' м' : (place.distanceM / 1000).toFixed(1) + ' км' }}
+                        </span>
+                      </div>
+                      <button class="route__place-add" (click)="addInterestingToRoute(place)">
+                        <span>+</span>
+                      </button>
+                    </div>
+                  }
+                  @if (interestingPlaces().length === 0) {
+                    <p class="route__extra-empty">{{ 'route.no_interesting' | translate }}</p>
+                  }
                 </div>
               }
             </div>
@@ -475,37 +523,7 @@ interface CareLine {
             <ld-icon name="map-pin" [size]="14" /> {{ 'route.open_maps' | translate }}
           </a>
 
-          <!-- Interesting places -->
-          @if (interestingPlaces().length > 0) {
-            <div class="route__interesting">
-              <h3 class="route__interesting-title">{{ 'route.interesting_title' | translate }}</h3>
-              <div class="route__interesting-list">
-                @for (place of interestingPlaces(); track place.id) {
-                  <div class="route__interesting-item"
-                    (mouseenter)="focusNearbyOnMap(place)"
-                    (mouseleave)="clearNearbyFocus()">
-                    <div class="route__place-icon">
-                      <ld-icon [name]="categoryIcon(place.category)" [size]="16" />
-                    </div>
-                    <div class="route__interesting-info">
-                      <span class="route__place-name">{{ place.name }}</span>
-                      @if (place.hook) {
-                        <p class="route__place-gist">{{ place.hook }}</p>
-                      }
-                      <span class="route__interesting-meta">
-                        {{ place.category }}
-                        @if (place.rating) { · ★ {{ place.rating }} }
-                        · {{ place.distanceM < 1000 ? place.distanceM + ' м' : (place.distanceM / 1000).toFixed(1) + ' км' }}
-                      </span>
-                    </div>
-                    <button class="route__place-add" (click)="addInterestingToRoute(place); $event.stopPropagation()">
-                      <span>+</span>
-                    </button>
-                  </div>
-                }
-              </div>
-            </div>
-          }
+          <!-- Interesting places section removed — merged into tabs above -->
         </section>
       }
     </div>
@@ -897,20 +915,46 @@ interface CareLine {
       .route__transit-btn--mobile { display: none; }
     }
 
-    .route__nearby {
+    /* Extra section: tabs (nearby + interesting) */
+    .route__extra {
       margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--ld-border);
     }
-    .route__nearby-title {
-      font-size: 14px; font-weight: 700; color: var(--ld-text); margin: 0 0 8px;
+    .route__extra-tabs {
+      display: flex; gap: 4px; margin-bottom: 10px;
+      background: var(--ld-surface-2); border-radius: 10px; padding: 3px;
     }
-    .route__nearby-item {
-      display: flex; gap: 10px; align-items: flex-start; padding: 8px 0;
-      border-bottom: 1px solid var(--ld-border);
+    .route__extra-tab {
+      flex: 1; border: none; background: transparent; border-radius: 8px;
+      padding: 7px 8px; font-size: 12px; font-weight: 600;
+      color: var(--ld-text-3); cursor: pointer; font-family: inherit;
+      display: flex; align-items: center; justify-content: center; gap: 4px;
+      transition: background 150ms, color 150ms;
     }
-    .route__nearby-item:last-child { border-bottom: none; }
-    .route__nearby-info { flex: 1; min-width: 0; }
-    .route__nearby-dist {
+    .route__extra-tab--active {
+      background: var(--ld-surface); color: var(--ld-text);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .route__extra-badge {
+      font-size: 10px; background: var(--ld-primary-soft);
+      color: var(--ld-on-primary-soft, var(--ld-primary));
+      border-radius: 6px; padding: 0 5px; font-weight: 700;
+    }
+    .route__extra-list {
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .route__extra-item {
+      display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px;
+      border: 1px solid var(--ld-border); border-radius: 10px;
+      background: var(--ld-surface); cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .route__extra-item:hover { border-color: var(--ld-primary); }
+    .route__extra-info { flex: 1; min-width: 0; }
+    .route__extra-meta {
       font-size: 10px; color: var(--ld-text-3); margin-top: 2px; display: block;
+    }
+    .route__extra-empty {
+      font-size: 12px; color: var(--ld-text-3); font-style: italic; margin: 8px 0;
     }
 
     .route__footer-care {
@@ -961,27 +1005,7 @@ interface CareLine {
       border: 1px solid var(--ld-primary); border-radius: 10px;
     }
 
-    .route__interesting {
-      margin-top: 24px; padding-top: 16px;
-      border-top: 1px solid var(--ld-border);
-    }
-    .route__interesting-title {
-      font-size: 15px; font-weight: 700; color: var(--ld-text); margin: 0 0 12px;
-    }
-    .route__interesting-list {
-      display: flex; flex-direction: column; gap: 8px;
-    }
-    .route__interesting-item {
-      display: flex; gap: 10px; align-items: flex-start;
-      padding: 10px 12px; border: 1px solid var(--ld-border); border-radius: 10px;
-      background: var(--ld-surface); cursor: pointer;
-      transition: border-color 0.15s;
-    }
-    .route__interesting-item:hover { border-color: var(--ld-primary); }
-    .route__interesting-info { flex: 1; min-width: 0; }
-    .route__interesting-meta {
-      font-size: 11px; color: var(--ld-text-3); margin-top: 2px; display: block;
-    }
+    /* old interesting styles removed — merged into route__extra tabs */
   `,
 })
 export class RouteComponent implements OnInit {
@@ -1031,6 +1055,7 @@ export class RouteComponent implements OnInit {
   altLoading = signal(false);
   nearbyPlaces = signal<any[]>([]);
   interestingPlaces = signal<any[]>([]);
+  extraTab = signal<'nearby' | 'interesting'>('nearby');
 
   // Manual mode
   topPlaces = signal<any[]>([]);

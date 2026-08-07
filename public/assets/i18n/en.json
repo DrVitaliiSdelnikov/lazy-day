@@ -357,6 +357,8 @@
     "no_rush": "take your time",
     "nearby_title": "Nearby along route",
     "interesting_title": "More interesting places",
+    "no_nearby": "Nothing found near the route",
+    "no_interesting": "All interesting places are already in the route",
     "meters": "m from route",
     "more": "Read more",
     "less": "Less",
