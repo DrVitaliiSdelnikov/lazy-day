@@ -1373,6 +1373,9 @@ export class DiscoverComponent implements OnInit, AfterViewInit {
   applyPreset(key: string) {
     const value = this.activePreset() === key ? null : key;
     this.activePreset.set(value);
+    // Reset facets — they were contextual to the previous category
+    this.activeFacetFilters.set([]);
+    this.refineOpen.set(false);
     this.saveSessionFilters();
     this.loadFeed();
   }

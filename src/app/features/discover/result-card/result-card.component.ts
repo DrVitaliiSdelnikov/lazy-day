@@ -76,7 +76,7 @@ import { LdIconComponent } from '../../../core/components/ld-icon.component';
               <ld-icon name="route" [size]="13" /> {{ 'card.navigate' | translate }}
             </a>
             @if (card().lat && card().lng) {
-              <a class="card__action card__action--secondary" [href]="taxiLink()" target="_blank" rel="noopener">
+              <a class="card__action card__action--secondary card__action--mobile-only" [href]="taxiLink()" target="_blank" rel="noopener">
                 <ld-icon name="car" [size]="13" /> {{ 'card.taxi' | translate }}
               </a>
             }
@@ -227,6 +227,9 @@ import { LdIconComponent } from '../../../core/components/ld-icon.component';
     }
     .card__action--secondary:hover { border-color: var(--ld-text-3); background: var(--ld-surface-2); }
     .card__action--secondary:active { transform: scale(0.97); }
+    @media (min-width: 900px) {
+      .card__action--mobile-only { display: none; }
+    }
 
     .card__expand-btn {
       border: 1px solid var(--ld-border); background: var(--ld-surface);
