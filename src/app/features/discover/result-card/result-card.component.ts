@@ -66,7 +66,7 @@ import { LdIconComponent } from '../../../core/components/ld-icon.component';
 
         <!-- Hook (friend's voice) -->
         @if (card().hook) {
-          <p class="card__hook">{{ card().hook }}</p>
+          <p class="card__hook" [title]="card().hook!">{{ card().hook }}</p>
         }
 
         <!-- Two actions -->
