@@ -1759,13 +1759,18 @@ export class RouteComponent implements OnInit {
     this.showOptimizePrompt.set(false);
     if (this.selectedPoints().length === 0) return;
 
-    // If user wants GPS optimization but GPS not yet acquired — request it first
-    if (optimizeFromGps && this.geo.position().source !== 'gps') {
-      await this.geo.requestPosition();
-    }
-
+    // Show loading immediately — don't leave user on manual screen
     this.routeSource.set('manual');
     this.startLoader();
+
+    // If user wants GPS optimization but GPS not yet acquired — request it
+    if (optimizeFromGps && this.geo.position().source !== 'gps') {
+      try {
+        await this.geo.requestPosition();
+      } catch {
+        // GPS failed — continue with first point as start
+      }
+    }
     const pos = this.geo.position();
     const firstPoint = this.selectedPoints()[0];
     const startLat = optimizeFromGps && pos.source === 'gps' ? pos.lat : firstPoint.lat;
