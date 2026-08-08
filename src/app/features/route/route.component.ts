@@ -631,18 +631,18 @@ interface CareLine {
     }
     .route__area-card--open { border-color: var(--ld-primary); }
     .route__area-header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 12px 14px; cursor: pointer;
+      display: flex; align-items: flex-start; gap: 8px;
+      padding: 12px 14px; cursor: pointer; overflow: hidden;
     }
     .route__area-header:hover { background: var(--ld-primary-soft); }
-    .route__area-info { display: flex; flex-direction: column; gap: 2px; }
-    .route__area-name { font-size: 14px; font-weight: 600; color: var(--ld-text); }
+    .route__area-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; overflow: hidden; }
+    .route__area-name { font-size: 14px; font-weight: 600; color: var(--ld-text); word-break: break-word; }
     .route__area-short-desc {
       font-size: 12px; color: var(--ld-text-2); margin: 2px 0 4px; line-height: 1.4;
       display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
     }
     .route__area-card--open .route__area-short-desc { display: none; }
-    .route__area-vibe { font-size: 11px; color: var(--ld-text-3); }
+    .route__area-vibe { font-size: 11px; color: var(--ld-text-3); white-space: normal; word-break: break-word; }
     .route__area-arrow {
       font-size: 18px; color: var(--ld-text-3); transition: transform 0.2s;
       font-weight: 600;
@@ -1720,7 +1720,11 @@ export class RouteComponent implements OnInit {
 
   translateTags(tags: string[] | undefined): string {
     if (!tags?.length) return '';
-    return tags.map(t => this.translate.instant('tag.' + t)).join(' · ');
+    return tags.map(t => {
+      const key = 'tag.' + t;
+      const translated = this.translate.instant(key);
+      return translated === key ? t : translated;
+    }).join(' · ');
   }
 
   categoryIcon(category: string): string {

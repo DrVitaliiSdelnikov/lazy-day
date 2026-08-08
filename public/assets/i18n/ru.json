@@ -17,7 +17,8 @@
     "refine": "Уточнить",
     "refine_for": "Уточнения для",
     "clear": "Сбросить",
-    "clear_filters": "Очистить фильтры"
+    "clear_filters": "Очистить фильтры",
+    "partial_matches": "Совпадают не все фильтры"
   },
   "palette": {
     "refine": "а если точнее?"

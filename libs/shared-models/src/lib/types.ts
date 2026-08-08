@@ -43,6 +43,7 @@ export interface RecommendationCard {
   isChain?: boolean;
   hook?: string;
   petStatus?: 'pet_friendly' | 'outdoor_seating';
+  tierScore?: number;
   whyLabel?: string;
   source: string;
 }

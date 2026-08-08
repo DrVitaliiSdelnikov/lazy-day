@@ -17,7 +17,8 @@
     "refine": "Refine",
     "refine_for": "Refinements for",
     "clear": "Clear",
-    "clear_filters": "Clear filters"
+    "clear_filters": "Clear filters",
+    "partial_matches": "Not all filters match"
   },
   "palette": {
     "refine": "want something specific?"

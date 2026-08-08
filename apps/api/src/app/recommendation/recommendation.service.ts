@@ -547,6 +547,7 @@ export class RecommendationService {
         isChain: c.is_chain || false,
         hook: c.hook ?? undefined,
         petStatus: this.resolvePetStatus(c),
+        tierScore: c.tierScore,
         whyLabel: this.resolveWhyLabel(c, userProfile, wPersonal, dto.locale),
       };
     });

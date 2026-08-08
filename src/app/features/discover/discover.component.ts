@@ -94,6 +94,9 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
           <div class="sidebar__pet-row">
             <span style="font-size: 12px; display: flex; align-items: center; gap: 5px">
               <ld-icon name="dog" [size]="16" /> {{ 'sidebar.with_pet' | translate }}
+              @if (petFacetCount() != null) {
+                <span class="sidebar__facet-count">{{ petFacetCount() }}</span>
+              }
             </span>
             <button class="ld-toggle" [class.ld-toggle--on]="profileStore.hasPet()" aria-label="Pet toggle"
               (click)="togglePet()"></button>
@@ -130,9 +133,13 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
         <button class="discover__mode-btn" [class.discover__mode-btn--active]="true">
           <ld-icon name="layout-grid" [size]="16" /> {{ 'discover.mode_browse' | translate }}
         </button>
-        <button class="discover__mode-btn" (click)="openRoute()">
+        <button class="discover__mode-btn" [class.discover__mode-btn--loading]="routeLoading()"
+          (click)="openRoute()">
           <ld-icon name="route" [size]="16" /> {{ 'discover.mode_route' | translate }}
-          <span class="discover__mode-sub">{{ 'discover.mode_route_sub' | translate }}</span>
+        </button>
+        <button class="discover__mode-btn" (click)="openDecide()"
+          [disabled]="loading() || cards().length === 0">
+          <ld-icon name="compass" [size]="16" /> {{ 'decide.button' | translate }}
         </button>
       </div>
 
@@ -173,45 +180,17 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
         </div>
       </div>
 
-      <!-- Refine row: "Уточнить" button + active facet chips + decide button -->
-      <div class="discover__refine-row">
-        @if (paletteChips().length > 0) {
-          <button class="discover__refine-btn" [class.discover__refine-btn--open]="refineOpen()"
-            (click)="refineOpen.set(!refineOpen())">
-            {{ 'discover.refine' | translate }}
-            @if (activeFacetCount() > 0) {
-              <span class="discover__refine-badge">{{ activeFacetCount() }}</span>
-            }
-          </button>
-        }
-        @for (chip of activeFacetChips(); track chip.facet) {
-          <button class="discover__active-facet" (click)="applyFacetFilter(chip.facet)">
-            {{ facetLabel(chip.facet) }} <ld-icon name="x" [size]="10" />
-          </button>
-        }
-        <span style="flex:1"></span>
-        <button class="discover__decide-btn" (click)="openDecide()"
-          [disabled]="loading() || cards().length === 0"
-          [attr.aria-label]="'decide.button' | translate">
-          <ld-icon name="compass" [size]="15" />
-        </button>
-      </div>
-
-      <!-- Facets inline panel (under refine button, contextual to mood) -->
-      @if (refineOpen() && paletteChips().length > 0) {
-        <div class="discover__facets-panel">
-          <p class="discover__facets-context">
-            {{ 'discover.refine_for' | translate }} <strong>{{ activePresetLabel() }}</strong>
-          </p>
-          <div class="discover__facets-grid">
-            @for (chip of paletteChips(); track chip.facet) {
-              <button class="discover__facet-chip"
-                [class.discover__facet-chip--active]="chip.active"
-                (click)="applyFacetFilter(chip.facet)">
-                {{ facetLabel(chip.facet) }}
-              </button>
-            }
-          </div>
+      <!-- Facets: single inline row, always visible -->
+      @if (paletteChips().length > 0) {
+        <div class="discover__facets-row">
+          @for (chip of paletteChips(); track chip.facet) {
+            <button class="discover__facet-chip"
+              [class.discover__facet-chip--active]="chip.active"
+              (click)="applyFacetFilter(chip.facet)">
+              {{ facetLabel(chip.facet) }}
+              @if (chip.active) { <ld-icon name="x" [size]="10" /> }
+            </button>
+          }
         </div>
       }
 
@@ -244,6 +223,11 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
       @if (!loading() && cards().length > 0) {
         <section class="discover__results">
           @for (card of cards(); track card.id; let i = $index) {
+            @if (i > 0 && card.tierScore != null && cards()[i-1]?.tierScore != null && card.tierScore! < cards()[i-1]!.tierScore!) {
+              <div class="discover__tier-divider">
+                <span>{{ 'discover.partial_matches' | translate }}</span>
+              </div>
+            }
             @if (i === 5 && showTuneBlock()) {
               <app-feed-tune-block
                 (applied)="onTuneApplied($event)"
@@ -491,6 +475,9 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
       justify-content: space-between;
       align-items: center;
     }
+    .sidebar__facet-count {
+      font-size: 10px; color: var(--ld-text-3); font-weight: 400;
+    }
 
     .discover {
       padding-bottom: 80px;
@@ -575,8 +562,17 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
     .discover__mode-btn--active {
       background: var(--ld-primary); color: var(--ld-on-primary, #fff);
     }
-    .discover__mode-sub {
-      font-weight: 400; font-size: 10px; opacity: 0.8;
+    .discover__mode-btn--loading {
+      position: relative; overflow: hidden; pointer-events: none;
+    }
+    .discover__mode-btn--loading::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%);
+      animation: shimmer 1.2s infinite;
+    }
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
     }
 
     /* Mood categories */
@@ -605,56 +601,20 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
       border-color: var(--ld-primary);
     }
 
-    /* Refine row */
-    .discover__refine-row {
+    /* Facets row — single inline strip */
+    .discover__facets-row {
       display: flex; align-items: center; gap: 6px;
       padding: 0 var(--ld-space-lg); margin-bottom: 10px;
-      flex-wrap: wrap;
+      overflow-x: auto; scrollbar-width: none;
     }
-    .discover__refine-btn {
-      display: flex; align-items: center; gap: 5px;
-      border: 1px solid var(--ld-border); background: var(--ld-surface);
-      border-radius: 10px; padding: 7px 12px;
-      font-size: 12px; font-weight: 600; color: var(--ld-text);
-      cursor: pointer; font-family: inherit;
-    }
-    .discover__refine-btn--open {
-      background: var(--ld-primary-soft); border-color: var(--ld-primary);
-      color: var(--ld-on-primary-soft, var(--ld-primary));
-    }
-    .discover__refine-badge {
-      background: var(--ld-primary); color: var(--ld-on-primary, #fff);
-      border-radius: 7px; font-size: 10px; padding: 0 5px;
-    }
-    .discover__active-facet {
-      display: flex; align-items: center; gap: 4px;
-      border: 1px dashed var(--ld-primary); background: var(--ld-primary-soft);
-      border-radius: 14px; padding: 5px 10px;
-      font-size: 12px; color: var(--ld-on-primary-soft, var(--ld-primary));
-      cursor: pointer; font-family: inherit;
-    }
-
-    /* Facets inline panel */
-    .discover__facets-panel {
-      margin: 0 var(--ld-space-lg) 10px;
-      padding: 12px 14px; background: var(--ld-surface);
-      border: 1px solid var(--ld-primary); border-radius: 12px;
-    }
-    .discover__facets-context {
-      font-size: 11px; color: var(--ld-text-3); margin: 0 0 8px;
-    }
-    .discover__facets-context strong {
-      color: var(--ld-on-primary-soft, var(--ld-primary)); font-weight: 700;
-    }
-    .discover__facets-grid {
-      display: flex; gap: 6px; flex-wrap: wrap;
-    }
+    .discover__facets-row::-webkit-scrollbar { display: none; }
     .discover__facet-chip {
+      display: flex; align-items: center; gap: 4px;
       border: 1px solid var(--ld-border); background: var(--ld-surface-2);
       border-radius: 14px; padding: 5px 11px;
-      font-size: 12px; color: var(--ld-text-2);
+      font-size: 12px; color: var(--ld-text-2); white-space: nowrap;
       cursor: pointer; font-family: inherit;
-      transition: all 150ms;
+      transition: all 150ms; flex-shrink: 0;
     }
     .discover__facet-chip--active {
       background: var(--ld-primary-soft); border-color: var(--ld-primary);
@@ -732,6 +692,15 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
       margin-bottom: var(--ld-space-sm);
       font-size: 13px;
       color: var(--ld-text-2);
+    }
+    .discover__tier-divider {
+      grid-column: 1 / -1;
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 0; color: var(--ld-text-3); font-size: 12px;
+      font-style: italic;
+    }
+    .discover__tier-divider::before, .discover__tier-divider::after {
+      content: ''; flex: 1; border-top: 1px dashed var(--ld-border);
     }
 
     .discover__palette {
@@ -1122,6 +1091,29 @@ export class DiscoverComponent implements OnInit, AfterViewInit {
     return facets.length > 0 ? facets : undefined;
   }
 
+  readonly petFacetCount = signal<number | null>(null);
+
+  private loadPetFacetCount() {
+    const pos = this.geo.position();
+    const radiusM = this.sidebarRadius() * 1000;
+    const timeWindow = this.getTimeWindowForValue(this.sidebarTime());
+    const preset = this.activePreset();
+    const mood = preset ? this.MOOD_PRESETS[preset] : null;
+    const interests = mood?.interests ?? this.profileStore.interests();
+    const company = (mood?.company ?? this.profileStore.company() ?? undefined) as any;
+
+    this.api.count({
+      lat: pos.lat, lng: pos.lng, radiusM, timeWindow,
+      profile: { interests, company },
+      hiddenIds: this.profileStore.hiddenIds(),
+      locale: this.profileStore.locale(),
+      toggledFacets: ['pet_friendly'],
+    }).subscribe({
+      next: (c) => this.petFacetCount.set(c.total),
+      error: () => this.petFacetCount.set(null),
+    });
+  }
+
   onSidebarRadiusChange(event: any) {
     this.sidebarRadius.set(Number(event.target.value));
     this.saveSessionFilters();
@@ -1354,6 +1346,7 @@ export class DiscoverComponent implements OnInit, AfterViewInit {
       this.allCards.set(cache.cards);
       this.hasMoreFromServer.set(cache.hasMore ?? true);
       this.totalFromServer.set(cache.total ?? 0);
+      if ((cache as any).suggestedFacets) this.suggestedFacets.set((cache as any).suggestedFacets);
       // Show loader for at least 400ms (anti-flash), then reveal cards
       const elapsed = Date.now() - restoreStart;
       const delay = Math.max(400 - elapsed, 0);
@@ -1369,6 +1362,7 @@ export class DiscoverComponent implements OnInit, AfterViewInit {
       this.allCards.set(cache.cards);
       this.hasMoreFromServer.set(cache.hasMore ?? true);
       this.totalFromServer.set(cache.total ?? 0);
+      if ((cache as any).suggestedFacets) this.suggestedFacets.set((cache as any).suggestedFacets);
       this.loaded.set(true);
       this.silentRevalidate();
       return;
@@ -1542,7 +1536,10 @@ export class DiscoverComponent implements OnInit, AfterViewInit {
     }
   }
 
+  readonly routeLoading = signal(false);
+
   openRoute() {
+    this.routeLoading.set(true);
     this.router.navigate(['/route']);
   }
 
@@ -1623,6 +1620,7 @@ export class DiscoverComponent implements OnInit, AfterViewInit {
             locale: this.profileStore.locale(),
             toggledFacets: this.getToggledFacets(),
           }).subscribe(c => this.sectionCounts.set(c));
+          this.loadPetFacetCount();
           let filtered = res.cards;
 
           // Client-side quick filters
@@ -1857,6 +1855,7 @@ export class DiscoverComponent implements OnInit, AfterViewInit {
       preset: this.activePreset(),
       hasMore: this.hasMoreFromServer(),
       total: this.totalFromServer(),
+      suggestedFacets: this.suggestedFacets(),
     };
     try {
       sessionStorage.setItem(this.FEED_CACHE_KEY, JSON.stringify(cache));
@@ -1921,6 +1920,9 @@ export class DiscoverComponent implements OnInit, AfterViewInit {
           if (oldIds !== newIds) {
             this.allCards.set(res.cards);
             this.feedMeta.set(res.meta);
+          }
+          if (res.suggestedFacets?.length) {
+            this.suggestedFacets.set(res.suggestedFacets);
           }
           this.saveFeedCache();
         },
