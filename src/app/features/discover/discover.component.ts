@@ -496,7 +496,7 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
       padding: 10px var(--ld-space-lg) 4px;
     }
     .discover__mood-row {
-      display: flex; align-items: center; position: relative; justify-content: space-between;
+      display: flex; align-items: center;
     }
     .discover__mood-arrow {
       flex-shrink: 0; border: none; background: var(--ld-surface);
@@ -504,13 +504,25 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
       display: flex; align-items: center; justify-content: center;
       font-size: 16px; font-weight: 700; color: var(--ld-text-3);
       cursor: pointer; box-shadow: var(--ld-shadow-card);
-      transition: color 150ms, background 150ms; margin: 0 10px;
+      transition: color 150ms, background 150ms; margin: 0 4px;
     }
     .discover__mood-arrow:hover { color: var(--ld-text); background: var(--ld-surface-2); }
-    /* Filter actions: separate line under moods */
     .discover__filter-actions {
       display: flex; align-items: center; gap: 8px;
-      padding: 0 var(--ld-space-lg); margin-bottom: 8px;
+      padding: 0 var(--ld-space-lg);
+    }
+    /* Mobile/tablet: vertical stack with equal spacing */
+    .discover__mood-section {
+      display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px;
+    }
+    /* Desktop: moods + filter actions on same line, label above */
+    @media (min-width: 768px) {
+      .discover__mood-section {
+        flex-direction: row; align-items: center; flex-wrap: wrap;
+      }
+      .discover__mood-label { width: 100%; }
+      .discover__mood-row { flex: 1; min-width: 0; }
+      .discover__filter-actions { padding: 0; flex-shrink: 0; }
     }
     .discover__clear-text-btn {
       border: none; background: none; font-size: 12px;

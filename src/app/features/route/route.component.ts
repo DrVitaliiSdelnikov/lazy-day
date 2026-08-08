@@ -1012,6 +1012,8 @@ export class RouteComponent implements OnInit {
   private api = inject(ApiService);
   private http = inject(HttpClient);
   readonly geo = inject(GeolocationService);
+  private readonly apiBase = (typeof window !== 'undefined' && window.location.hostname !== 'localhost')
+    ? 'https://api.lazigo.app/v1' : '/v1';
   private profile = inject(ProfileStore);
   private router = inject(Router);
   private translate = inject(TranslateService);
@@ -1036,11 +1038,11 @@ export class RouteComponent implements OnInit {
 
     const pos = this.geo.position();
     const locale = this.profile.locale();
-    this.http.get<any[]>(`/v1/routes/top-places?lat=${pos.lat}&lng=${pos.lng}&locale=${locale}`).subscribe({
+    this.http.get<any[]>(`${this.apiBase}/routes/top-places?lat=${pos.lat}&lng=${pos.lng}&locale=${locale}`).subscribe({
       next: (places) => { this.topPlaces.set(places); placesReady = true; checkReady(); },
       error: () => { placesReady = true; checkReady(); },
     });
-    this.http.get<any[]>(`/v1/routes/areas?locale=${locale}`).subscribe({
+    this.http.get<any[]>(`${this.apiBase}/routes/areas?locale=${locale}`).subscribe({
       next: (areas) => { this.areas.set(areas); areasReady = true; checkReady(); },
       error: () => { areasReady = true; checkReady(); },
     });
@@ -1556,7 +1558,7 @@ export class RouteComponent implements OnInit {
     if (!data?.points?.length) return;
     const excludeIds = data.points.map((p: any) => p.id).join(',');
     const pos = this.geo.position();
-    this.http.get<any[]>(`/v1/routes/interesting-places?excludeIds=${excludeIds}&lat=${pos.lat}&lng=${pos.lng}&locale=${this.profile.locale()}`).subscribe({
+    this.http.get<any[]>(`${this.apiBase}/routes/interesting-places?excludeIds=${excludeIds}&lat=${pos.lat}&lng=${pos.lng}&locale=${this.profile.locale()}`).subscribe({
       next: (places) => this.interestingPlaces.set(places),
       error: () => {},
     });
@@ -1609,7 +1611,7 @@ export class RouteComponent implements OnInit {
   // Areas
   private loadAreas() {
     const locale = this.profile.locale();
-    this.http.get<any[]>(`/v1/routes/areas?locale=${locale}`).subscribe({
+    this.http.get<any[]>(`${this.apiBase}/routes/areas?locale=${locale}`).subscribe({
       next: (areas) => this.areas.set(areas),
     });
   }
@@ -1630,7 +1632,7 @@ export class RouteComponent implements OnInit {
     if (bbox) {
       const pos = this.geo.position();
       const locale = this.profile.locale();
-      this.http.get<any[]>(`/v1/routes/top-places?lat=${pos.lat}&lng=${pos.lng}&locale=${locale}`).subscribe({
+      this.http.get<any[]>(`${this.apiBase}/routes/top-places?lat=${pos.lat}&lng=${pos.lng}&locale=${locale}`).subscribe({
         next: (all) => {
           const filtered = all.filter((p: any) =>
             p.lat >= bbox.minLat && p.lat <= bbox.maxLat &&
@@ -1668,7 +1670,7 @@ export class RouteComponent implements OnInit {
     const pos = this.geo.position();
     const locale = this.profile.locale();
     const params = `lat=${pos.lat}&lng=${pos.lng}&locale=${locale}${type ? '&type=' + type : ''}`;
-    this.http.get<any[]>(`/v1/routes/top-places?${params}`).subscribe({
+    this.http.get<any[]>(`${this.apiBase}/routes/top-places?${params}`).subscribe({
       next: (places) => this.topPlaces.set(places),
       error: () => {},
     });
