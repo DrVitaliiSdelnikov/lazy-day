@@ -163,34 +163,39 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
           @if (moodsOverflowing()) {
             <button class="discover__mood-arrow" (click)="scrollMoods(1)" aria-label="Scroll right">›</button>
           }
-          <div class="discover__mood-actions">
-            @if (hasActiveFilters()) {
-              <button class="discover__clear-text-btn" (click)="clearAllFilters()">
-                {{ 'discover.clear_filters' | translate }}
-              </button>
-            }
-            <button class="discover__filters-btn" (click)="filtersDrawerOpen.set(true)">
+        </div>
+        <!-- Filter actions: separate line -->
+        <div class="discover__filter-actions">
+          @if (hasActiveFilters()) {
+            <button class="discover__clear-text-btn" (click)="clearAllFilters()">
+              {{ 'discover.clear_filters' | translate }}
+            </button>
+          }
+          <button class="discover__filters-btn" (click)="filtersDrawerOpen.set(true)">
               <ld-icon name="adjustments-horizontal" [size]="14" />
               {{ 'sidebar.filters' | translate }}
               @if (activeFilterCount() > 0) {
                 <span class="discover__filters-badge">{{ activeFilterCount() }}</span>
               }
             </button>
-          </div>
         </div>
       </div>
 
-      <!-- Facets: single inline row, always visible -->
+      <!-- Facets: single inline row with scroll arrows -->
       @if (paletteChips().length > 0) {
-        <div class="discover__facets-row">
-          @for (chip of paletteChips(); track chip.facet) {
-            <button class="discover__facet-chip"
-              [class.discover__facet-chip--active]="chip.active"
-              (click)="applyFacetFilter(chip.facet)">
-              {{ facetLabel(chip.facet) }}
-              @if (chip.active) { <ld-icon name="x" [size]="10" /> }
-            </button>
-          }
+        <div class="discover__facets-wrapper">
+          <button class="discover__facet-arrow" (click)="scrollFacets(-1)" aria-label="Scroll left">‹</button>
+          <div class="discover__facets-row" #facetsScroll>
+            @for (chip of paletteChips(); track chip.facet) {
+              <button class="discover__facet-chip"
+                [class.discover__facet-chip--active]="chip.active"
+                (click)="applyFacetFilter(chip.facet)">
+                {{ facetLabel(chip.facet) }}
+                @if (chip.active) { <ld-icon name="x" [size]="10" /> }
+              </button>
+            }
+          </div>
+          <button class="discover__facet-arrow" (click)="scrollFacets(1)" aria-label="Scroll right">›</button>
         </div>
       }
 
@@ -502,10 +507,10 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
       transition: color 150ms, background 150ms; margin: 0 10px;
     }
     .discover__mood-arrow:hover { color: var(--ld-text); background: var(--ld-surface-2); }
-    .discover__mood-actions {
-      display: flex; align-items: center; gap: 6px;
-      flex-shrink: 0; padding-left: 12px; z-index: 1;
-      background: linear-gradient(to right, transparent, var(--ld-bg) 12px);
+    /* Filter actions: separate line under moods */
+    .discover__filter-actions {
+      display: flex; align-items: center; gap: 8px;
+      padding: 0 var(--ld-space-lg); margin-bottom: 8px;
     }
     .discover__clear-text-btn {
       border: none; background: none; font-size: 12px;
@@ -601,11 +606,22 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
       border-color: var(--ld-primary);
     }
 
-    /* Facets row — single inline strip */
+    /* Facets row with arrows */
+    .discover__facets-wrapper {
+      display: flex; align-items: center; gap: 4px;
+      padding: 0 var(--ld-space-lg); margin-bottom: 10px;
+    }
+    .discover__facet-arrow {
+      flex-shrink: 0; border: none; background: var(--ld-surface);
+      border-radius: 50%; width: 24px; height: 24px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 700; color: var(--ld-text-3);
+      cursor: pointer; box-shadow: var(--ld-shadow-card);
+    }
+    .discover__facet-arrow:hover { color: var(--ld-text); }
     .discover__facets-row {
       display: flex; align-items: center; gap: 6px;
-      padding: 0 var(--ld-space-lg); margin-bottom: 10px;
-      overflow-x: auto; scrollbar-width: none;
+      overflow-x: auto; scrollbar-width: none; flex: 1;
     }
     .discover__facets-row::-webkit-scrollbar { display: none; }
     .discover__facet-chip {
@@ -1190,6 +1206,13 @@ export class DiscoverComponent implements OnInit, AfterViewInit {
 
   scrollMoods(direction: number) {
     const el = this.moodsScroll()?.nativeElement;
+    if (el) el.scrollBy({ left: direction * 150, behavior: 'smooth' });
+  }
+
+  private facetsScroll = viewChild<ElementRef>('facetsScroll');
+
+  scrollFacets(direction: number) {
+    const el = this.facetsScroll()?.nativeElement;
     if (el) el.scrollBy({ left: direction * 150, behavior: 'smooth' });
   }
 

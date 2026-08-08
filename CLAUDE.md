@@ -296,7 +296,7 @@ Full summary: `laziGoDocs/product/v2-roadmap-summary.md`
 - [x] M2 honesty line — landing "Билеты и такси — сами..." (ru/en/ka)
 - [x] Gemini voice enrichment — migration 020, gemini-3.5-flash, 2524 hooks + 884 blurbs (EN)
 - [x] M4 card voice — hook on feed cards
-- [ ] Voice enrichment RU — перепрогнать step2 на русском → hook_ru/blurb_ru по locale
+- [x] Voice enrichment RU — 2524/2524 hooks translated via Gemini 3.5 Flash. hook_ru served when locale=ru.
 
 #### v2 Phase 2: Route ("Создай маршрут")
 Full spec: `.workbench/mvp_lazy_day/v2-upd/lazigo-route-feature-spec.md`
