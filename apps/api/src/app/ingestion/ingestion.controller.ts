@@ -145,13 +145,20 @@ export class IngestionController {
     let updated = 0, notFound = 0;
 
     for (const r of body.records) {
-      if (!r.osm_id || !r.osm_type) { notFound++; continue; }
-
-      // Find venue by osm_id
-      const venues = await this.dataSource.query(
-        'SELECT id FROM venues WHERE osm_id = $1 AND osm_type = $2 LIMIT 1',
-        [r.osm_id, r.osm_type],
-      );
+      // Find venue by osm_id first, fallback to coordinates
+      let venues: any[] = [];
+      if (r.osm_id && r.osm_type) {
+        venues = await this.dataSource.query(
+          'SELECT id FROM venues WHERE osm_id = $1 AND osm_type = $2 LIMIT 1',
+          [r.osm_id, r.osm_type],
+        );
+      }
+      if (venues.length === 0 && r.lat != null && r.lng != null) {
+        venues = await this.dataSource.query(
+          'SELECT id FROM venues WHERE ABS(lat - $1) < 1e-6 AND ABS(lng - $2) < 1e-6 LIMIT 1',
+          [r.lat, r.lng],
+        );
+      }
       if (venues.length === 0) { notFound++; continue; }
       const venueId = venues[0].id;
 
