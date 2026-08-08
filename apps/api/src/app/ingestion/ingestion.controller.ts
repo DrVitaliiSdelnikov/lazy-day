@@ -176,6 +176,12 @@ export class IngestionController {
           facet_format = COALESCE($8, facet_format),
           facet_price_tier = COALESCE($9, facet_price_tier),
           facet_price_conf = COALESCE($10, facet_price_conf),
+          hook = COALESCE($12, hook),
+          hook_ru = COALESCE($13, hook_ru),
+          facet_atmosphere = COALESCE($14, facet_atmosphere),
+          facet_occasion = COALESCE($15, facet_occasion),
+          walk_tier = COALESCE($16, walk_tier),
+          walk_confidence = COALESCE($17, walk_confidence),
           enriched_at = NOW()
         WHERE venue_id = $11`,
         [
@@ -186,6 +192,9 @@ export class IngestionController {
           r.facet_cuisine, r.facet_format,
           r.facet_price_tier, r.facet_price_conf,
           venueId,
+          r.hook, r.hook_ru,
+          r.facet_atmosphere, r.facet_occasion,
+          r.walk_tier, r.walk_confidence,
         ],
       );
       updated++;
