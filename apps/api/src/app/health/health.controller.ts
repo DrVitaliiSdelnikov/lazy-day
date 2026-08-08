@@ -297,6 +297,7 @@ const MIGRATIONS: { name: string; sql: string }[] = [
      'Собаке комфортно, вода и тень рядом', 'Dog-friendly, water and shade nearby')
     ON CONFLICT (code) DO NOTHING;
   ` },
+  { name: '030', sql: `ALTER TABLE places ADD COLUMN IF NOT EXISTS hook_ru TEXT;` },
 ];
 
 @Controller('health')
