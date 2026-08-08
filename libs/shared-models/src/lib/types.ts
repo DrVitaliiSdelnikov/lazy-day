@@ -82,6 +82,7 @@ export interface DiscoverRequest {
   sessionSeed?: number;
   typeFilter?: 'all' | 'place' | 'event';
   facetFilters?: string[];
+  toggledFacets?: string[];
   offset?: number;
   limit?: number;
 }

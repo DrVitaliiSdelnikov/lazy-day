@@ -206,6 +206,8 @@ interface ScoredCandidate extends CandidateRow {
   hasStrictMatch: boolean;
   /** Company modifier applied: 'boosted' | 'penalized' | null. */
   companyFit: 'boosted' | 'penalized' | null;
+  /** Tier score: how many toggled facets this candidate matches (for lexicographic sort). */
+  tierScore?: number;
 }
 
 @Injectable()
@@ -259,6 +261,42 @@ export class RecommendationService {
         }
         return true;
       });
+
+      // TOGGLED FACETS — hard constraint (retrieve stage)
+      // User explicitly toggled these → must match, not boost
+      const toggledFacets = (dto as any).toggledFacets as string[] | undefined;
+      if (toggledFacets?.length) {
+        candidates = candidates.filter((c) => {
+          if (c.type === 'event') return true; // events pass through
+          const attrs = c.attributes as Record<string, unknown> | undefined;
+          const facets = [...(c.facet_atmosphere ?? []), ...(c.facet_occasion ?? [])];
+          const tags = c.tags ?? [];
+
+          for (const facet of toggledFacets) {
+            if (facet === 'pet_friendly') {
+              // Must have allowsDogs OR outdoorSeating OR outdoor tags
+              const dogOk = attrs?.['allowsDogs'] === true;
+              const outdoorOk = attrs?.['outdoorSeating'] === true;
+              const tagOk = tags.some(t => ['outdoor', 'terrace', 'garden', 'patio'].includes(t))
+                || facets.includes('outdoorsy');
+              if (!dogOk && !outdoorOk && !tagOk) return false;
+            } else if (facet === 'outdoor_seating') {
+              const outdoorOk = attrs?.['outdoorSeating'] === true;
+              const tagOk = tags.some(t => ['outdoor', 'terrace', 'garden', 'patio'].includes(t))
+                || facets.includes('outdoorsy');
+              if (!outdoorOk && !tagOk) return false;
+            } else if (facet === 'open_now') {
+              const timeMidCheck = new Date((new Date(dto.timeWindow.from).getTime() + new Date(dto.timeWindow.to).getTime()) / 2);
+              const status = checkOpenStatus(c.opening_hours, timeMidCheck);
+              if (status === 'closed' || status === 'unknown') return false;
+            } else {
+              // Generic facet — must be in atmosphere or occasion
+              if (!facets.includes(facet)) return false;
+            }
+          }
+          return true;
+        });
+      }
 
       // Score + classify primary/secondary tags
       scored = candidates.map((c) => this.scoreCandidate(c, dto, radiusM, expandedWeights));
@@ -323,8 +361,36 @@ export class RecommendationService {
     const savedIds = new Set<string>((dto as any).savedIds ?? []);
     this.impressionService.applyDiscount(scored, discountMap, savedIds);
 
-    // Sort + daily rotation (tie-breaker for similar scores, top-3 untouched)
-    scored.sort((a, b) => b.score - a.score);
+    // Tier-sort: if toggled facets exist, compute tier score per candidate
+    // Tier = how many toggled facets this candidate matches
+    // Sort: tier DESC, then score DESC (lexicographic — ensures "asked → first")
+    const toggledForTier = (dto as any).toggledFacets as string[] | undefined;
+    if (toggledForTier?.length) {
+      for (const c of scored) {
+        if (c.type === 'event') { c.tierScore = toggledForTier.length; continue; }
+        const attrs = c.attributes as Record<string, unknown> | undefined;
+        const facets = [...(c.facet_atmosphere ?? []), ...(c.facet_occasion ?? [])];
+        const tags = c.tags ?? [];
+        let matched = 0;
+        for (const f of toggledForTier) {
+          if (f === 'pet_friendly') {
+            if (attrs?.['allowsDogs'] === true) matched++;
+            else if (attrs?.['outdoorSeating'] === true) matched++;
+            else if (tags.some(t => ['outdoor', 'terrace', 'garden', 'patio'].includes(t)) || facets.includes('outdoorsy')) matched++;
+          } else if (f === 'outdoor_seating') {
+            if (attrs?.['outdoorSeating'] === true || tags.some(t => ['outdoor', 'terrace', 'garden', 'patio'].includes(t))) matched++;
+          } else if (f === 'open_now') {
+            matched++; // already hard-filtered, all remaining are open
+          } else {
+            if (facets.includes(f)) matched++;
+          }
+        }
+        c.tierScore = matched;
+      }
+      scored.sort((a, b) => (b.tierScore ?? 0) - (a.tierScore ?? 0) || b.score - a.score);
+    } else {
+      scored.sort((a, b) => b.score - a.score);
+    }
 
     // F1.3: Session dithering (stable within session, varies between sessions)
     const sessionSeed = (dto as any).sessionSeed as number | undefined;
@@ -556,13 +622,44 @@ export class RecommendationService {
 
     let candidates: CandidateRow[] = [...places, ...events].filter(c => !hiddenIds.includes(c.id));
 
+    // TOGGLED FACETS — hard constraint (same as discover pipeline)
+    const toggledFacets = (dto as any).toggledFacets as string[] | undefined;
+    if (toggledFacets?.length) {
+      candidates = candidates.filter((c) => {
+        if (c.type === 'event') return true;
+        const attrs = c.attributes as Record<string, unknown> | undefined;
+        const facets = [...(c.facet_atmosphere ?? []), ...(c.facet_occasion ?? [])];
+        const tags = c.tags ?? [];
+        for (const facet of toggledFacets) {
+          if (facet === 'pet_friendly') {
+            if (attrs?.['allowsDogs'] !== true && attrs?.['outdoorSeating'] !== true
+              && !tags.some(t => ['outdoor', 'terrace', 'garden', 'patio'].includes(t))
+              && !facets.includes('outdoorsy')) return false;
+          } else if (facet === 'outdoor_seating') {
+            if (attrs?.['outdoorSeating'] !== true
+              && !tags.some(t => ['outdoor', 'terrace', 'garden', 'patio'].includes(t))
+              && !facets.includes('outdoorsy')) return false;
+          } else if (facet === 'open_now') {
+            const tm = new Date((new Date(dto.timeWindow.from).getTime() + new Date(dto.timeWindow.to).getTime()) / 2);
+            const st = checkOpenStatus(c.opening_hours, tm);
+            if (st === 'closed' || st === 'unknown') return false;
+          } else {
+            if (!facets.includes(facet)) return false;
+          }
+        }
+        return true;
+      });
+    }
+
     // Score minimally just to get primaryTags for interest filter
+    const eventFriendlyInterests = new Set(['culture', 'active', 'nightlife', 'entertainment', 'food']);
+    const hasEventFriendly = Object.keys(dto.profile.interests ?? {}).some(k => eventFriendlyInterests.has(k));
     if (hasInterests) {
       const scored = candidates.map(c => this.scoreCandidate(c, dto, radiusM, expandedWeights));
       if (hasStrictInterests) {
-        candidates = scored.filter(c => c.hasStrictMatch) as any;
+        candidates = scored.filter(c => c.hasStrictMatch || (c.type === 'event' && hasEventFriendly)) as any;
       } else {
-        candidates = scored.filter(c => c.primaryTags.length > 0) as any;
+        candidates = scored.filter(c => c.primaryTags.length > 0 || c.type === 'event') as any;
       }
     }
 
@@ -919,10 +1016,11 @@ export class RecommendationService {
     }
 
     // Pet modifier — use Google attributes when available, fallback to tag proxy
-    // When hasPet=true, pet-friendly/outdoor places get a strong additive boost
-    // so they sort above places with no pet data (not just multiply interestScore)
+    // If pet_friendly is in toggledFacets → it's a hard filter, no boost needed
+    // If hasPet from profile (not toggled) → soft boost
     let petBoost = 0;
-    if (dto.profile.hasPet) {
+    const isToggledPet = ((dto as any).toggledFacets ?? []).includes('pet_friendly');
+    if (dto.profile.hasPet && !isToggledPet) {
       const attrs = c.attributes as Record<string, unknown> | undefined;
       if (attrs?.['allowsDogs'] === true) {
         petBoost = 0.25; // strong boost — confirmed pet-friendly

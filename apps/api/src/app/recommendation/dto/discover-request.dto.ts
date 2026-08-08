@@ -97,6 +97,11 @@ export class DiscoverRequestDto {
   facetFilters?: string[];
 
   @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  toggledFacets?: string[];
+
+  @IsOptional()
   @IsNumber()
   @Min(0)
   offset?: number;

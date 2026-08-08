@@ -333,6 +333,8 @@ Full spec: `.workbench/mvp_lazy_day/v2-upd/lazigo-route-feature-spec.md`
 - [x] **Seed remaining curated routes** — migration 029, 16 more routes. Total: 46 (10 easy + 10 medium + 9 full_day + 7 night + 10 family)
 - [ ] **Расширение списка мест для конструктора** — top-places в районах показывает мало мест (LIMIT 60 глобальный, фильтр по bbox на фронте). Нужно: передать bbox на бэк, искать внутри района без глобального лимита.
 - [ ] Auto-generation quality: opening hours filter, seed dithering
+- [x] **Scoring filter stabilization (Этап 1-2)** — toggledFacets as hard WHERE constraint (retrieve stage), tier-sort (facet match count DESC, score DESC), count endpoint respects toggledFacets, epsilon restricted to hard-filtered set, petBoost skipped when toggled
+- [ ] **Scoring filter stabilization (Этап 3: UX)** — per-facet counts in UI, tier divider on relaxation, relaxation order (radius → soft facet → transparent)
 - [ ] **Стабилизация и разработка скоринга** — ревью весов (distance vs interest vs pet), A/B тестирование, метрики качества выдачи, баланс diversity vs relevance
 
 #### v2 Phase 3: Curator ("Собери вечер")

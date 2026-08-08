@@ -1115,6 +1115,13 @@ export class DiscoverComponent implements OnInit, AfterViewInit {
     this.onContextChanged();
   }
 
+  /** Build toggled facets array — explicitly toggled by user in this session */
+  private getToggledFacets(): string[] | undefined {
+    const facets: string[] = [];
+    if (this.profileStore.hasPet()) facets.push('pet_friendly');
+    return facets.length > 0 ? facets : undefined;
+  }
+
   onSidebarRadiusChange(event: any) {
     this.sidebarRadius.set(Number(event.target.value));
     this.saveSessionFilters();
@@ -1438,6 +1445,8 @@ export class DiscoverComponent implements OnInit, AfterViewInit {
       deviceIdHash: this.profileStore.deviceIdHash() || undefined,
       sessionSeed: this.sessionSeed,
       typeFilter: this.activeTypeFilter() !== 'all' ? this.activeTypeFilter() : undefined,
+      facetFilters: this.activeFacetFilters().length > 0 ? this.activeFacetFilters() : undefined,
+      toggledFacets: this.getToggledFacets(),
       offset: current.length,
       limit: 15,
     }).subscribe({
@@ -1596,6 +1605,7 @@ export class DiscoverComponent implements OnInit, AfterViewInit {
         sessionSeed: this.sessionSeed,
         typeFilter: this.activeTypeFilter() !== 'all' ? this.activeTypeFilter() : undefined,
         facetFilters: this.activeFacetFilters().length > 0 ? this.activeFacetFilters() : undefined,
+        toggledFacets: this.getToggledFacets(),
         offset: 0,
         limit: 15,
       })
@@ -1608,9 +1618,10 @@ export class DiscoverComponent implements OnInit, AfterViewInit {
           // Lightweight count for section tabs (parallel, non-blocking)
           this.api.count({
             lat: pos.lat, lng: pos.lng, radiusM: finalRadius, timeWindow,
-            profile: { interests, company },
+            profile: { interests, company, hasPet: this.profileStore.hasPet() || undefined },
             hiddenIds: this.profileStore.hiddenIds(),
             locale: this.profileStore.locale(),
+            toggledFacets: this.getToggledFacets(),
           }).subscribe(c => this.sectionCounts.set(c));
           let filtered = res.cards;
 
@@ -1896,6 +1907,8 @@ export class DiscoverComponent implements OnInit, AfterViewInit {
         deviceIdHash: this.profileStore.deviceIdHash() || undefined,
         sessionSeed: this.sessionSeed,
         typeFilter: this.activeTypeFilter() !== 'all' ? this.activeTypeFilter() : undefined,
+        facetFilters: this.activeFacetFilters().length > 0 ? this.activeFacetFilters() : undefined,
+        toggledFacets: this.getToggledFacets(),
         offset: 0,
         limit: 15,
       })
