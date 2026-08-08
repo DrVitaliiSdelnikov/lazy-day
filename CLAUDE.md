@@ -331,6 +331,8 @@ Full spec: `.workbench/mvp_lazy_day/v2-upd/lazigo-route-feature-spec.md`
 - [x] **KA language removed** — switcher removed from nav + settings (ka.json stays as fallback)
 - [x] **Pet-friendly badges** — petStatus on cards (pet_friendly / outdoor_seating), additive score boost (0.25/0.15/0.12), pet-friendly places sort to top when hasPet=true
 - [x] **Seed remaining curated routes** — migration 029, 16 more routes. Total: 46 (10 easy + 10 medium + 9 full_day + 7 night + 10 family)
+- [ ] **[HIGH] osm_id backfill на проде** — osm_id не заполнен, sync-by-osm не работает без coord fallback. Варианты: sync osm_id с локалки по координатам (одноразово) или re-run OSM import. После backfill убрать coord fallback.
+- [ ] **[HIGH] Единый sync pipeline** — один sync-by-osm (по osm_id), убрать coord fallback после backfill. Новые места получают osm_id при OSM import автоматически.
 - [ ] **Расширение списка мест для конструктора** — top-places в районах показывает мало мест (LIMIT 60 глобальный, фильтр по bbox на фронте). Нужно: передать bbox на бэк, искать внутри района без глобального лимита.
 - [ ] Auto-generation quality: opening hours filter, seed dithering
 - [x] **Scoring filter stabilization (Этап 1-2)** — toggledFacets as hard WHERE constraint (retrieve stage), tier-sort (facet match count DESC, score DESC), count endpoint respects toggledFacets, epsilon restricted to hard-filtered set, petBoost skipped when toggled

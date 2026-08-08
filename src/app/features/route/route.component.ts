@@ -216,19 +216,23 @@ interface CareLine {
 
           <!-- Bottom bar: counter + done -->
           <div class="route__bottom-bar">
-            <div class="route__manual-counter">
-              {{ selectedPoints().length }} {{ 'route.places_selected' | translate }}
-              @if (manualStats().totalMin > 0) {
-                · ~{{ manualStats().timeStr }} · {{ manualStats().km }} {{ 'route.km' | translate }}
-                @if (manualStats().taxiLegs > 0) { · 🚕 {{ manualStats().taxiLegs }} }
+            <!-- Row 1: counter + done button -->
+            <div class="route__bottom-bar-row">
+              <div class="route__manual-counter">
+                {{ selectedPoints().length }} {{ 'route.places_selected' | translate }}
+                @if (manualStats().totalMin > 0) {
+                  · ~{{ manualStats().timeStr }} · {{ manualStats().km }} {{ 'route.km' | translate }}
+                  @if (manualStats().taxiLegs > 0) { · 🚕 {{ manualStats().taxiLegs }} }
+                }
+              </div>
+              @if (!showOptimizePrompt()) {
+                <button class="ld-btn ld-btn--primary route__done-btn" [disabled]="selectedPoints().length === 0"
+                  (click)="onDone()">
+                  {{ 'route.done' | translate }} ({{ selectedPoints().length }})
+                </button>
               }
             </div>
-            @if (!showOptimizePrompt()) {
-              <button class="ld-btn ld-btn--primary route__done-btn" [disabled]="selectedPoints().length === 0"
-                (click)="onDone()">
-                {{ 'route.done' | translate }} ({{ selectedPoints().length }})
-              </button>
-            }
+            <!-- Row 2: optimize/GPS banner (separate line) -->
             @if (showOptimizePrompt()) {
               <div class="route__optimize">
                 @if (geo.position().source === 'gps') {
@@ -754,9 +758,15 @@ interface CareLine {
 
     /* Bottom bar */
     .route__bottom-bar {
-      position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
+      position: fixed; bottom: 52px; left: 0; right: 0; z-index: 10;
       background: var(--ld-surface); border-top: 1px solid var(--ld-border);
-      padding: 8px var(--ld-space-lg); display: flex; align-items: center; gap: 8px;
+      padding: 10px var(--ld-space-lg); display: flex; flex-direction: column; gap: 8px;
+    }
+    @media (min-width: 1024px) {
+      .route__bottom-bar { bottom: 0; }
+    }
+    .route__bottom-bar-row {
+      display: flex; align-items: center; gap: 8px;
     }
     .route__manual-counter {
       flex: 1; font-size: 12px; color: var(--ld-text-2);
@@ -764,10 +774,10 @@ interface CareLine {
     .route__done-btn { flex-shrink: 0; min-height: 38px; font-size: 14px; }
 
     .route__optimize {
-      padding: 12px var(--ld-space-lg); background: var(--ld-primary-soft);
-      border-radius: 12px; margin: 0 var(--ld-space-lg) 12px; max-width: 500px;
+      padding: 10px; background: var(--ld-primary-soft);
+      border-radius: 10px;
     }
-    .route__optimize-text { font-size: 14px; margin: 0 0 10px; color: var(--ld-text); line-height: 1.4; }
+    .route__optimize-text { font-size: 13px; margin: 0 0 8px; color: var(--ld-text); line-height: 1.4; }
     .route__optimize-actions { display: flex; gap: 8px; }
     .route__optimize-actions .ld-btn { flex: 1; }
 
