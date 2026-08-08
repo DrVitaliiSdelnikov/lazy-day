@@ -69,6 +69,30 @@ ANTI-HALLUCINATION RULES (critical):
 
 Places:`;
 
+const TRANSLATE_RU_PROMPT = `Переведи описания мест на русский язык. Ты — местный друг в Тбилиси, который рассказывает другу про места.
+
+Правила:
+- Переводи смысл, не дословно. Пиши как друг рассказывает — живо, тепло, но без панибратства.
+- Не добавляй то, чего нет в оригинале. Не выдумывай деталей.
+- Сохраняй длину — до 10 слов, коротко и ёмко.
+- Не переводи названия заведений (оставь как есть).
+- "cozy" = уютный/тёплый/приятный (ЧЕРЕДУЙ, не повторяй одно слово).
+- "lively" = живой/оживлённый. "trendy" = модный/стильный. "quiet" = тихий/спокойный.
+- "casual" = простой/неформальный. "scenic" = с видом/живописный.
+- Если оригинал generic ("local cafe for a quick stop") — НЕ приукрашивай, переведи как есть.
+- Ответ — ТОЛЬКО валидный JSON массив, без markdown, без пояснений.
+
+Формат: [{id, hook_ru}]
+
+Примеры:
+- "Trendy wine bar perfect for date night" → "Стильный винный бар для вечера вдвоём"
+- "Quiet park to clear your head" → "Тихий парк, чтобы прийти в себя"
+- "Iconic puppet theater with the famous clock tower" → "Легендарный кукольный театр с башней-часами"
+- "Casual spot for a quick bite" → "Простое место, чтобы быстро перекусить"
+- "Lively bar with great music and drinks" → "Живой бар с отличной музыкой"
+
+Места:`;
+
 interface Step1Result {
   id: string;
   walk_tier: string;
@@ -242,6 +266,67 @@ export class VoiceEnrichmentService {
     }
 
     this.logger.log(`Step 2 done: ${processed} processed, ${errors} errors`);
+    return { processed, errors };
+  }
+
+  /**
+   * Translate EN hooks to Russian.
+   * Uses Gemini to translate with "local friend" voice, not literal translation.
+   */
+  async translateHooksRu(limit = 100): Promise<{ processed: number; errors: number }> {
+    const apiKey = process.env['GEMINI_API_KEY'];
+    if (!apiKey) return { processed: 0, errors: 0 };
+
+    const places = await this.placeRepo
+      .createQueryBuilder('p')
+      .innerJoinAndSelect('p.venue', 'v')
+      .where('p.hook IS NOT NULL')
+      .andWhere("p.hook != ''")
+      .andWhere('p.hook_ru IS NULL')
+      .orderBy('p.googleRating', 'DESC', 'NULLS LAST')
+      .take(limit)
+      .getMany();
+
+    this.logger.log(`Translate RU: ${places.length} hooks to translate`);
+    let processed = 0, errors = 0;
+
+    const BATCH = 30;
+    for (let i = 0; i < places.length; i += BATCH) {
+      const batch = places.slice(i, i + BATCH);
+      try {
+        const input = batch.map(p => ({
+          id: p.id,
+          hook: p.hook,
+          category: p.category,
+          name: p.venue?.nameEn ?? p.venue?.name ?? '',
+        }));
+
+        const results = await this.callGemini<{ id: string; hook_ru: string }[]>(
+          apiKey, `${TRANSLATE_RU_PROMPT}\n${JSON.stringify(input)}`, GEMINI_MODEL_SMART
+        );
+        if (!results) { errors++; continue; }
+
+        for (const r of results) {
+          const place = batch.find(p => p.id === r.id);
+          if (!place || !r.hook_ru) continue;
+          place.hookRu = r.hook_ru.slice(0, 80);
+        }
+
+        await this.placeRepo.save(batch);
+        processed += batch.length;
+        this.logger.log(`Translate RU batch ${Math.floor(i / BATCH) + 1}: ${batch.length} translated`);
+
+        await new Promise(r => setTimeout(r, 300));
+      } catch (err: any) {
+        errors++;
+        this.logger.warn(`Translate RU batch error: ${err?.message}`);
+        if (err?.message?.includes('429')) {
+          await new Promise(r => setTimeout(r, 10000));
+        }
+      }
+    }
+
+    this.logger.log(`Translate RU done: ${processed} processed, ${errors} errors`);
     return { processed, errors };
   }
 

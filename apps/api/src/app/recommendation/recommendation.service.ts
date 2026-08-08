@@ -101,6 +101,7 @@ interface CandidateRow {
   chain_key?: string;
   enriched_at?: string;
   hook?: string;
+  hook_ru?: string;
   facet_atmosphere?: string[];
   facet_occasion?: string[];
   facet_price_tier?: number;
@@ -545,7 +546,7 @@ export class RecommendationService {
           : undefined,
         googlePlaceId: c.google_place_id,
         isChain: c.is_chain || false,
-        hook: c.hook ?? undefined,
+        hook: (dto.locale === 'ru' && c.hook_ru) ? c.hook_ru : (c.hook ?? undefined),
         petStatus: this.resolvePetStatus(c),
         tierScore: c.tierScore,
         whyLabel: this.resolveWhyLabel(c, userProfile, wPersonal, dto.locale),
@@ -577,7 +578,7 @@ export class RecommendationService {
           primaryTags: c.primaryTags ?? [], secondaryTags: c.secondaryTags ?? [],
           openStatus: os && os !== 'unknown' ? getOpenLabel(os, dto.locale) : undefined,
           googlePlaceId: c.google_place_id, isChain: c.is_chain ?? false,
-          hook: c.hook,
+          hook: (dto.locale === 'ru' && c.hook_ru) ? c.hook_ru : c.hook,
         };
       }
     }
@@ -1105,7 +1106,7 @@ export class RecommendationService {
         v.address, p.rating, p.rating_count, p.indoor, p.price_level,
         p.quality_score, p.status, p.attributes, p.google_types, p.google_rating,
         p.google_rating_count, p.opening_hours, p.photos, v.website, v.google_place_id,
-        p.is_chain, p.chain_key, p.enriched_at, p.hook,
+        p.is_chain, p.chain_key, p.enriched_at, p.hook, p.hook_ru,
         p.facet_cuisine, p.facet_format, p.facet_atmosphere, p.facet_occasion, p.facet_price_tier
       FROM places p
       JOIN venues v ON p.venue_id = v.id

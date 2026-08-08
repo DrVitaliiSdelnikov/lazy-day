@@ -103,6 +103,11 @@ export class IngestionController {
     return this.voice.resetStep2();
   }
 
+  @Post('voice-translate-ru')
+  async voiceTranslateRu(@Query('limit') limit?: string) {
+    return this.voice.translateHooksRu(limit ? parseInt(limit, 10) : 100);
+  }
+
   @Get('voice-spot-check')
   async voiceSpotCheck() {
     return this.voice.spotCheck();

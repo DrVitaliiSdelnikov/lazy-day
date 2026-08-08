@@ -114,6 +114,9 @@ export class Place {
   @Column({ type: 'text', nullable: true })
   hook?: string;
 
+  @Column({ type: 'text', nullable: true, name: 'hook_ru' })
+  hookRu?: string;
+
   @Column({ type: 'text', nullable: true })
   blurb?: string;
 

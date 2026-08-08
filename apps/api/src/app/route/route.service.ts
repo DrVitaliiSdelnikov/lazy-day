@@ -264,7 +264,7 @@ export class RouteService {
 
     const rows = await this.ds.query(`
       SELECT p.id, v.name, v.name_en, p.category,
-        v.lat, v.lng, p.hook, p.walk_tier, p.route_moment,
+        v.lat, v.lng, p.hook, p.hook_ru, p.walk_tier, p.route_moment,
         p.google_rating, p.photos
       FROM places p
       JOIN venues v ON p.venue_id = v.id
@@ -283,7 +283,7 @@ export class RouteService {
       category: r.category,
       lat: Number(r.lat),
       lng: Number(r.lng),
-      hook: r.hook,
+      hook: locale === 'ru' && r.hook_ru ? r.hook_ru : r.hook,
       walkTier: r.walk_tier,
       rating: r.google_rating ? Number(r.google_rating) : undefined,
       photoUrl: r.photos?.[0],
@@ -755,7 +755,7 @@ export class RouteService {
     const rows = await this.ds.query(`
       SELECT p.id, v.name, v.name_en, p.category,
         v.lat, v.lng, p.hook, p.walk_tier, p.route_moment, p.best_time, p.outdoor,
-        p.typical_duration_min, p.google_rating, p.photos
+        p.typical_duration_min, p.google_rating, p.photos, p.hook_ru
       FROM places p
       JOIN venues v ON p.venue_id = v.id
       WHERE p.status = 'active'
@@ -773,7 +773,7 @@ export class RouteService {
       category: r.category,
       lat: Number(r.lat),
       lng: Number(r.lng),
-      hook: r.hook,
+      hook: locale === 'ru' && r.hook_ru ? r.hook_ru : r.hook,
       walkTier: r.walk_tier,
       routeMoment: r.route_moment,
       rating: r.google_rating ? Number(r.google_rating) : undefined,
