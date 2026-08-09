@@ -1353,7 +1353,7 @@ export class RouteComponent implements OnInit {
     // Mark curated route as seen before rebuilding
     const data = this.routeData();
     if (data?.curatedCode) {
-      this.http.post('/v1/routes/mark-seen', {
+      this.http.post(`${this.apiBase}/routes/mark-seen`, {
         deviceId: this.profile.deviceId(),
         routeCode: data.curatedCode,
       }).subscribe();
@@ -1553,7 +1553,7 @@ export class RouteComponent implements OnInit {
 
   private loadNearby(data: any) {
     if (!data?.points?.length) return;
-    this.http.post<any[]>('/v1/routes/nearby', {
+    this.http.post<any[]>(`${this.apiBase}/routes/nearby`, {
       points: data.points.map((p: any) => ({ lat: p.lat, lng: p.lng })),
       excludeIds: data.points.map((p: any) => p.id),
       locale: this.profile.locale(),
@@ -1776,7 +1776,7 @@ export class RouteComponent implements OnInit {
     const startLat = optimizeFromGps && pos.source === 'gps' ? pos.lat : firstPoint.lat;
     const startLng = optimizeFromGps && pos.source === 'gps' ? pos.lng : firstPoint.lng;
 
-    this.http.post<any>('/v1/routes/link', {
+    this.http.post<any>(`${this.apiBase}/routes/link`, {
       pointIds: this.selectedPointIds(),
       startLat,
       startLng,
