@@ -10,6 +10,7 @@ import { MetaModule } from './meta/meta.module';
 import { IngestionModule } from './ingestion/ingestion.module';
 import { AuthModule } from './auth/auth.module';
 import { RouteModule } from './route/route.module';
+import { CuratorModule } from './curator/curator.module';
 import { Venue } from './database/entities/venue.entity';
 import { Place } from './database/entities/place.entity';
 import { Event } from './database/entities/event.entity';
@@ -55,6 +56,7 @@ import { Feedback } from './database/entities/feedback.entity';
     IngestionModule,
     AuthModule,
     RouteModule,
+    CuratorModule,
   ],
 })
 export class AppModule {}

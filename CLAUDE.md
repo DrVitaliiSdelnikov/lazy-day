@@ -333,8 +333,10 @@ Full spec: `.workbench/mvp_lazy_day/v2-upd/lazigo-route-feature-spec.md`
 - [x] **Seed remaining curated routes** — migration 029, 16 more routes. Total: 46 (10 easy + 10 medium + 9 full_day + 7 night + 10 family)
 - [ ] **[HIGH] osm_id backfill на проде** — osm_id не заполнен, sync-by-osm не работает без coord fallback. Варианты: sync osm_id с локалки по координатам (одноразово) или re-run OSM import. После backfill убрать coord fallback.
 - [ ] **[HIGH] Единый sync pipeline** — один sync-by-osm (по osm_id), убрать coord fallback после backfill. Новые места получают osm_id при OSM import автоматически.
+- [ ] **Полигоны районов** — заменить bbox прямоугольники на реалистичные полигоны (8-15 точек). `boundary JSONB` на areas. Фабрика/Дезертирский = прямоугольники, остальные 9 = полигоны. Обновить карту (SVG polygon) + getAreaForCoords (point-in-polygon).
 - [ ] **Расширение списка мест для конструктора** — top-places в районах показывает мало мест (LIMIT 60 глобальный, фильтр по bbox на фронте). Нужно: передать bbox на бэк, искать внутри района без глобального лимита.
 - [ ] Auto-generation quality: opening hours filter, seed dithering
+- [ ] **Куратор v3** — "Подобрать на дату": форма (когда+настроение+часть дня) → подборка 5-8 позиций (события-скелет + места-мясо), K1-K7 забота, подарки-связки, мост в Маршрут. Спека: `laziGoDocs/specs/curator-v3-spec.md`
 - [x] **Scoring filter stabilization (Этап 1-2)** — toggledFacets as hard WHERE constraint (retrieve stage), tier-sort (facet match count DESC, score DESC), count endpoint respects toggledFacets, epsilon restricted to hard-filtered set, petBoost skipped when toggled
 - [x] **Scoring filter stabilization (Этап 3: UX)** — per-facet count (pet), tier divider, facets inline row, mode switcher 3 buttons, suggestedFacets cached
 - [x] **Стабилизация скоринга** — hard/soft split, tier-sort, pet additive boost, events bypass, per-facet counts, tier divider
