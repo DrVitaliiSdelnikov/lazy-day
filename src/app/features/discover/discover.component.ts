@@ -137,9 +137,8 @@ import { DecideForMeComponent } from './decide-for-me/decide-for-me.component';
           (click)="openRoute()">
           <ld-icon name="route" [size]="16" /> {{ 'discover.mode_route' | translate }}
         </button>
-        <button class="discover__mode-btn" (click)="openDecide()"
-          [disabled]="loading() || cards().length === 0">
-          <ld-icon name="compass" [size]="16" /> {{ 'decide.button' | translate }}
+        <button class="discover__mode-btn" (click)="openCurator()">
+          <ld-icon name="sparkles" [size]="16" /> {{ 'curator.title' | translate }}
         </button>
       </div>
 
@@ -1576,6 +1575,10 @@ export class DiscoverComponent implements OnInit, AfterViewInit {
   openRoute() {
     this.routeLoading.set(true);
     this.router.navigate(['/route']);
+  }
+
+  openCurator() {
+    this.router.navigate(['/curator']);
   }
 
   setSidebarTime(value: string) {
