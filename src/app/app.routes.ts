@@ -44,6 +44,12 @@ export const appRoutes: Route[] = [
       import('./features/detail/detail.component').then((m) => m.DetailComponent),
   },
   {
+    path: 'curator',
+    canActivate: [welcomeGuard],
+    loadComponent: () =>
+      import('./features/curator/curator.component').then((m) => m.CuratorComponent),
+  },
+  {
     path: 'route',
     canActivate: [welcomeGuard],
     loadComponent: () =>
