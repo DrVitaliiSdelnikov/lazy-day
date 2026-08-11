@@ -109,7 +109,7 @@ interface CurationResponse {
           }
 
           <button class="curator__submit" (click)="generate()">
-            <ld-icon name="sparkles" [size]="16" /> {{ 'curator.generate' | translate }}
+            {{ 'curator.generate' | translate }}
           </button>
           <p class="curator__hint">{{ 'curator.hint' | translate }}</p>
         </section>
@@ -159,6 +159,9 @@ interface CurationResponse {
                 @if (item.careLine) {
                   <p class="curator__item-care"><ld-icon name="heart" [size]="11" /> {{ item.careLine }}</p>
                 }
+                <button class="curator__item-remove" (click)="removeItem(item)">
+                  <ld-icon name="x" [size]="10" /> {{ 'curator.remove' | translate }}
+                </button>
               </div>
             </div>
             <!-- Gift after event -->
@@ -296,6 +299,12 @@ interface CurationResponse {
       display: flex; gap: 5px; align-items: center;
     }
     .curator__item-care ld-icon { color: var(--ld-primary); }
+    .curator__item-remove {
+      background: none; border: none; font-size: 11px; color: var(--ld-text-3);
+      cursor: pointer; font-family: inherit; display: flex; align-items: center;
+      gap: 3px; margin-top: 4px; padding: 0;
+    }
+    .curator__item-remove:hover { color: var(--ld-danger, #CC4B4B); }
 
     /* Gift */
     .curator__gift {
@@ -468,7 +477,21 @@ export class CuratorComponent {
       lat: pos.lat, lng: pos.lng,
       locale: this.profile.locale(),
     }).subscribe({
-      next: () => this.router.navigate(['/route']),
+      next: (routeData) => {
+        // Store route data for RouteComponent to pick up
+        sessionStorage.setItem('ld_curator_route', JSON.stringify(routeData));
+        this.router.navigate(['/route'], { queryParams: { from: 'curator' } });
+      },
+    });
+  }
+
+  removeItem(item: CurationItem) {
+    const cur = this.curation();
+    if (!cur) return;
+    this.curation.set({
+      ...cur,
+      items: cur.items.filter(i => i.id !== item.id),
+      gifts: cur.gifts.filter(g => g.eventId !== item.id),
     });
   }
 

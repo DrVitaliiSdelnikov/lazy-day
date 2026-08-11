@@ -1,5 +1,5 @@
 import { Component, inject, signal, computed, viewChild, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { ApiService } from '../../core/services/api.service';
@@ -32,7 +32,7 @@ interface CareLine {
     <div class="route">
       <!-- Back -->
       <header class="route__header">
-        <button class="route__back" (click)="goBack()">
+        <button class="route__back" (click)="goBack()" [disabled]="step() === 'loading'">
           <ld-icon name="arrow-left" [size]="18" />
         </button>
         <h1 class="route__title">{{ 'route.title' | translate }}</h1>
@@ -541,6 +541,7 @@ interface CareLine {
       background: var(--ld-bg); z-index: 10;
     }
     .route__back { background: none; border: none; cursor: pointer; color: var(--ld-text); padding: 4px; }
+    .route__back:disabled { opacity: 0.3; cursor: not-allowed; }
     .route__title { font-size: 18px; font-weight: 700; margin: 0; }
 
     .route__mode-switch {
@@ -855,11 +856,12 @@ interface CareLine {
     .route__result-timeline { flex: 1; min-width: 0; }
 
     .route__result-map {
-      height: 220px; border-radius: 12px; overflow: hidden; margin-bottom: 12px;
+      height: 200px; border-radius: 12px; overflow: hidden; margin-bottom: 12px;
+      position: sticky; top: 52px; z-index: 5;
     }
     @media (min-width: 900px) {
       .route__result-map {
-        flex: 0 0 45%; height: 400px; position: sticky; top: 56px;
+        flex: 0 0 45%; height: 400px; top: 56px;
         align-self: flex-start; margin-bottom: 0;
       }
     }
@@ -1026,11 +1028,29 @@ export class RouteComponent implements OnInit {
     ? 'https://api.lazigo.app/v1' : '/v1';
   private profile = inject(ProfileStore);
   private router = inject(Router);
+  private activatedRoute = inject(ActivatedRoute);
   private translate = inject(TranslateService);
 
   private routeMap = viewChild<RouteMapComponent>('routeMap');
 
   ngOnInit() {
+    // Check if coming from curator with pre-built route
+    const fromCurator = this.activatedRoute.snapshot.queryParams['from'] === 'curator';
+    if (fromCurator) {
+      const stored = sessionStorage.getItem('ld_curator_route');
+      if (stored) {
+        sessionStorage.removeItem('ld_curator_route');
+        try {
+          const routeData = JSON.parse(stored);
+          this.routeSource.set('manual');
+          this.routeData.set(routeData);
+          this.step.set('result');
+          this.loadNearby(routeData);
+          return;
+        } catch { /* fall through to normal init */ }
+      }
+    }
+
     this.startLoader();
     const initStart = Date.now();
     let placesReady = false;
@@ -1798,6 +1818,10 @@ export class RouteComponent implements OnInit {
   }
 
   goBack() {
-    this.router.navigate(['/discover']);
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      this.router.navigate(['/discover']);
+    }
   }
 }
